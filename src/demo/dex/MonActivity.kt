@@ -106,7 +106,7 @@ class MonActivity : Activity() {
             format = state.getString("format", "")
             shiny = state.getBoolean("shiny")
         }
-        show(num)
+        show(num, state?.getString("worn"))
     }
 
     override fun onSaveInstanceState(out: Bundle) {
@@ -116,6 +116,7 @@ class MonActivity : Activity() {
         out.putInt("method", method)
         out.putString("format", format)
         out.putBoolean("shiny", shiny)
+        out.putString("worn", worn)
     }
 
     /** Rebuilds the page for Pokémon `n`, its header picture in `look` (a looks/ file) if given. */
@@ -723,12 +724,13 @@ class MonActivity : Activity() {
             Ui.chipActive(chip, k == method)
             Ui.addChip(moveBar, chip)
         }
+        // Moves as they were in g, the game the list is from: Red falls back to Gold for Snubbull, where Bite is Dark.
         val out = ArrayList<Ui.Item>()
         val col = cols[method]
         if (method == 0) {
-            for (i in col.indices step 2) out.add(Ui.Item.move(dex.move(game, col[i + 1]), if (col[i] == 0) L.t("Evo") else L.f("Lv %d", col[i])))
+            for (i in col.indices step 2) out.add(Ui.Item.move(dex.move(g, col[i + 1]), if (col[i] == 0) L.t("Evo") else L.f("Lv %d", col[i])))
         } else {
-            val ms = col.map { dex.move(game, it) }.sortedBy { if (method == 1) g.tms[it.id] ?: "" else it.key }
+            val ms = col.map { dex.move(g, it) }.sortedBy { if (method == 1) g.tms[it.id] ?: "" else it.key }
             for (mv in ms) out.add(Ui.Item.move(mv, if (method == 1) g.tms[mv.id] ?: L.t("TM") else ""))
         }
         adapter.set(out)
