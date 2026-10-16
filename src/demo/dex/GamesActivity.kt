@@ -1,6 +1,7 @@
 package demo.dex
 
 import android.app.Activity
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.text.TextUtils
 import android.view.Gravity
@@ -86,7 +87,8 @@ class GamesActivity : Activity() {
          * (may be null) as a pill under the text, a button of its own when `onTag` is given. A generation's Pokédex
          * takes its first game's colors and its three starters. Sprites decode at 128 px, 64 KB each.
          */
-        fun card(a: Activity, g: Dex.Game, tag: String?, below: View? = null, onTag: View.OnClickListener? = null): View {
+        fun card(a: Activity, g: Dex.Game, tag: String?, below: View? = null, beside: View? = null,
+                 onTag: View.OnClickListener? = null): View {
             val generation = g.id > Dex.WHOLE
             val look = if (generation) Ui.dex(a).games.first { it.gen == g.gen }.id else g.id
             val colors = COLORS[look] ?: longArrayOf(0xFF555555)
@@ -126,7 +128,22 @@ class GamesActivity : Activity() {
                     pill.setPadding(Ui.dp(a, 14), Ui.dp(a, 7), Ui.dp(a, 14), Ui.dp(a, 7))
                     pill.setOnClickListener(onTag)
                 }
-                texts.addView(pill, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT,
+                // Side by side, or stacked when the column beside the mascots is too narrow for both (360 dp, long names).
+                val pills = object : LinearLayout(a) {
+                    override fun onMeasure(widthSpec: Int, heightSpec: Int) {
+                        orientation = HORIZONTAL
+                        super.onMeasure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED), heightSpec)
+                        if (measuredWidth > MeasureSpec.getSize(widthSpec)) orientation = VERTICAL
+                        super.onMeasure(widthSpec, heightSpec)
+                    }
+                }
+                val gap = GradientDrawable()
+                gap.setSize(Ui.dp(a, 8), Ui.dp(a, 8))
+                pills.dividerDrawable = gap
+                pills.showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE
+                pills.addView(pill)
+                if (beside != null) pills.addView(beside)
+                texts.addView(pills, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT, a, 0, 10, 0, 0))
             }
             val textLp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,

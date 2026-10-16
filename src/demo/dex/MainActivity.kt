@@ -35,7 +35,6 @@ class MainActivity : Activity() {
     private lateinit var resultList: AbsListView
     private lateinit var tileScroll: ScrollView
     private lateinit var content: LinearLayout
-    private lateinit var spaceChip: TextView
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
@@ -59,23 +58,28 @@ class MainActivity : Activity() {
         val settings = Ui.chip(this, L.t("Settings")) { startActivity(Intent(this, SettingsActivity::class.java)) }
         head.addView(settings, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 4, 16, 0))
 
-        // Under the title: beside it, a long workspace name squeezed "DexSearch" onto two lines.
-        spaceChip = Ui.chip(this, "") { workspaces() }
-        spaceChip.maxWidth = Ui.dp(this, 240)
-        spaceChip.ellipsize = TextUtils.TruncateAt.END
-        val more = Ui.Chevron(Ui.TEXT, false)
-        more.setBounds(0, 0, Ui.dp(this, 12), Ui.dp(this, 12))
-        spaceChip.setCompoundDrawablesRelative(null, null, more, null)
-        spaceChip.compoundDrawablePadding = Ui.dp(this, 6)
-
         val root = Ui.vertical(this)
         root.addView(head)
-        root.addView(spaceChip, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 16, 0, 16, 0))
         root.addView(search, Ui.wide(this, 0, 10))
         val fill = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
         root.addView(resultList, fill)
         root.addView(tileScroll, fill)
         Ui.show(this, root)
+    }
+
+    /** The workspace switch, in the game card: a workspace is what that card shows, its game and caught marks. */
+    private fun spacePill(): TextView {
+        val pill = Ui.glassPill(this, Ui.spaceName(this))
+        pill.background = Ui.pressable(this, pill.background, 999)
+        pill.setPadding(Ui.dp(this, 14), Ui.dp(this, 7), Ui.dp(this, 14), Ui.dp(this, 7))
+        pill.ellipsize = TextUtils.TruncateAt.END
+        pill.contentDescription = L.f("Workspace: %s", pill.text)
+        val more = Ui.Chevron(Ui.WHITE, false)
+        more.setBounds(0, 0, Ui.dp(this, 10), Ui.dp(this, 10))
+        pill.setCompoundDrawablesRelative(null, null, more, null)
+        pill.compoundDrawablePadding = Ui.dp(this, 6)
+        pill.setOnClickListener { workspaces() }
+        return pill
     }
 
     /** Counts and sprites depend on the game, "caught", teams and the artwork style, all changed on other screens. */
@@ -86,10 +90,8 @@ class MainActivity : Activity() {
 
     private fun refresh() {
         game = Ui.game(this)
-        spaceChip.text = Ui.spaceName(this)
-        spaceChip.contentDescription = L.f("Workspace: %s", spaceChip.text)
         content.removeAllViews()
-        val banner = GamesActivity.card(this, game, L.t("Change game"), caught()) {
+        val banner = GamesActivity.card(this, game, L.t("Change game"), caught(), spacePill()) {
             startActivity(Intent(this, GamesActivity::class.java))
         }
         banner.setOnClickListener { startActivity(Intent(this, PokedexActivity::class.java)) }
