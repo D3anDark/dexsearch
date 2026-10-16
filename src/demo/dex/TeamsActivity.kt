@@ -78,14 +78,14 @@ class TeamsActivity : Activity() {
     companion object {
         /** All teams live in one preference string, a line per team; a full set of 20 teams is about 3 KB. */
         fun load(c: Context): MutableList<Team> {
-            val teams = Team.parseAll(Ui.prefs(c).getString("teams", "")!!)
+            val teams = Team.parseAll(Ui.prefs(c).getString(Ui.key(c, "teams"), "")!!)
             val dex = Ui.dex(c)
             for (t in teams) for (m in t.members) m.num = dex.known(m.num)
             return teams
         }
 
         fun save(c: Context, teams: List<Team>) {
-            Ui.prefs(c).edit().putString("teams", Team.formatAll(teams)).apply()
+            Ui.prefs(c).edit().putString(Ui.key(c, "teams"), Team.formatAll(teams)).apply()
         }
 
         /** New team member: first regular ability, level 50 (the usual battle level). */

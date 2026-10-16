@@ -198,7 +198,6 @@ Caught Pokémon	Pokémon capturados
 Clear	Borrar
 Marked: %d	Marcados: %d
 Clear caught marks?	¿Borrar marcas de capturado?
-Removes the caught mark from every game. Pokémon: %d. This cannot be undone.	Quita la marca de capturado en todos los juegos. Pokémon: %d. No se puede deshacer.
 Data: PokeAPI and pokemondb.net. Artwork and type icons: PokeAPI sprites. Sets: Smogon University, via pkmn. Pokémon names and images © Nintendo / Game Freak.	Datos: PokeAPI y pokemondb.net. Ilustraciones e iconos de tipo: sprites de PokeAPI. Sets: Smogon University, vía pkmn. Nombres e imágenes de Pokémon © Nintendo / Game Freak.
 Light	Claro
 Dark	Oscuro
@@ -261,3 +260,15 @@ Species items	Para Pokémon concretos
 Mega Stones	Megapiedras
 Z-Crystals	Cristales Z
 Training	Entrenamiento
+Main	Principal
+Workspaces	Espacios de trabajo
+Workspace: %s	Espacio de trabajo: %s
+New	Nuevo
+New workspace	Nuevo espacio de trabajo
+Workspace name	Nombre del espacio de trabajo
+Its caught marks, teams and selected game are removed from this device. This cannot be undone.	Se borrarán de este dispositivo sus marcas de capturado, sus equipos y el juego elegido. No se puede deshacer.
+Removes the caught mark from every game in %s. Pokémon: %d. This cannot be undone.	Quita la marca de capturado en todos los juegos de %s. Pokémon: %d. No se puede deshacer.
+Previous: %s	Anterior: %s
+Next: %s	Siguiente: %s
+Forms and looks	Formas y aspectos
+Show all (%d)	Mostrar todo (%d)

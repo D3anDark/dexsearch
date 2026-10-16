@@ -198,7 +198,6 @@ Caught Pokémon	捕獲済みのポケモン
 Clear	クリア
 Marked: %d	%d匹
 Clear caught marks?	捕獲済みの記録を消しますか？
-Removes the caught mark from every game. Pokémon: %d. This cannot be undone.	すべてのゲームで捕獲済みの記録を消します。ポケモン: %d匹。元に戻せません。
 Data: PokeAPI and pokemondb.net. Artwork and type icons: PokeAPI sprites. Sets: Smogon University, via pkmn. Pokémon names and images © Nintendo / Game Freak.	データ: PokeAPI、pokemondb.net。画像とタイプアイコン: PokeAPI sprites。型: Smogon University (pkmn経由)。ポケモンの名前と画像 © Nintendo / Game Freak。
 Light	ライト
 Dark	ダーク
@@ -261,3 +260,15 @@ Species items	専用アイテム
 Mega Stones	メガストーン
 Z-Crystals	Zクリスタル
 Training	育成
+Main	メイン
+Workspaces	ワークスペース
+Workspace: %s	ワークスペース: %s
+New	新規
+New workspace	新しいワークスペース
+Workspace name	ワークスペース名
+Its caught marks, teams and selected game are removed from this device. This cannot be undone.	捕獲済みの記録、チーム、選んだゲームがこの端末から削除されます。元に戻せません。
+Removes the caught mark from every game in %s. Pokémon: %d. This cannot be undone.	%sのすべてのゲームで捕獲済みの記録を消します。ポケモン: %d匹。元に戻せません。
+Previous: %s	前: %s
+Next: %s	次: %s
+Forms and looks	フォルムとすがた
+Show all (%d)	すべて表示 (%d)

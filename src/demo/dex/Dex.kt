@@ -144,7 +144,7 @@ class Dex private constructor(private val assets: Assets) {
         /** Version group whose learnsets and move values apply: the game's own, or a generation's last core game. */
         val versionGroup: Int = id,
     ) {
-        /** The Whole Pokédex or a generation's, not a game: national numbers, no TMs. */
+        /** The Whole Pokédex or a generation's, not a game: national numbers, no TMs of its own (see [tmGame]). */
         val virtual get() = id >= WHOLE
         /**
          * Regional dexes concatenated; a species listed in several (Paldea, Kitakami) appears once, first dex wins.
@@ -178,7 +178,7 @@ class Dex private constructor(private val assets: Assets) {
             }
         }
 
-        /** Every species and form in national order, like pokemondb's National Pokédex; no TMs (they differ per game). */
+        /** Every species and form in national order, like pokemondb's National Pokédex; TMs from [tmGame]. */
         constructor(d: Dex) : this(WHOLE, L.t("Whole Pokédex"), d.mons.maxOfOrNull { it.gen } ?: 1, false) {
             val name = d.dexName("National")
             for (e in d.national) {
@@ -287,7 +287,7 @@ class Dex private constructor(private val assets: Assets) {
 
     /**
      * The Pokémon `step` places from `num`'s species in `order` (Pokédex or search order), passing over that species'
-     * forms, which the header's form chips reach, and landing on a species rather than its last form; 0 past either
+     * forms, which the Forms and looks card reaches, and landing on a species rather than its last form; 0 past either
      * end, -1 when the species is not in `order`.
      */
     fun neighbor(order: IntArray, num: Int, step: Int): Int {
@@ -392,6 +392,9 @@ class Dex private constructor(private val assets: Assets) {
      * with data (Legends: Z-A has none in PokeAPI), else the oldest later one. Null if the species has none.
      * The Whole Pokédex prefers [widest]: Champions, the newest, lists no level-up moves.
      */
+    /** Game whose TMs `g` shows: its own; for the Whole Pokédex [widest] (Scarlet/Violet), as pokemondb lists them. */
+    fun tmGame(g: Game): Game = if (g === whole) widest else g
+
     fun learnGame(g: Game, m: Mon): Game? {
         if (g === whole && widest.id in m.games) return widest
         return pick(g, m.games)
@@ -773,8 +776,9 @@ class Dex private constructor(private val assets: Assets) {
             check(wholeDex.dex.size == d.mons.size && wholeDex.byNum.getValue(10100).number == 26 && wholeDex.gen == 9
                     && d.learnGame(wholeDex, d.mon(19))?.id == 23 && d.learnGame(wholeDex, d.mon(445)) === sv
                     && d.learnGame(wholeDex, d.mon(16)) === za
-                    && d.learnGame(wholeDex, d.move(53)) === sv && pursuit !== sv && d.learners(pursuit, 228).isNotEmpty(),
-                    "Whole Pokédex: every entry, SV learnsets, else the newest game with data")
+                    && d.learnGame(wholeDex, d.move(53)) === sv && pursuit !== sv && d.learners(pursuit, 228).isNotEmpty()
+                    && d.tmGame(wholeDex).tms[53] == "TM125",
+                    "Whole Pokédex: every entry, SV learnsets and TMs, else the newest game with data")
             val gen1 = d.game(WHOLE + 1)
             val gen5 = d.generations[4]
             val gen6 = d.generations[5]

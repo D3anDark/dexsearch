@@ -198,7 +198,6 @@ Caught Pokémon	Złapane Pokémon
 Clear	Wyczyść
 Marked: %d	Oznaczone: %d
 Clear caught marks?	Wyczyścić oznaczenia złapanych?
-Removes the caught mark from every game. Pokémon: %d. This cannot be undone.	Usuwa oznaczenie złapania we wszystkich grach. Pokémon: %d. Tego nie można cofnąć.
 Data: PokeAPI and pokemondb.net. Artwork and type icons: PokeAPI sprites. Sets: Smogon University, via pkmn. Pokémon names and images © Nintendo / Game Freak.	Dane: PokeAPI i pokemondb.net. Grafiki i ikony typów: PokeAPI sprites. Zestawy: Smogon University, przez pkmn. Nazwy i obrazy Pokémon © Nintendo / Game Freak.
 Light	Jasny
 Dark	Ciemny
@@ -261,3 +260,15 @@ Species items	Dla konkretnych Pokémonów
 Mega Stones	Megakamienie
 Z-Crystals	Kryształy Z
 Training	Trening
+Main	Główny
+Workspaces	Obszary robocze
+Workspace: %s	Obszar roboczy: %s
+New	Nowy
+New workspace	Nowy obszar roboczy
+Workspace name	Nazwa obszaru roboczego
+Its caught marks, teams and selected game are removed from this device. This cannot be undone.	Jego oznaczenia złapanych, drużyny i wybrana gra zostaną usunięte z tego urządzenia. Tego nie można cofnąć.
+Removes the caught mark from every game in %s. Pokémon: %d. This cannot be undone.	Usuwa oznaczenie złapania we wszystkich grach obszaru %s. Pokémon: %d. Tego nie można cofnąć.
+Previous: %s	Poprzedni: %s
+Next: %s	Następny: %s
+Forms and looks	Formy i wygląd
+Show all (%d)	Pokaż wszystkie (%d)

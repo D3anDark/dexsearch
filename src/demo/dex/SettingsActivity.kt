@@ -180,9 +180,10 @@ class SettingsActivity : Activity() {
         clear.setOnClickListener {
             AlertDialog.Builder(this)
                 .setTitle(L.t("Clear caught marks?"))
-                .setMessage(L.f("Removes the caught mark from every game. Pokémon: %d. This cannot be undone.", Ui.caught(this).size))
+                .setMessage(L.f("Removes the caught mark from every game in %s. Pokémon: %d. This cannot be undone.",
+                    Ui.spaceName(this), Ui.caught(this).size))
                 .setPositiveButton(L.t("Clear")) { _, _ ->
-                    prefs.edit().remove("caught").apply()
+                    prefs.edit().remove(Ui.key(this, "caught")).apply()
                     show()
                 }
                 .setNegativeButton(L.t("Cancel"), null)

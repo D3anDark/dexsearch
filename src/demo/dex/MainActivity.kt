@@ -1,11 +1,13 @@
 package demo.dex
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Typeface
 import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
+import android.text.TextUtils
 import android.text.style.ForegroundColorSpan
 import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
@@ -18,6 +20,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.TextView
 
 /**
  * Home: title with Settings, one search box across Pokémon, moves, abilities, items and types, then the selected
@@ -32,6 +35,7 @@ class MainActivity : Activity() {
     private lateinit var resultList: AbsListView
     private lateinit var tileScroll: ScrollView
     private lateinit var content: LinearLayout
+    private lateinit var spaceChip: TextView
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
@@ -55,8 +59,18 @@ class MainActivity : Activity() {
         val settings = Ui.chip(this, L.t("Settings")) { startActivity(Intent(this, SettingsActivity::class.java)) }
         head.addView(settings, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 4, 16, 0))
 
+        // Under the title: beside it, a long workspace name squeezed "DexSearch" onto two lines.
+        spaceChip = Ui.chip(this, "") { workspaces() }
+        spaceChip.maxWidth = Ui.dp(this, 240)
+        spaceChip.ellipsize = TextUtils.TruncateAt.END
+        val more = Ui.Chevron(Ui.TEXT, false)
+        more.setBounds(0, 0, Ui.dp(this, 12), Ui.dp(this, 12))
+        spaceChip.setCompoundDrawablesRelative(null, null, more, null)
+        spaceChip.compoundDrawablePadding = Ui.dp(this, 6)
+
         val root = Ui.vertical(this)
         root.addView(head)
+        root.addView(spaceChip, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 16, 0, 16, 0))
         root.addView(search, Ui.wide(this, 0, 10))
         val fill = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
         root.addView(resultList, fill)
@@ -72,6 +86,8 @@ class MainActivity : Activity() {
 
     private fun refresh() {
         game = Ui.game(this)
+        spaceChip.text = Ui.spaceName(this)
+        spaceChip.contentDescription = L.f("Workspace: %s", spaceChip.text)
         content.removeAllViews()
         val banner = GamesActivity.card(this, game, L.t("Change game"), caught()) {
             startActivity(Intent(this, GamesActivity::class.java))
@@ -80,15 +96,62 @@ class MainActivity : Activity() {
         content.addView(banner, Ui.wide(this, 0, 12))
         content.addView(teams(), Ui.wide(this, 0, 12))
 
+        val tms = dex.tmGame(game)
         tiles(tile(L.t("Moves"), count(L.f("%d moves", dex.moves(game).size)), "fire", Intent(this, MovesActivity::class.java)),
-            if (game.virtual) tile(L.t("TMs"), words(L.t("Pick a game")), "water", Intent(this, GamesActivity::class.java))
-            else tile(L.t("TMs"), if (game.tms.isEmpty()) words(L.t("None here")) else count(L.f("%d machines", game.tms.size)), "water",
+            if (tms.virtual) tile(L.t("TMs"), words(L.t("Pick a game")), "water", Intent(this, GamesActivity::class.java))
+            else tile(L.t("TMs"), if (tms.tms.isEmpty()) words(L.t("None here")) else count(L.f("%d machines", tms.tms.size)), "water",
                 Intent(this, MovesActivity::class.java).putExtra("tm", true)))
         tiles(tile(L.t("Abilities"), count(L.f("%d abilities", dex.abilities.size)), "psychic", Intent(this, AbilitiesActivity::class.java)),
             tile(L.t("Items"), count(L.f("%d items", dex.items.size)), "electric", Intent(this, ItemsActivity::class.java)))
         tiles(tile(L.t("Type chart"), count(L.f("%d types", dex.types(game).size)), "dragon", Intent(this, TypeChartActivity::class.java)),
             tile(L.t("Natures"), count(L.f("%d natures", dex.natures.size)), "ground", Intent(this, NaturesActivity::class.java)))
         searchChanged()
+    }
+
+    /** Tap one to switch to it. New starts one in the current game and opens the game picker; Delete asks first. */
+    private fun workspaces() {
+        val spaces = Ui.spaces(this)
+        val k = spaces.indexOfFirst { it.first == Ui.space(this) }
+        val switch = { id: Int -> Ui.prefs(this).edit().putInt("space", id).apply() }
+        val b = AlertDialog.Builder(this).setTitle(L.t("Workspaces"))
+            .setSingleChoiceItems(spaces.map { it.second }.toTypedArray(), k) { d, i ->
+                switch(spaces[i].first)
+                d.dismiss()
+                refresh()
+            }
+            .setPositiveButton(L.t("New")) { _, _ ->
+                Ui.askName(this, L.t("New workspace"), "") { name ->
+                    val id = spaces.maxOf { it.first } + 1
+                    Ui.saveSpaces(this, spaces + (id to name))
+                    Ui.prefs(this).edit().putInt(Ui.key(this, "game", id), game.id).apply()
+                    switch(id)
+                    startActivity(Intent(this, GamesActivity::class.java))
+                }
+            }
+            .setNeutralButton(L.t("Rename")) { _, _ ->
+                Ui.askName(this, L.t("Workspace name"), spaces[k].second) { name ->
+                    Ui.saveSpaces(this, spaces.map { if (it.first == spaces[k].first) it.first to name else it })
+                    refresh()
+                }
+            }
+        if (spaces.size > 1) b.setNegativeButton(L.t("Delete")) { _, _ -> delete(spaces, k) }
+        b.show()
+    }
+
+    private fun delete(spaces: List<Pair<Int, String>>, k: Int) {
+        val id = spaces[k].first
+        AlertDialog.Builder(this).setTitle(L.f("Delete %s?", spaces[k].second))
+            .setMessage(L.t("Its caught marks, teams and selected game are removed from this device. This cannot be undone."))
+            .setPositiveButton(L.t("Delete")) { _, _ ->
+                val rest = spaces.filter { it.first != id }
+                val e = Ui.prefs(this).edit()
+                for (base in arrayOf("caught", "teams", "game")) e.remove(Ui.key(this, base, id))
+                e.putInt("space", rest[0].first).apply()
+                Ui.saveSpaces(this, rest)
+                refresh()
+            }
+            .setNegativeButton(L.t("Cancel"), null)
+            .show()
     }
 
     /** Caught progress of the game's species, white for its card. */
@@ -216,7 +279,7 @@ class MainActivity : Activity() {
             val e = if (game.virtual) null else game.byNum[o.num]
             Ui.Item.mon(o, dex.types(game, o), Ui.national(o.species), o.genus + if (e == null) "" else "  ·  ${e.dex} #${e.number}")
         }
-        is Dex.Move -> Ui.Item.move(o, game.tms[o.id] ?: "")
+        is Dex.Move -> Ui.Item.move(o, dex.tmGame(game).tms[o.id] ?: "")
         is Dex.Ability -> Ui.Item(0, "", o.name, o.shortEffect, emptyList(), o)
         is Dex.Item -> Ui.Item(0, "", o.name, o.effect, emptyList(), o)
         else -> {

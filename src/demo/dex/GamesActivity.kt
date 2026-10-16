@@ -12,7 +12,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 
 /**
- * Game picker: a card per game in its version colors, newest generation first, each generation led by its Pokédex.
+ * Game picker: a card per game in its version colors, newest generation first. The Pokédex list filters by generation.
  * Tapping one selects it.
  */
 class GamesActivity : Activity() {
@@ -35,7 +35,6 @@ class GamesActivity : Activity() {
                 val h = Ui.caption(this, L.f("Generation %s", ROMAN[gen - 1]))
                 h.setPadding(Ui.dp(this, 20), Ui.dp(this, 14), Ui.dp(this, 20), Ui.dp(this, 8))
                 root.addView(h)
-                addCard(root, dex.generations[gen - 1], current)
             }
             addCard(root, g, current)
         }
@@ -47,7 +46,7 @@ class GamesActivity : Activity() {
     private fun addCard(root: LinearLayout, g: Dex.Game, current: Dex.Game) {
         val card = card(this, g, if (g === current) L.t("Selected") else null)
         card.setOnClickListener {
-            Ui.prefs(this).edit().putInt("game", g.id).apply()
+            Ui.prefs(this).edit().putInt(Ui.key(this, "game"), g.id).apply()
             finish()
         }
         root.addView(card, Ui.wide(this, 0, 10))

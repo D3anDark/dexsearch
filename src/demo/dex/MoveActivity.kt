@@ -30,9 +30,10 @@ class MoveActivity : Activity() {
         column(numbers, m.pp.toString(), L.t("PP"))
         if (m.priority != 0) column(numbers, (if (m.priority > 0) "+" else "") + m.priority, L.t("Priority"))
         hero.addView(numbers)
-        val tm = game.tms[m.id]
+        val tms = dex.tmGame(game)
+        val tm = tms.tms[m.id]
         if (tm != null) {
-            val t = Ui.white(this, L.f("%s in %s", tm, game.name), 13, true)
+            val t = Ui.white(this, L.f("%s in %s", tm, tms.name), 13, true)
             t.setPadding(0, Ui.dp(this, 14), 0, 0)
             hero.addView(t)
         }

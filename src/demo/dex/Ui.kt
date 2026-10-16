@@ -82,14 +82,36 @@ object Ui {
     fun prefs(c: Context): SharedPreferences = c.getSharedPreferences("dex", Context.MODE_PRIVATE)
 
     /** Selected game, Scarlet / Violet until the user picks another. */
-    fun game(c: Context): Dex.Game = dex(c).game(prefs(c).getInt("game", 25))
+    fun game(c: Context): Dex.Game = dex(c).game(prefs(c).getInt(key(c, "game"), 25))
 
-    fun caught(c: Context): Set<String> = prefs(c).getStringSet("caught", emptySet())!!
+    fun caught(c: Context): Set<String> = prefs(c).getStringSet(key(c, "caught"), emptySet())!!
 
     fun setCaught(c: Context, num: Int, on: Boolean) {
         val s = HashSet(caught(c))
         if (on) s.add(num.toString()) else s.remove(num.toString())
-        prefs(c).edit().putStringSet("caught", s).apply()
+        prefs(c).edit().putStringSet(key(c, "caught"), s).apply()
+    }
+
+    /**
+     * Workspaces keep playthroughs apart (a core game and a fan game played alongside): each has its own caught marks,
+     * teams and selected game. "spaces" holds an "id\tname" line per workspace; workspace 0 uses the keys from before
+     * workspaces existed, so an update keeps everything in it.
+     */
+    fun space(c: Context): Int = prefs(c).getInt("space", 0)
+
+    /** Preference key of `base` in workspace `id`: "caught" in workspace 0, "caught.2" in workspace 2. */
+    fun key(c: Context, base: String, id: Int = space(c)): String = if (id == 0) base else "$base.$id"
+
+    fun spaces(c: Context): List<Pair<Int, String>> {
+        val s = prefs(c).getString("spaces", "")!!
+        if (s.isEmpty()) return listOf(0 to L.t("Main"))
+        return s.split('\n').map { it.substringBefore('\t').toInt() to it.substringAfter('\t') }
+    }
+
+    fun spaceName(c: Context): String = spaces(c).firstOrNull { it.first == space(c) }?.second ?: ""
+
+    fun saveSpaces(c: Context, spaces: List<Pair<Int, String>>) {
+        prefs(c).edit().putString("spaces", spaces.joinToString("\n") { "${it.first}\t" + it.second.replace('\t', ' ').replace('\n', ' ') }).apply()
     }
 
     // --- navigation ------------------------------------------------------------------------------
@@ -139,6 +161,8 @@ object Ui {
     /** Asset folder per artwork style, by index. */
     private val ART_DIRS = arrayOf("sprites", "art", "pixel")
     private val SHINY_DIRS = arrayOf("shiny", "shiny-art", "shiny-pixel")
+    private val LOOK_DIRS = arrayOf("looks", "looks-art", "looks-pixel")
+    private val SHINY_LOOK_DIRS = arrayOf("looks-shiny", "looks-shiny-art", "looks-shiny-pixel")
     /** Active chips; white text on it is 4.8:1. */
     const val ACCENT = 0xFFD8300C.toInt()
     const val WHITE = Color.WHITE
@@ -669,26 +693,30 @@ object Ui {
         val m = dex?.monOrNull(num)
         val dirs = if (shiny) SHINY_DIRS else ART_DIRS
         for (dir in intArrayOf(style, ART_HOME).distinct()) for (n in intArrayOf(num, m?.species ?: num)) {
-            try {
-                c.assets.open("${dirs[dir]}/$n.webp").use { input ->
-                    val o = BitmapFactory.Options()
-                    o.inSampleSize = if (dir == ART_PIXEL) 1 else sample
-                    val d = BitmapDrawable(c.resources, BitmapFactory.decodeStream(input, null, o))
-                    d.isFilterBitmap = dir != ART_PIXEL
-                    return d
-                }
-            } catch (e: IOException) {
-                // try the species, then the HOME render
-            }
+            decode(c, "${dirs[dir]}/$n.webp", dir == ART_PIXEL, sample)?.let { return it }
         }
         return null
     }
 
-    /** A look from assets/looks (256 px HOME render, see gen_looks.py), decoded at 1/`sample` like [sprite]. */
-    fun look(c: Context, file: String, sample: Int): Drawable = c.assets.open("looks/$file.webp").use {
-        val o = BitmapFactory.Options()
-        o.inSampleSize = sample
-        BitmapDrawable(c.resources, BitmapFactory.decodeStream(it, null, o))
+    /**
+     * A look from gen_looks.py (female Venusaur, Vivillon's patterns) in the Settings artwork style, decoded like
+     * [sprite]; the HOME render where the style has none (official artwork has no female looks).
+     */
+    fun look(c: Context, file: String, sample: Int, shiny: Boolean = false): Drawable? {
+        val dirs = if (shiny) SHINY_LOOK_DIRS else LOOK_DIRS
+        for (dir in intArrayOf(art, ART_HOME).distinct()) decode(c, "${dirs[dir]}/$file.webp", dir == ART_PIXEL, sample)?.let { return it }
+        return null
+    }
+
+    /** assets/`path` at 1/`sample`, or whole and unfiltered for a pixel sprite; null if the file is missing. */
+    private fun decode(c: Context, path: String, pixel: Boolean, sample: Int): Drawable? = try {
+        c.assets.open(path).use { input ->
+            val o = BitmapFactory.Options()
+            o.inSampleSize = if (pixel) 1 else sample
+            BitmapDrawable(c.resources, BitmapFactory.decodeStream(input, null, o)).apply { isFilterBitmap = !pixel }
+        }
+    } catch (e: IOException) {
+        null
     }
 
     /** The item's 24 px bag icon from assets/items (see gen_items.py), unfiltered like pixel sprites, 2.3 KB decoded, no cache. */
@@ -930,6 +958,25 @@ object Ui {
                 selected.clear()
                 changed()
             }
+            .show()
+    }
+
+    /** One-line text box starting at `start`; `done` gets the trimmed text, never empty. */
+    fun askName(c: Context, heading: String, start: String, done: (String) -> Unit) {
+        val e = EditText(c)
+        e.setText(start)
+        e.setSingleLine()
+        e.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS
+        e.setSelectAllOnFocus(true)
+        val box = vertical(c)
+        box.setPadding(dp(c, 20), dp(c, 8), dp(c, 20), 0)
+        box.addView(e)
+        AlertDialog.Builder(c).setTitle(heading).setView(box)
+            .setPositiveButton(L.t("Save")) { _, _ ->
+                val s = e.text.toString().trim()
+                if (s.isNotEmpty()) done(s)
+            }
+            .setNegativeButton(L.t("Cancel"), null)
             .show()
     }
 
