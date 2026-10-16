@@ -1,6 +1,13 @@
 package demo.dex
 
+import android.app.Dialog
+import android.graphics.drawable.InsetDrawable
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.view.Window
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import java.util.Locale
 import java.util.TreeSet
@@ -45,7 +52,7 @@ class PokedexActivity : ListScreen() {
         }
         if (game.virtual) dexChip.visibility = View.GONE
         typeChip = addChip { Ui.pickMany(this, L.t("Type (must have all)"), dex.types(game), types, { dex.label(it) }, this::refresh) }
-        genChip = addChip { Ui.pickMany(this, L.t("Generation"), allGens, gens, { L.f("Gen %d", it) }, this::refresh) }
+        genChip = addChip { pickGens(allGens) }
         if (gen > 0) genChip.visibility = View.GONE
         caughtChip = addChip {
             Ui.pickOne(this, L.t("Caught"), CAUGHT.map { L.t(it) }, caughtFilter) { i ->
@@ -96,11 +103,94 @@ class PokedexActivity : ListScreen() {
         Ui.chipActive(sortChip, sort != Dex.Sort.NUMBER)
     }
 
+    /**
+     * The generation filter in the app's own panel, not the system's checkbox list: a tile per generation with its
+     * Grass, Fire and Water starters and region. Like [Ui.pickMany], the list behind updates on every tap.
+     */
+    private fun pickGens(all: List<Int>) {
+        val pad = Ui.dp(this, 16)
+        val box = Ui.vertical(this)
+        box.setPadding(pad, Ui.dp(this, 20), pad, pad)
+        val heading = Ui.text(this, L.t("Generation"), 20, true)
+        heading.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 12))
+        box.addView(heading)
+
+        val tiles = ArrayList<Pair<LinearLayout, Int>>()
+        val paint = { tile: LinearLayout, on: Boolean ->
+            val fill = Ui.rounded(this, Ui.FILL, 16)
+            if (on) fill.setStroke(Ui.dp(this, 2), Ui.ACCENT)
+            tile.background = Ui.pressable(this, fill, 16)
+            tile.isSelected = on
+        }
+        lateinit var row: LinearLayout
+        for ((i, g) in all.withIndex()) {
+            if (i % COLS == 0) {
+                row = LinearLayout(this)
+                box.addView(row)
+            }
+            val tile = Ui.vertical(this)
+            tile.gravity = Gravity.CENTER_HORIZONTAL
+            tile.setPadding(Ui.dp(this, 4), Ui.dp(this, 10), Ui.dp(this, 4), Ui.dp(this, 10))
+            val art = LinearLayout(this)
+            art.gravity = Gravity.CENTER_HORIZONTAL
+            for (k in 0..2) {
+                val img = ImageView(this)
+                img.setImageDrawable(Ui.sprite(this, Dex.STARTERS[g - 1] + 3 * k, 2))
+                art.addView(img, LinearLayout.LayoutParams(Ui.dp(this, 28), Ui.dp(this, 28)))
+            }
+            tile.addView(art)
+            val number = Ui.text(this, L.f("Gen %d", g), 14, true)
+            number.setPadding(0, Ui.dp(this, 4), 0, 0)
+            number.gravity = Gravity.CENTER_HORIZONTAL
+            tile.addView(number)
+            val region = dex.regions[g - 1]
+            val place = Ui.muted(this, region, 12)
+            place.gravity = Gravity.CENTER_HORIZONTAL
+            tile.addView(place)
+            tile.contentDescription = L.f("Gen %d", g) + ", " + region
+            paint(tile, g in gens)
+            tile.setOnClickListener {
+                if (!gens.add(g)) gens.remove(g)
+                paint(tile, g in gens)
+                refresh()
+            }
+            tiles.add(tile to g)
+            row.addView(tile, Ui.margins(0, ViewGroup.LayoutParams.WRAP_CONTENT, this, 4, 4, 4, 4).apply { weight = 1f })
+        }
+        repeat((COLS - all.size % COLS) % COLS) {
+            row.addView(View(this), Ui.margins(0, 1, this, 4, 4, 4, 4).apply { weight = 1f })
+        }
+
+        val d = Dialog(this)
+        val buttons = LinearLayout(this)
+        buttons.gravity = Gravity.END
+        val clear = Ui.chip(this, L.t("Clear")) {
+            gens.clear()
+            for ((tile, _) in tiles) paint(tile, false)
+            refresh()
+        }
+        val done = Ui.chip(this, L.t("Done")) { d.dismiss() }
+        Ui.chipActive(done, true)
+        buttons.addView(clear, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 8, 0))
+        buttons.addView(done)
+        box.addView(buttons, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 12, 4, 0))
+
+        d.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        d.setContentView(box)
+        d.window?.let { w ->
+            w.setBackgroundDrawable(InsetDrawable(Ui.rounded(this, Ui.SURFACE, 28), pad))
+            w.setLayout(minOf(resources.displayMetrics.widthPixels, Ui.dp(this, 440)), ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+        d.show()
+    }
+
     override fun open(item: Ui.Item, shown: List<Ui.Item>) {
         Ui.openMon(this, (item.ref as Dex.Mon).num, Ui.nums(shown))
     }
 
     companion object {
         private val CAUGHT = listOf(L.k("All"), L.k("Caught"), L.k("Not caught"))
+        /** Generation tiles to a row: three keeps three starters at 28 dp in a tile on a 360 dp screen. */
+        private const val COLS = 3
     }
 }

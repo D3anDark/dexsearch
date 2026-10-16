@@ -250,6 +250,8 @@ class Dex private constructor(private val assets: Assets) {
     lateinit var whole: Game
     /** A Pokédex per generation, Gen 1 first; not in [games]. */
     val generations = ArrayList<Game>()
+    /** Each generation's region ([REGIONS]) in the app's language, Gen 1 first: "Teselia". */
+    lateinit var regions: List<String>
     private lateinit var factors: Array<IntArray>
     /** Generation each type arrived in: Steel and Dark in 2, Fairy in 6. */
     private val typeGen = HashMap<String, Int>()
@@ -562,6 +564,8 @@ class Dex private constructor(private val assets: Assets) {
         /** Sections of the item lists, in list order; items.tsv names one per item. Shown through [L.t]. */
         val ITEM_GROUPS = arrayOf(L.k("Held items"), L.k("Berries"), L.k("Type boosters"), L.k("Gems"),
             L.k("Species items"), L.k("Mega Stones"), L.k("Z-Crystals"), L.k("Training"))
+        /** Each generation's first starter, the Grass one; its Fire and Water ones are 3 and 6 after. */
+        val STARTERS = intArrayOf(1, 152, 252, 387, 495, 650, 722, 810, 906)
         /** Growth rates in pokemon.tsv; shown through [L.t]. */
         private val GROWTH = arrayOf(L.k("Erratic"), L.k("Fast"), L.k("Medium"), L.k("Medium Slow"), L.k("Slow"), L.k("Fluctuating"))
         /** Neutral nature the games place on each stat's diagonal cell, Atk to Spe. */
@@ -638,6 +642,7 @@ class Dex private constructor(private val assets: Assets) {
             d.widest = d.games.filter { it.id in learn && it.id != GO }.maxWith(compareBy<Game> { it.gen }.thenBy { learn[it.id] })
             d.whole = Game(d)
             for (n in 1..REGIONS.size) d.generations.add(Game(d, n))
+            d.regions = REGIONS.map { d.dexName(it) }
             d.moves.associateByTo(d.moveById) { it.id }
             d.abilities.associateByTo(d.abilityById) { it.id }
             d.items.associateByTo(d.itemById) { it.id }
@@ -889,6 +894,12 @@ class Dex private constructor(private val assets: Assets) {
             check(height(19, true) == "6'03\"" && weight(950, true) == "209.4 lbs" && height(4, false) == "0.4 m"
                     && weight(60, false) == "6.0 kg", "Garchomp 6'03\", 209.4 lbs; Pikachu 0.4 m, 6.0 kg")
             check(d.mons.all { it.growth in GROWTH }, "every growth rate has UI text")
+            check(STARTERS.size == d.mons.maxOf { it.gen } && REGIONS.size == STARTERS.size
+                    && STARTERS.withIndex().all { (i, n) ->
+                        val (grass, fire, water) = listOf(n, n + 3, n + 6).map { d.mon(it) }
+                        listOf(grass, fire, water).all { it.gen == i + 1 }
+                            && grass.types[0] == "grass" && fire.types[0] == "fire" && water.types[0] == "water"
+                    }, "a Grass, Fire and Water starter for every generation")
 
             val keys = HashSet<String>()
             val formats = HashSet<String>()
@@ -927,7 +938,8 @@ class Dex private constructor(private val assets: Assets) {
             L.load(d.assets, "es")
             val es = load(d.assets, "es")
             check(es.move(53).name == "Lanzallamas" && es.move(gen1, 44).let { it.name == es.move(44).name && it.name != "Bite" }
-                    && es.game(25).name == "Escarlata / Púrpura" && height(4, false) == "0,4 m", "Spanish names, also for older moves")
+                    && es.game(25).name == "Escarlata / Púrpura" && height(4, false) == "0,4 m" && es.regions[4] == "Teselia",
+                    "Spanish names, also for older moves and regions")
             L.load(d.assets, "en")
             println("Dex self-check OK (${d.mons.size} Pokémon and forms, ${d.moves.size} moves, " +
                     "${d.abilities.size} abilities, ${d.items.size} items, ${d.games.size} games)")

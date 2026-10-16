@@ -26,6 +26,8 @@ EN = "9"
 LANGS = {"ja": ["1", "11"], "es": ["7"]}
 # Words in a dex name before its region that the Japanese games leave out: "Original Johto" is ジョウト図鑑.
 QUALIFIERS = ("Original ", "Updated ", "New ", "Extended ", "Let’s Go ")
+# Spanish region names differing from English: PokeAPI has no Spanish region names, and no Pokédex named just "Unova".
+ES_REGIONS = {"Unova": "Teselia"}
 
 
 def get(url):
@@ -101,7 +103,7 @@ def mon(lang, f):
 def dex(lang, name):
     if lang == "es":
         en = {v: k for k, v in dexes["en"].items()}
-        return dexes["es"].get(en.get(name))
+        return dexes["es"].get(en.get(name)) or ES_REGIONS.get(name)
     region = next((name[len(q):] for q in QUALIFIERS if name.startswith(q)), name)
     en = {v: k for k, v in regions["en"].items()}
     return regions["ja"].get(en.get(region))
@@ -155,3 +157,4 @@ assert ja[("mon", "6")] == "リザードン" and es[("move", "53")] == "Lanzalla
 assert ja[("mon", "10034")] == "メガリザードンX" and es[("mon", "10100")] == "Raichu (Forma de Alola)", \
     (ja.get(("mon", "10034")), es.get(("mon", "10100")))
 assert ja[("type", "fire")] == "ほのお" and ja[("dex", "Original Johto")] == "ジョウト", ja.get(("dex", "Original Johto"))
+assert es[("dex", "Unova")] == "Teselia", es.get(("dex", "Unova"))
