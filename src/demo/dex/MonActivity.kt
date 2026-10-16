@@ -21,6 +21,7 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsetsController
 import android.widget.AbsListView
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
@@ -65,6 +66,11 @@ class MonActivity : Activity() {
     private lateinit var pinned: View
     private lateinit var pinnedTabs: Array<TextView>
     private lateinit var page: ListView
+    /** Blank end of [page], tall enough for [pinTabs] to scroll a short tab up under [pinned]; else 0. */
+    private lateinit var spacer: View
+    /** Status bar backdrop from [Ui.show]: hero color, the page color once the hero is scrolled away ([bare]). */
+    private lateinit var strip: View
+    private var bare = false
     private lateinit var head: View
     private lateinit var heroView: View
     /** The gesture began on the header, so a horizontal fling pages to the previous or next Pokémon. */
@@ -148,6 +154,8 @@ class MonActivity : Activity() {
         val lv = Ui.list(this, false) as ListView
         lv.setPadding(0, 0, 0, Ui.dp(this, 16))
         lv.addHeaderView(head, null, false)
+        spacer = View(this)
+        lv.addFooterView(spacer, null, false)
         lv.adapter = adapter
         lv.setOnItemClickListener { parent, _, i, _ ->
             val item = parent.getItemAtPosition(i) as? Ui.Item ?: return@setOnItemClickListener
@@ -165,21 +173,33 @@ class MonActivity : Activity() {
         pin.addView(bar)
         pin.visibility = View.GONE
         pinned = pin
+        bare = false
         lv.setOnScrollListener(object : AbsListView.OnScrollListener {
             override fun onScrollStateChanged(v: AbsListView, state: Int) {}
             override fun onScroll(v: AbsListView, first: Int, count: Int, total: Int) {
-                pin.visibility = if (scrolledPast()) View.VISIBLE else View.GONE
+                pin.visibility = if (tabGap() < 0) View.VISIBLE else View.GONE
+                val past = first > 0 || head.isLaidOut && head.top + heroView.bottom <= 0
+                if (past == bare) return
+                bare = past
+                // The hero is gone: a band of its color over the page looked like a stray bar.
+                strip.setBackgroundColor(if (past) Ui.BG else color)
+                val dark = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                window.insetsController?.setSystemBarsAppearance(if (past && !Ui.night) dark else 0, dark)
             }
         })
         val root = FrameLayout(this)
         root.addView(lv)
         root.addView(pin, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        Ui.show(this, root, color)
+        strip = Ui.show(this, root, color)
         setTab(tab)
     }
 
-    /** [tabBar] is above the place where [pinned] shows its copy. */
-    private fun scrolledPast() = page.firstVisiblePosition > 0 || head.top + tabBar.top < Ui.dp(this, PIN)
+    /** [tabBar]'s distance below the place where [pinned] shows its copy, negative once scrolled past it. */
+    private fun tabGap() = when {
+        page.firstVisiblePosition > 0 -> -1
+        !head.isLaidOut -> 1  // every top is 0 before the first layout
+        else -> head.top + tabBar.top - Ui.dp(this, PIN)
+    }
 
     private fun go(step: Int) {
         val n = neighbor(step)
@@ -360,8 +380,27 @@ class MonActivity : Activity() {
         if (t == 1 && evo.childCount == 0) evolutions(m)
         if (t == 3 && buildBox.childCount == 0) builds(m)
         if (t == 2) moves(m) else adapter.set(emptyList())
-        // Picked on the pinned copy: the new tab starts right under it instead of at the old scroll position.
-        if (pinned.visibility == View.VISIBLE) page.setSelectionFromTop(0, Ui.dp(this, PIN) - tabBar.top)
+        spacer.minimumHeight = 0
+        // Also when pinTabs put the tabs exactly there, which hides the pinned copy.
+        if (tabGap() <= 0) pinTabs()
+    }
+
+    /**
+     * Picked with the tabs at the top: the new tab starts right under them instead of at the old scroll position. A tab too
+     * short to scroll that far (Evolution, a few sets) gets [spacer] for the difference, so the page does not jump
+     * back to the hero.
+     */
+    private fun pinTabs() {
+        val top = Ui.dp(this, PIN)
+        page.setSelectionFromTop(0, top - tabBar.top)
+        page.post {
+            val short = head.top + tabBar.top - top
+            if (page.firstVisiblePosition != 0 || short <= 0) return@post
+            // Content shorter than the page also leaves a gap under its end.
+            val gap = page.height - page.paddingBottom - page.getChildAt(page.childCount - 1).bottom
+            spacer.minimumHeight = short + maxOf(0, gap)
+            page.setSelectionFromTop(0, top - tabBar.top)
+        }
     }
 
     private fun info(m: Dex.Mon): View {

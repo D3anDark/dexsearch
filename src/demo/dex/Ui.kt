@@ -316,9 +316,9 @@ object Ui {
     /**
      * Sets the content view, edge to edge, with system bar and keyboard insets as `root` padding. A nonzero
      * `bar` paints the status bar area in that color (matching a [hero]) with light icons, so content
-     * scrolling under it stays out of the way.
+     * scrolling under it stays out of the way. Returns that strip, for a page that recolors it.
      */
-    fun show(a: Activity, root: View, bar: Int = 0) {
+    fun show(a: Activity, root: View, bar: Int = 0): View {
         a.actionBar?.hide()
         a.window.setBackgroundDrawable(ColorDrawable(BG))
         a.window.setDecorFitsSystemWindows(false)
@@ -343,6 +343,7 @@ object Ui {
             WindowInsets.CONSUMED
         }
         a.setContentView(frame)
+        return strip
     }
 
     fun dp(c: Context, v: Float): Int = (v * c.resources.displayMetrics.density).roundToInt()
