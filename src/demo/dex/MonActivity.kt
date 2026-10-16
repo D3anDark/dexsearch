@@ -23,6 +23,8 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsetsController
+import android.view.animation.AccelerateInterpolator
+import android.view.animation.DecelerateInterpolator
 import android.widget.AbsListView
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -198,14 +200,26 @@ class MonActivity : Activity() {
         else -> head.top + tabBar.top - Ui.dp(this, PIN)
     }
 
+    /**
+     * Slides the page out the way the finger went, builds the neighbor's while it is hidden (the one long frame lands
+     * there), then slides that in from the other side. [show] makes a new root, so each half animates its own. A second
+     * step mid-way cancels the first: the end action only runs when its animation finishes.
+     */
     private fun go(step: Int) {
         val n = neighbor(step)
         if (n == 0) return
-        show(n)
-        val v = page.parent as View
-        v.translationX = step * Ui.dp(this, 48f).toFloat()
-        v.alpha = 0f
-        v.animate().translationX(0f).alpha(1f).setDuration(180).start()
+        // Already the target, so a second swipe while this page slides out goes one further, as before the slide.
+        num = n
+        val old = page.parent as View
+        val shift = step * Ui.dp(this, 96f).toFloat()
+        old.animate().cancel()
+        old.animate().translationX(-shift).alpha(0f).setDuration(140).setInterpolator(AccelerateInterpolator()).withEndAction {
+            show(n)
+            val v = page.parent as View
+            v.translationX = shift
+            v.alpha = 0f
+            v.animate().translationX(0f).alpha(1f).setDuration(260).setInterpolator(DecelerateInterpolator(2f)).start()
+        }.start()
     }
 
     override fun dispatchTouchEvent(e: MotionEvent): Boolean {

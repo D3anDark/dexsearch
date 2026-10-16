@@ -921,8 +921,10 @@ object Ui {
             lv.divider = null
             l = lv
         }
-        // Shows only on lists four or more screens long.
+        // Shows only on lists four or more screens long. Outside overlay puts the thumb in the side gutter; inside, it
+        // sat on the cards' edge and blended into their colors.
         l.isFastScrollEnabled = true
+        l.scrollBarStyle = View.SCROLLBARS_OUTSIDE_OVERLAY
         l.clipToPadding = false
         l.selector = ColorDrawable(Color.TRANSPARENT)
         l.cacheColorHint = Color.TRANSPARENT
