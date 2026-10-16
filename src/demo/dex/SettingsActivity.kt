@@ -1,7 +1,6 @@
 package demo.dex
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.app.UiModeManager
 import android.content.Intent
 import android.content.SharedPreferences
@@ -178,16 +177,11 @@ class SettingsActivity : Activity() {
             clear.alpha = if (n > 0) 1f else 0.4f
         }
         clear.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setTitle(L.t("Clear caught marks?"))
-                .setMessage(L.f("Removes the caught mark from every game in %s. Pokémon: %d. This cannot be undone.",
-                    Ui.spaceName(this), Ui.caught(this).size))
-                .setPositiveButton(L.t("Clear")) { _, _ ->
-                    prefs.edit().remove(Ui.key(this, "caught")).apply()
-                    show()
-                }
-                .setNegativeButton(L.t("Cancel"), null)
-                .show()
+            Ui.confirm(this, L.t("Clear caught marks?"), L.f("Removes the caught mark from every game in %s. Pokémon: %d. This cannot be undone.",
+                Ui.spaceName(this), Ui.caught(this).size), L.t("Clear")) {
+                prefs.edit().remove(Ui.key(this, "caught")).apply()
+                show()
+            }
         }
         show()
     }

@@ -1,7 +1,6 @@
 package demo.dex
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
@@ -151,20 +150,20 @@ class MemberActivity : Activity() {
         if (game.gen >= 2) p.addView(Ui.setting(this, L.t("Item"), if (x.item == 0) L.t("None") else Ui.itemName(this, dex.item(x.item))) { pickItem() })
         if (game.gen >= 3) {
             p.addView(Ui.setting(this, L.t("Nature"), if (x.nature < 0) L.t("Not set") else natureLabel(dex.natures[x.nature])) {
-                lateinit var d: AlertDialog
-                val chart = NaturesActivity.chart(this, dex, x.nature) { i ->
-                    x.nature = i
-                    d.dismiss()
-                    render()
-                }
-                chart.setPadding(Ui.dp(this, 12), Ui.dp(this, 8), Ui.dp(this, 12), 0)
-                d = AlertDialog.Builder(this).setTitle(L.t("Nature")).setView(chart).setNegativeButton(L.t("Cancel"), null).show()
+                val d = Ui.Sheet(this, L.t("Nature"))
+                d.body.addView(NaturesActivity.chart(this, dex, x.nature) { i ->
+                    if (d.close()) {
+                        x.nature = i
+                        render()
+                    }
+                })
+                d.button(L.t("Cancel"))
+                d.show()
             })
         }
         if (game.id == TERA_GAME || game.virtual && game.gen >= 9) {
-            val labels = dex.types.map { dex.label(it) }
-            p.addView(Ui.setting(this, L.t("Tera type"), if (x.tera < 0) L.t("Not set") else labels[x.tera]) {
-                Ui.pickOne(this, L.t("Tera type"), labels, x.tera) { i ->
+            p.addView(Ui.setting(this, L.t("Tera type"), if (x.tera < 0) L.t("Not set") else dex.label(dex.types[x.tera])) {
+                Ui.pickType(this, L.t("Tera type"), dex.types, x.tera) { i ->
                     x.tera = i
                     render()
                 }
@@ -198,20 +197,23 @@ class MemberActivity : Activity() {
     }
 
     private fun pickBuild(sets: List<Dex.Build>) {
-        lateinit var d: AlertDialog
+        val d = Ui.Sheet(this, L.t("Smogon sets"))
         val list = buildList(this, dex, game, sets, x.num, "", Ui.FILL, { b ->
             val use = Ui.chip(this, L.t("Use this set")) {
-                load(dex, b, x)
-                render()
-                d.dismiss()
+                if (d.close()) {
+                    load(dex, b, x)
+                    render()
+                }
             }
             Ui.chipActive(use, true)
             use
         }) {}
-        list.setPadding(0, Ui.dp(this, 8), 0, 0)
         val s = ScrollView(this)
         s.addView(list)
-        d = AlertDialog.Builder(this).setTitle(L.t("Smogon sets")).setView(s).setNegativeButton(L.t("Cancel"), null).show()
+        d.body.setPadding(0, 0, 0, 0)
+        d.body.addView(s)
+        d.button(L.t("Cancel"))
+        d.show()
     }
 
     /** Held items released by this game's generation: those in this Pokémon's Smogon sets first, most used on top, then by section. */
@@ -383,16 +385,12 @@ class MemberActivity : Activity() {
     }
 
     private fun remove(m: Dex.Mon) {
-        AlertDialog.Builder(this).setTitle(L.f("Remove %s?", m.name))
-            .setMessage(L.f("Its moves, item and stats are removed from %s.", team.name))
-            .setPositiveButton(L.t("Remove")) { _, _ ->
-                team.members.remove(x)
-                TeamsActivity.save(this, teams)
-                removed = true
-                finish()
-            }
-            .setNegativeButton(L.t("Cancel"), null)
-            .show()
+        Ui.confirm(this, L.f("Remove %s?", m.name), L.f("Its moves, item and stats are removed from %s.", team.name), L.t("Remove")) {
+            team.members.remove(x)
+            TeamsActivity.save(this, teams)
+            removed = true
+            finish()
+        }
     }
 
     companion object {

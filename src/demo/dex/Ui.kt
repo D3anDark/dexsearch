@@ -1,7 +1,7 @@
 package demo.dex
 
 import android.app.Activity
-import android.app.AlertDialog
+import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -22,6 +22,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.InsetDrawable
 import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.RippleDrawable
 import android.text.Editable
@@ -36,6 +37,8 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
+import android.view.WindowManager
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.inputmethod.EditorInfo
@@ -48,6 +51,7 @@ import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ListView
+import android.widget.ScrollView
 import android.widget.TextView
 import java.io.IOException
 import java.util.Locale
@@ -942,52 +946,180 @@ object Ui {
 
     // --- dialogs ---------------------------------------------------------------------------------
 
-    /** Checkbox dialog; `changed` runs on every toggle so results update live behind it. */
-    fun <T> pickMany(c: Context, heading: String, options: List<T>, selected: MutableSet<T>, label: (T) -> String,
-                     changed: () -> Unit) {
-        val labels = Array(options.size) { label(options[it]) }
-        val checked = BooleanArray(options.size) { options[it] in selected }
-        AlertDialog.Builder(c)
-            .setTitle(heading)
-            .setMultiChoiceItems(labels, checked) { _, i, on ->
-                if (on) selected.add(options[i]) else selected.remove(options[i])
-                changed()
+    /**
+     * The app's own dialog in place of the system's: [body] under a heading on a rounded surface, [button]s at the
+     * end. Up to 440 dp wide; a body taller than the screen shrinks, so a long one goes in a ScrollView.
+     */
+    class Sheet(c: Context, heading: String) : Dialog(c) {
+        /** 16 dp padding at the sides; clear it for edge-to-edge rows. */
+        val body = vertical(c)
+        // Side by side, or stacked at the end when they do not fit ("Cambiar nombre" beside two more on 360 dp).
+        private val buttons = object : LinearLayout(c) {
+            override fun onMeasure(widthSpec: Int, heightSpec: Int) {
+                orientation = HORIZONTAL
+                super.onMeasure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED), heightSpec)
+                if (measuredWidth > MeasureSpec.getSize(widthSpec)) orientation = VERTICAL
+                super.onMeasure(widthSpec, heightSpec)
             }
-            .setPositiveButton(L.t("Done"), null)
-            .setNeutralButton(L.t("Clear")) { _, _ ->
-                selected.clear()
-                changed()
+        }
+
+        init {
+            val box = vertical(c)
+            box.setPadding(0, dp(c, 20), 0, dp(c, 16))
+            val h = text(c, heading, 20, true)
+            h.setPadding(dp(c, 20), 0, dp(c, 20), dp(c, 12))
+            box.addView(h)
+            body.setPadding(dp(c, 16), 0, dp(c, 16), 0)
+            box.addView(body, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            buttons.gravity = Gravity.END
+            val gap = GradientDrawable()
+            gap.setSize(dp(c, 8), dp(c, 8))
+            buttons.dividerDrawable = gap
+            buttons.showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE
+            buttons.visibility = View.GONE
+            box.addView(buttons, margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, c, 16, 12, 20, 0))
+            requestWindowFeature(Window.FEATURE_NO_TITLE)
+            setContentView(box)
+            window?.let { w ->
+                w.setBackgroundDrawable(InsetDrawable(rounded(c, SURFACE, 28), dp(c, 16)))
+                w.setLayout(minOf(c.resources.displayMetrics.widthPixels, dp(c, 440)), ViewGroup.LayoutParams.WRAP_CONTENT)
+                w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
             }
-            .show()
+        }
+
+        /** Dismisses it; false when it was already gone, so a quick second tap does not act twice. */
+        fun close(): Boolean {
+            if (!isShowing) return false
+            dismiss()
+            return true
+        }
+
+        /** A button after the others, the accent one if `main`; it closes the sheet, then runs `act`, unless `close` is false. */
+        fun button(label: String, main: Boolean = false, close: Boolean = true, act: () -> Unit = {}): TextView {
+            val b = chip(context, label) { if (!close || this@Sheet.close()) act() }
+            chipActive(b, main)
+            buttons.addView(b)
+            buttons.visibility = View.VISIBLE
+            return b
+        }
+    }
+
+    /** Rounded fill with an accent ring when `on`: a choice in a [Sheet], picked or not. */
+    fun choice(c: Context, on: Boolean, radiusDp: Int): Drawable {
+        val fill = rounded(c, FILL, radiusDp)
+        if (on) fill.setStroke(dp(c, 2), ACCENT)
+        return pressable(c, fill, radiusDp)
+    }
+
+    /** Types or move categories as their pills, three to a row; `changed` runs on every toggle so results update live behind it. */
+    fun pickMany(c: Context, heading: String, keys: List<String>, selected: MutableSet<String>, changed: () -> Unit) {
+        val s = Sheet(c, heading)
+        val rings = pills(c, s.body, keys) { i, ring ->
+            if (!selected.add(keys[i])) selected.remove(keys[i])
+            ring(ring, keys[i] in selected)
+            changed()
+        }
+        for ((i, r) in rings.withIndex()) ring(r, keys[i] in selected)
+        s.button(L.t("Clear"), close = false) {
+            selected.clear()
+            for (r in rings) ring(r, false)
+            changed()
+        }
+        s.button(L.t("Done"), main = true)
+        s.show()
+    }
+
+    /** One of `keys` (types) as in [pickMany]; `picked` gets its index. */
+    fun pickType(c: Context, heading: String, keys: List<String>, current: Int, picked: (Int) -> Unit) {
+        val s = Sheet(c, heading)
+        val rings = pills(c, s.body, keys) { i, _ -> if (s.close()) picked(i) }
+        if (current >= 0) ring(rings[current], true)
+        s.show()
+    }
+
+    /** A [pill] per key in a frame [ring] outlines, three to a row in `into`; `tapped` gets the index and frame. */
+    private fun pills(c: Context, into: LinearLayout, keys: List<String>, tapped: (Int, View) -> Unit): List<View> {
+        lateinit var row: LinearLayout
+        return keys.mapIndexed { i, key ->
+            if (i % 3 == 0) {
+                row = LinearLayout(c)
+                row.weightSum = 3f
+                into.addView(row)
+            }
+            val p = pill(c, key)
+            p.setPadding(0, dp(c, 8), 0, dp(c, 8))
+            val frame = FrameLayout(c)
+            frame.setPadding(dp(c, 3), dp(c, 3), dp(c, 3), dp(c, 3))
+            frame.addView(p)
+            frame.foreground = pressable(c, null, 999)
+            frame.setOnClickListener { tapped(i, frame) }
+            row.addView(frame, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            frame
+        }
+    }
+
+    private fun ring(v: View, on: Boolean) {
+        v.isSelected = on
+        v.background = if (on) rounded(v.context, Color.TRANSPARENT, 999).apply { setStroke(dp(v.context, 2), TEXT) } else null
     }
 
     /** One-line text box starting at `start`; `done` gets the trimmed text, never empty. */
     fun askName(c: Context, heading: String, start: String, done: (String) -> Unit) {
+        val s = Sheet(c, heading)
         val e = EditText(c)
         e.setText(start)
         e.setSingleLine()
         e.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS
+        e.imeOptions = EditorInfo.IME_ACTION_DONE
         e.setSelectAllOnFocus(true)
-        val box = vertical(c)
-        box.setPadding(dp(c, 20), dp(c, 8), dp(c, 20), 0)
-        box.addView(e)
-        AlertDialog.Builder(c).setTitle(heading).setView(box)
-            .setPositiveButton(L.t("Save")) { _, _ ->
-                val s = e.text.toString().trim()
-                if (s.isNotEmpty()) done(s)
-            }
-            .setNegativeButton(L.t("Cancel"), null)
-            .show()
+        e.textSize = 16f
+        e.setTextColor(TEXT)
+        e.background = rounded(c, FILL, 14)
+        e.setPadding(dp(c, 14), dp(c, 12), dp(c, 14), dp(c, 12))
+        s.body.addView(e)
+        val save = {
+            val t = e.text.toString().trim()
+            if (t.isNotEmpty() && s.close()) done(t)
+        }
+        e.setOnEditorActionListener { _, id, _ ->
+            if (id == EditorInfo.IME_ACTION_DONE) save()
+            id == EditorInfo.IME_ACTION_DONE
+        }
+        s.button(L.t("Cancel"))
+        s.button(L.t("Save"), main = true, close = false, act = save)
+        s.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE or WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        e.requestFocus()
+        s.show()
     }
 
-    fun pickOne(c: Context, heading: String, labels: List<String>, current: Int, picked: (Int) -> Unit) {
-        AlertDialog.Builder(c)
-            .setTitle(heading)
-            .setSingleChoiceItems(labels.toTypedArray(), current) { d, i ->
-                picked(i)
-                d.dismiss()
-            }
-            .show()
+    /** Asks before something that cannot be undone; `yes` runs on the accent `action` button. */
+    fun confirm(c: Context, heading: String, message: String, action: String, yes: () -> Unit) {
+        val s = Sheet(c, heading)
+        val m = muted(c, message, 15)
+        m.setPadding(dp(c, 4), 0, dp(c, 4), 0)
+        s.body.addView(m)
+        s.button(L.t("Cancel"))
+        s.button(action, main = true, act = yes)
+        s.show()
+    }
+
+    /** A row per label, `current` (-1 for none) ringed; returned shown, so a caller can add [Sheet.button]s. */
+    fun pickOne(c: Context, heading: String, labels: List<String>, current: Int, picked: (Int) -> Unit): Sheet {
+        val s = Sheet(c, heading)
+        val rows = vertical(c)
+        for ((i, label) in labels.withIndex()) {
+            val r = text(c, label, 16, i == current)
+            r.setPadding(dp(c, 16), dp(c, 13), dp(c, 16), dp(c, 13))
+            r.background = choice(c, i == current, 14)
+            r.isSelected = i == current
+            r.setOnClickListener { if (s.close()) picked(i) }
+            rows.addView(r, margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, c, 0, 0, 0, 6))
+        }
+        val scroll = ScrollView(c)
+        scroll.addView(rows)
+        s.body.addView(scroll)
+        s.show()
+        return s
     }
 
     /**
@@ -1011,8 +1143,11 @@ object Ui {
             adapter.set(if (q.isEmpty()) lists[tab] else lists[tab].filter { it.ref != null && q in key(it) }.distinctBy { it.ref })
         }
         box = search(a, L.t("Search"), filter)
+        box.background = rounded(a, FILL, 14)
         filter()
-        val content = vertical(a)
+        val d = Sheet(a, heading)
+        val content = d.body
+        content.setPadding(0, 0, 0, 0)
         if (tabs.size > 1) {
             val bar = LinearLayout(a)
             lateinit var segs: Array<TextView>
@@ -1023,16 +1158,14 @@ object Ui {
                 lv.setSelection(0)
             }
             segmentActive(segs, 0)
-            content.addView(bar, wide(a, 8, 8))
+            content.addView(bar, wide(a, 0, 8))
         }
-        content.addView(box, wide(a, 8, 8))
+        content.addView(box, wide(a, 0, 8))
         val tall = minOf(dp(a, 520), a.resources.displayMetrics.heightPixels * 3 / 5)
         content.addView(lv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, tall))
-        val d = AlertDialog.Builder(a).setTitle(heading).setView(content).setNegativeButton(L.t("Cancel"), null).show()
-        lv.setOnItemClickListener { _, _, i, _ ->
-            picked(adapter.getItem(i).ref)
-            d.dismiss()
-        }
+        d.button(L.t("Cancel"))
+        d.show()
+        lv.setOnItemClickListener { _, _, i, _ -> if (d.close()) picked(adapter.getItem(i).ref) }
     }
 
     private fun key(i: Item): String = when (val r = i.ref) {

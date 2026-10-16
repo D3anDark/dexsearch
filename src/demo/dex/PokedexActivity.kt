@@ -1,11 +1,8 @@
 package demo.dex
 
-import android.app.Dialog
-import android.graphics.drawable.InsetDrawable
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.view.Window
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -51,7 +48,7 @@ class PokedexActivity : ListScreen() {
             refresh()
         }
         if (game.virtual) dexChip.visibility = View.GONE
-        typeChip = addChip { Ui.pickMany(this, L.t("Type (must have all)"), dex.types(game), types, { dex.label(it) }, this::refresh) }
+        typeChip = addChip { Ui.pickMany(this, L.t("Type (must have all)"), dex.types(game), types, this::refresh) }
         genChip = addChip { pickGens(allGens) }
         if (gen > 0) genChip.visibility = View.GONE
         caughtChip = addChip {
@@ -104,22 +101,15 @@ class PokedexActivity : ListScreen() {
     }
 
     /**
-     * The generation filter in the app's own panel, not the system's checkbox list: a tile per generation with its
-     * Grass, Fire and Water starters and region. Like [Ui.pickMany], the list behind updates on every tap.
+     * The generation filter: a tile per generation with its Grass, Fire and Water starters and region. Like
+     * [Ui.pickMany], the list behind updates on every tap.
      */
     private fun pickGens(all: List<Int>) {
-        val pad = Ui.dp(this, 16)
-        val box = Ui.vertical(this)
-        box.setPadding(pad, Ui.dp(this, 20), pad, pad)
-        val heading = Ui.text(this, L.t("Generation"), 20, true)
-        heading.setPadding(Ui.dp(this, 4), 0, 0, Ui.dp(this, 12))
-        box.addView(heading)
-
-        val tiles = ArrayList<Pair<LinearLayout, Int>>()
+        val d = Ui.Sheet(this, L.t("Generation"))
+        val box = d.body
+        val tiles = ArrayList<LinearLayout>()
         val paint = { tile: LinearLayout, on: Boolean ->
-            val fill = Ui.rounded(this, Ui.FILL, 16)
-            if (on) fill.setStroke(Ui.dp(this, 2), Ui.ACCENT)
-            tile.background = Ui.pressable(this, fill, 16)
+            tile.background = Ui.choice(this, on, 16)
             tile.isSelected = on
         }
         lateinit var row: LinearLayout
@@ -154,33 +144,19 @@ class PokedexActivity : ListScreen() {
                 paint(tile, g in gens)
                 refresh()
             }
-            tiles.add(tile to g)
+            tiles.add(tile)
             row.addView(tile, Ui.margins(0, ViewGroup.LayoutParams.WRAP_CONTENT, this, 4, 4, 4, 4).apply { weight = 1f })
         }
         repeat((COLS - all.size % COLS) % COLS) {
             row.addView(View(this), Ui.margins(0, 1, this, 4, 4, 4, 4).apply { weight = 1f })
         }
 
-        val d = Dialog(this)
-        val buttons = LinearLayout(this)
-        buttons.gravity = Gravity.END
-        val clear = Ui.chip(this, L.t("Clear")) {
+        d.button(L.t("Clear"), close = false) {
             gens.clear()
-            for ((tile, _) in tiles) paint(tile, false)
+            for (tile in tiles) paint(tile, false)
             refresh()
         }
-        val done = Ui.chip(this, L.t("Done")) { d.dismiss() }
-        Ui.chipActive(done, true)
-        buttons.addView(clear, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 8, 0))
-        buttons.addView(done)
-        box.addView(buttons, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 12, 4, 0))
-
-        d.requestWindowFeature(Window.FEATURE_NO_TITLE)
-        d.setContentView(box)
-        d.window?.let { w ->
-            w.setBackgroundDrawable(InsetDrawable(Ui.rounded(this, Ui.SURFACE, 28), pad))
-            w.setLayout(minOf(resources.displayMetrics.widthPixels, Ui.dp(this, 440)), ViewGroup.LayoutParams.WRAP_CONTENT)
-        }
+        d.button(L.t("Done"), main = true)
         d.show()
     }
 

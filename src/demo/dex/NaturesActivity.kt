@@ -69,6 +69,9 @@ class NaturesActivity : Activity() {
         private fun header(c: Context, s: String, color: Int): TextView {
             val t = Ui.text(c, s, 12, true)
             t.gravity = Gravity.CENTER
+            // "+DefEsp" in 40 dp shrinks instead of breaking onto a second line; see the cells for why not setSingleLine.
+            t.maxLines = 1
+            t.setAutoSizeTextTypeUniformWithConfiguration(8, 12, 1, TypedValue.COMPLEX_UNIT_SP)
             t.setTextColor(color)
             return t
         }

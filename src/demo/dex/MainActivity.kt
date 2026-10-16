@@ -1,7 +1,6 @@
 package demo.dex
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Typeface
 import android.os.Bundle
@@ -115,45 +114,39 @@ class MainActivity : Activity() {
         val spaces = Ui.spaces(this)
         val k = spaces.indexOfFirst { it.first == Ui.space(this) }
         val switch = { id: Int -> Ui.prefs(this).edit().putInt("space", id).apply() }
-        val b = AlertDialog.Builder(this).setTitle(L.t("Workspaces"))
-            .setSingleChoiceItems(spaces.map { it.second }.toTypedArray(), k) { d, i ->
-                switch(spaces[i].first)
-                d.dismiss()
+        val s = Ui.pickOne(this, L.t("Workspaces"), spaces.map { it.second }, k) { i ->
+            switch(spaces[i].first)
+            refresh()
+        }
+        if (spaces.size > 1) s.button(L.t("Delete")) { delete(spaces, k) }
+        s.button(L.t("Rename")) {
+            Ui.askName(this, L.t("Workspace name"), spaces[k].second) { name ->
+                Ui.saveSpaces(this, spaces.map { if (it.first == spaces[k].first) it.first to name else it })
                 refresh()
             }
-            .setPositiveButton(L.t("New")) { _, _ ->
-                Ui.askName(this, L.t("New workspace"), "") { name ->
-                    val id = spaces.maxOf { it.first } + 1
-                    Ui.saveSpaces(this, spaces + (id to name))
-                    Ui.prefs(this).edit().putInt(Ui.key(this, "game", id), game.id).apply()
-                    switch(id)
-                    startActivity(Intent(this, GamesActivity::class.java))
-                }
+        }
+        s.button(L.t("New"), main = true) {
+            Ui.askName(this, L.t("New workspace"), "") { name ->
+                val id = spaces.maxOf { it.first } + 1
+                Ui.saveSpaces(this, spaces + (id to name))
+                Ui.prefs(this).edit().putInt(Ui.key(this, "game", id), game.id).apply()
+                switch(id)
+                startActivity(Intent(this, GamesActivity::class.java))
             }
-            .setNeutralButton(L.t("Rename")) { _, _ ->
-                Ui.askName(this, L.t("Workspace name"), spaces[k].second) { name ->
-                    Ui.saveSpaces(this, spaces.map { if (it.first == spaces[k].first) it.first to name else it })
-                    refresh()
-                }
-            }
-        if (spaces.size > 1) b.setNegativeButton(L.t("Delete")) { _, _ -> delete(spaces, k) }
-        b.show()
+        }
     }
 
     private fun delete(spaces: List<Pair<Int, String>>, k: Int) {
         val id = spaces[k].first
-        AlertDialog.Builder(this).setTitle(L.f("Delete %s?", spaces[k].second))
-            .setMessage(L.t("Its caught marks, teams and selected game are removed from this device. This cannot be undone."))
-            .setPositiveButton(L.t("Delete")) { _, _ ->
-                val rest = spaces.filter { it.first != id }
-                val e = Ui.prefs(this).edit()
-                for (base in arrayOf("caught", "teams", "game")) e.remove(Ui.key(this, base, id))
-                e.putInt("space", rest[0].first).apply()
-                Ui.saveSpaces(this, rest)
-                refresh()
-            }
-            .setNegativeButton(L.t("Cancel"), null)
-            .show()
+        Ui.confirm(this, L.f("Delete %s?", spaces[k].second),
+            L.t("Its caught marks, teams and selected game are removed from this device. This cannot be undone."), L.t("Delete")) {
+            val rest = spaces.filter { it.first != id }
+            val e = Ui.prefs(this).edit()
+            for (base in arrayOf("caught", "teams", "game")) e.remove(Ui.key(this, base, id))
+            e.putInt("space", rest[0].first).apply()
+            Ui.saveSpaces(this, rest)
+            refresh()
+        }
     }
 
     /** Caught progress of the game's species, white for its card. */

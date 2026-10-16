@@ -1,7 +1,6 @@
 package demo.dex
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -199,15 +198,12 @@ class TeamActivity : Activity() {
     }
 
     private fun delete() {
-        AlertDialog.Builder(this).setTitle(L.f("Delete %s?", team.name))
-            .setMessage(L.f("Its %d Pokémon and their sets are removed from this device.", team.members.size))
-            .setPositiveButton(L.t("Delete")) { _, _ ->
-                teams.removeAt(index)
-                TeamsActivity.save(this, teams)
-                finish()
-            }
-            .setNegativeButton(L.t("Cancel"), null)
-            .show()
+        Ui.confirm(this, L.f("Delete %s?", team.name), L.f("Its %d Pokémon and their sets are removed from this device.",
+            team.members.size), L.t("Delete")) {
+            teams.removeAt(index)
+            TeamsActivity.save(this, teams)
+            finish()
+        }
     }
 
     companion object {

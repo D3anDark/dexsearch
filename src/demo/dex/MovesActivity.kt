@@ -25,8 +25,8 @@ class MovesActivity : ListScreen() {
         tms = dex.tmGame(game)
         source = if (tm) tms.tms.keys.map { dex.move(game, it) } else dex.moves(game)
         val sorts = Dex.MoveSort.entries.map { L.t(it.label) }
-        typeChip = addChip { Ui.pickMany(this, L.t("Type"), dex.types(game), types, { dex.label(it) }, this::refresh) }
-        categoryChip = addChip { Ui.pickMany(this, L.t("Category"), CATEGORIES, categories, { dex.label(it) }, this::refresh) }
+        typeChip = addChip { Ui.pickMany(this, L.t("Type"), dex.types(game), types, this::refresh) }
+        categoryChip = addChip { Ui.pickMany(this, L.t("Category"), CATEGORIES, categories, this::refresh) }
         sortChip = addChip {
             Ui.pickOne(this, L.t("Sort"), sorts, sort.ordinal) { i ->
                 sort = Dex.MoveSort.entries[i]
