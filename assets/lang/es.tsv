@@ -1,0 +1,264 @@
+Abilities	Habilidades
+Search abilities	Buscar habilidades
+Gen %d	Gen. %d
+Abilities: %d of %d	Habilidades: %d de %d
+Ability (%d)	Habilidad (%d)
+Hidden ability (%d)	Habilidad oculta (%d)
+ABILITY  ·  GEN %d	HABILIDAD  ·  GEN. %d
+Effect	Efecto
+No Pokémon has this ability.	Ningún Pokémon tiene esta habilidad.
+Whole Pokédex	Pokédex completa
+Gen %d Pokédex	Pokédex Gen. %d
+No.	N.º
+Name	Nombre
+BST	Total
+Power	Potencia
+Accuracy	Precisión
+PP	PP
+Types	Tipos
+Pokémon	Pokémon
+Moves	Movimientos
+HP	PS
+Atk	Ata
+Def	Def
+SpA	AtEsp
+SpD	DefEsp
+Spe	Vel
+Erratic	Errático
+Fast	Rápido
+Medium	Medio
+Medium Slow	Parabólico
+Slow	Lento
+Fluctuating	Fluctuante
+Level	Nivel
+TM	MT
+Egg	Huevo
+Tutor	Tutor
+Other	Otros
+Fast Attack	Ataque rápido
+Charged Attack	Ataque cargado
+Elite TM	MT de élite
+Choose a game	Elige un juego
+Generation %s	Generación %s
+Selected	Seleccionado
+%d Pokémon	%d Pokémon
+Nothing matches. Change the search or the filters.	Sin resultados. Cambia la búsqueda o los filtros.
+Pokémon, moves, abilities, types	Pokémon, movimientos, habilidades, tipos
+Settings	Ajustes
+Change game	Cambiar juego
+Team builder	Creador de equipos
+Plan a team	Planifica un equipo
+Teams: %d	Equipos: %d
+%d moves	%d movimientos
+TMs	MT
+Pick a game	Elige un juego
+None here	No hay
+%d machines	%d máquinas
+%d abilities	%d habilidades
+Items	Objetos
+Search items	Buscar objetos
+Items: %d of %d	Objetos: %d de %d
+%d items	%d objetos
+Type chart	Tabla de tipos
+%d types	%d tipos
+Natures	Naturalezas
+%d natures	%d naturalezas
+Pokédex	Pokédex
+%d of %d caught	Capturados: %d de %d
+Nothing found	Sin resultados
+Pokémon of this type	Pokémon de este tipo
+Remove from team	Quitar del equipo
+Set	Set
+Smogon set	Set de Smogon
+Sets: %d	Sets: %d
+%s (hidden)	%s (oculta)
+Ability	Habilidad
+Item	Objeto
+None	Ninguno
+Nature	Naturaleza
+Not set	Sin elegir
+Cancel	Cancelar
+Tera type	Teratipo
+Use this set	Usar este set
+Smogon sets	Sets de Smogon
+No item	Sin objeto
+Held item	Objeto equipado
+Empty slot	Hueco vacío
+Tap to choose a move	Toca para elegir un movimiento
+No move	Sin movimiento
+Leave this slot empty	Dejar este hueco vacío
+No learnset for %s: all moves	%s no tiene lista de movimientos: todos
+Evo	Evo
+Lv %d	Nv. %d
+Not learnable by %s in %s. For ROM hacks such as Unbound.	%s no puede aprenderlo en %s. Para ROM hacks como Unbound.
+Learnable	Aprendibles
+Not learnable	No aprendibles
+Move %d	Movimiento %d
+Stats	Características
+Calculated with the Generation 3 and later formula. %s used DVs and stat experience instead.	Calculado con la fórmula de la Generación 3 en adelante. %s usaba DV y experiencia de características.
+Base	Base
+IV	IV
+EV	EV
+Total	Total
+Stat	Valor
+%d of %d EVs left. At most %d per stat.	Quedan %d de %d EV. Máximo %d por característica.
+Remove %s?	¿Quitar a %s?
+Its moves, item and stats are removed from %s.	Sus movimientos, objeto y características se quitan de %s.
+Remove	Quitar
+Tera	Tera
+EVs	EV
+IVs	IV
+%s (neutral)	%s (neutra)
+Not in %s	No está en %s
+%s #%d  ·  %s	%s n.º %d  ·  %s
+Add to team	Añadir al equipo
+New team	Nuevo equipo
+Add %s to	Elige equipo para %s
+Team %d	Equipo %d
+%s already has %d Pokémon	%s ya tiene %d Pokémon
+Caught	Capturado
+Mark caught	Marcar capturado
+Height	Altura
+Weight	Peso
+Introduced	Debut
+Where to find in %s	Dónde encontrarlo en %s
+Base stats	Características base
+Type defenses	Defensa por tipos
+Breeding and training	Crianza y entrenamiento
+Catch rate	Ratio de captura
+Base friendship	Amistad base
+Growth rate	Crecimiento
+Egg groups	Grupos huevo
+Egg cycles	Ciclos de huevo
+Gender	Sexo
+Genderless	Sin sexo
+%.1f%% male, %.1f%% female	%.1f%% macho, %.1f%% hembra
+Shiny	Variocolor
+Variants	Variantes
+Hidden	Oculta
+%s does not evolve	%s no evoluciona
+Does not evolve	No evoluciona
+Female only	Solo hembras
+Male only	Solo machos
+No Smogon sets for %s in %s.	No hay sets de Smogon para %s en %s.
+Smogon sets for %s	Sets de Smogon para %s
+Copy for Showdown	Copiar para Showdown
+Copied	Copiado
+No move data for %s.	No hay datos de movimientos para %s.
+Moves in %s	Movimientos en %s
+No %s moves for %s. Showing %s.	No hay movimientos de %s para %s. Se muestra %s.
+Info	Info
+Evolution	Evolución
+Builds	Sets
+Weak x4	Débil x4
+Weak x2	Débil x2
+Resists x1/2	Resiste x1/2
+Resists x1/4	Resiste x1/4
+Immune	Inmune
+Priority	Prioridad
+%s in %s	%s en %s
+Introduced in Gen %d	Introducido en la Gen. %d
+Effect chance %d%%	Probabilidad de efecto %d%%
+On evolution	Al evolucionar
+Level %d	Nivel %d
+Learned by %d in %s	Pokémon que lo aprenden en %2$s: %1$d
+No %s move data.	No hay datos de movimientos de %s.
+Search move or TM number	Busca movimiento o n.º de MT
+Search moves	Buscar movimientos
+Type	Tipo
+Category	Categoría
+Sort	Orden
+TMs in %s: %d of %d	MT en %s: %d de %d
+Moves: %d of %d	Movimientos: %d de %d
+Sort: %s	Orden: %s
+A nature raises one stat by 10% (its row) and lowers another by 10% (its column). The five on the diagonal change nothing.	Una naturaleza sube una característica un 10% (indicada por su fila) y baja otra un 10% (indicada por su columna). Las cinco de la diagonal no cambian nada.
+%s, neutral	%s, neutra
+%s, raises %s, lowers %s	%s, sube %s, baja %s
+Search name or number	Busca nombre o número
+Type (must have all)	Tipo (debe tener todos)
+Generation	Generación
+National	Nacional
+%s  ·  %d of %d  ·  caught %d	%s  ·  %d de %d  ·  capturados %d
+Regional	Regional
+Gen	Gen.
+Gen %s	Gen. %s
+All	Todos
+Not caught	No capturados
+Appearance	Apariencia
+Language	Idioma
+System	Sistema
+Theme	Tema
+Pokémon artwork	Ilustraciones de Pokémon
+Type labels	Etiquetas de tipo
+Layout	Diseño
+Megas and other forms	Megas y otras formas
+Height and weight	Altura y peso
+Data	Datos
+About	Acerca de
+Caught Pokémon	Pokémon capturados
+Clear	Borrar
+Marked: %d	Marcados: %d
+Clear caught marks?	¿Borrar marcas de capturado?
+Removes the caught mark from every game. Pokémon: %d. This cannot be undone.	Quita la marca de capturado en todos los juegos. Pokémon: %d. No se puede deshacer.
+Data: PokeAPI and pokemondb.net. Artwork and type icons: PokeAPI sprites. Sets: Smogon University, via pkmn. Pokémon names and images © Nintendo / Game Freak.	Datos: PokeAPI y pokemondb.net. Ilustraciones e iconos de tipo: sprites de PokeAPI. Sets: Smogon University, vía pkmn. Nombres e imágenes de Pokémon © Nintendo / Game Freak.
+Light	Claro
+Dark	Oscuro
+3D (HOME)	3D (HOME)
+Official art	Arte oficial
+Pixel art	Pixel art
+Text	Texto
+Icon and name	Icono y nombre
+Icon only	Solo icono
+Cards	Tarjetas
+List	Lista
+On their Pokémon	En su Pokémon
+In the list too	Y en la lista
+Metric	Métrico
+Imperial	Imperial
+Rename	Cambiar nombre
+No moves yet	Sin movimientos
+Add Pokémon	Añadir Pokémon
+Free slots: %d	Huecos libres: %d
+Copy as text	Copiar como texto
+Delete team	Borrar equipo
+Members weak to and resisting each attacking type. Red: half the team or more is weak.	Miembros débiles y resistentes a cada tipo de ataque. Rojo: la mitad del equipo o más es débil.
+Weak	Débil
+Resist	Resiste
+Tips	Consejos
+%s and %s	%s y %s
+Weak spots	Puntos débiles
+Super effective against half the team or more, and resisted by fewer.	Muy eficaces contra la mitad del equipo o más, y resistidos por menos.
+Nothing counters these	Nada los contrarresta
+No member resists them and no move hits them super effectively.	Ningún miembro los resiste y ningún movimiento es muy eficaz contra ellos.
+Missing coverage	Falta cobertura
+No move hits these super effectively.	Ningún movimiento es muy eficaz contra estos.
+Try a %s Pokémon	Prueba un Pokémon de tipo %s
+It resists %s.	Resiste %s.
+Try a %s move	Prueba un movimiento de tipo %s
+It hits %s super effectively.	Es muy eficaz contra %s.
+No attacks yet	Aún sin ataques
+Give your Pokémon damaging moves to see what nothing counters.	Da a tus Pokémon movimientos de daño para ver qué no contrarresta nadie.
+No gaps	Sin carencias
+Every type is resisted or hit super effectively, and none hits half the team.	Todos los tipos se resisten o reciben golpes muy eficaces, y ninguno es muy eficaz contra la mitad del equipo.
+Team name	Nombre del equipo
+Save	Guardar
+Delete %s?	¿Borrar %s?
+Its %d Pokémon and their sets are removed from this device.	Se borrarán de este dispositivo sus Pokémon (%d) y sus sets.
+Delete	Borrar
+Teams	Equipos
+Up to six Pokémon per team, with moves, items and stats for one game. Saved on this device.	Hasta seis Pokémon por equipo, con movimientos, objetos y características para un juego. Se guardan en este dispositivo.
+%d of %d	%d de %d
+New team for %s	Nuevo equipo para %s
+As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effective, 0 no effect. Tap a type to see its Pokémon.	Como en %s. Las filas atacan y las columnas defienden. 2 es muy eficaz, ½ poco eficaz, 0 sin efecto. Toca un tipo para ver sus Pokémon.
+Pow %s  ·  Acc %s  ·  PP %d	Pot. %s  ·  Prec. %s  ·  PP %d
+Done	Hecho
+Search	Buscar
+, 	, 
+Held items	Objetos para equipar
+Berries	Bayas
+Type boosters	Potenciadores de tipo
+Gems	Gemas
+Species items	Para Pokémon concretos
+Mega Stones	Megapiedras
+Z-Crystals	Cristales Z
+Training	Entrenamiento

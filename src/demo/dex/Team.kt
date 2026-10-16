@@ -1,0 +1,181 @@
+package demo.dex
+
+/** Up to six Pokémon for one game, and the team's type coverage. Stored as one line of text; no Android deps. */
+class Team(var name: String, val game: Int) {
+    val members = ArrayList<Member>()
+
+    class Member(
+        /** Species or form number; the form can be switched later. */
+        var num: Int,
+        var ability: Int,
+        var level: Int,
+    ) {
+        /** Ability and item ids (item 0 = none), nature index into [Dex.natures] and Tera type index into
+         *  [Dex.types], both -1 when not chosen. */
+        var item = 0
+        var nature = -1
+        var tera = -1
+        val evs = IntArray(6)
+        val ivs = IntArray(6) { IV_MAX }
+        /** Move ids, 0 for an empty slot. */
+        val moves = IntArray(MOVES)
+
+        /** Most EVs this stat can take: 252, less whatever the other five already use of the 510 total. */
+        fun evRoom(stat: Int) = minOf(EV_STAT, EV_TOTAL - evs.sum() + evs[stat])
+    }
+
+    /** name, game, members separated by tabs; a member is num,ability,item,nature,tera,level, 6 EVs, 6 IVs, 4 moves. */
+    fun format(): String {
+        val b = StringBuilder(name.replace('\t', ' ').replace('\n', ' ')).append('\t').append(game).append('\t')
+        for ((i, m) in members.withIndex()) {
+            if (i > 0) b.append(';')
+            b.append(m.num).append(',').append(m.ability).append(',').append(m.item).append(',').append(m.nature)
+                .append(',').append(m.tera).append(',').append(m.level)
+            for (part in arrayOf(m.evs, m.ivs, m.moves)) for (v in part) b.append(',').append(v)
+        }
+        return b.toString()
+    }
+
+    /**
+     * Showdown-style text, in English whatever the app's language: Showdown reads no other. Form names are this
+     * app's ("Alolan Raichu"), which Showdown's importer may not know. No Ability line before Generation 3, which had none.
+     */
+    fun export(d: Dex): String {
+        val b = StringBuilder()
+        val abilities = d.game(game).gen >= 3
+        for (x in members) {
+            b.append(d.mon(x.num).en)
+            if (x.item != 0) b.append(" @ ").append(d.item(x.item).en)
+            if (abilities && x.ability != 0) b.append("\nAbility: ").append(d.ability(x.ability).en)
+            b.append("\nLevel: ").append(x.level)
+            if (x.tera >= 0) b.append("\nTera Type: ").append(d.types[x.tera].replaceFirstChar { it.uppercaseChar() })
+            b.append(spread("EVs", x.evs, 0))
+            if (x.nature >= 0) b.append('\n').append(d.natures[x.nature].en).append(" Nature")
+            b.append(spread("IVs", x.ivs, IV_MAX))
+            for (id in x.moves) if (id != 0) b.append("\n- ").append(d.move(id).en)
+            b.append("\n\n")
+        }
+        return b.toString().trim()
+    }
+
+    /**
+     * Per attacking type of the team's game, in [Dex.types] order: {members it hits super effectively, members that
+     * resist or are immune}. ponytail: types only; Levitate, Flash Fire, other abilities and Tera are not counted.
+     */
+    fun defense(d: Dex): Array<IntArray> {
+        val g = d.game(game)
+        val types = d.types(g)
+        return Array(types.size) { i ->
+            val row = IntArray(2)
+            for (m in members) {
+                val f = d.factor(g, types[i], d.types(g, d.mon(m.num)))
+                if (f > 100) row[0]++ else if (f < 100) row[1]++
+            }
+            row
+        }
+    }
+
+    /** Per defending type: members with a damaging move that hits it super effectively (Freeze-Dry style exceptions not counted). */
+    fun offense(d: Dex): IntArray {
+        val g = d.game(game)
+        val types = d.types(g)
+        return IntArray(types.size) { i ->
+            val target = listOf(types[i])
+            members.count { m -> m.moves.any { id -> id != 0 && d.move(g, id).let { it.category != "status" && d.factor(g, it.type, target) > 100 } } }
+        }
+    }
+
+    /** True once any member has a damaging move, so an all-zero [offense] means gaps, not an empty moveset. */
+    fun attacks(d: Dex): Boolean = members.any { m -> m.moves.any { it != 0 && d.move(it).category != "status" } }
+
+    /**
+     * What the team lacks, by index into the game's types. `counter`: types no member resists and no move hits super
+     * effectively. `stacked`: other attacking types that hit half the team or more super effectively and more members
+     * than resist them. `uncovered`: other types no move hits super effectively. Without damaging moves only `stacked`
+     * is filled. `wall`: the type whose Pokémon resist most of `counter` and `stacked`; `move`: the move type that hits
+     * most of `counter` and `uncovered` super effectively; -1 when there is nothing for it to fix.
+     */
+    class Gaps(val counter: List<Int>, val stacked: List<Int>, val uncovered: List<Int>, val wall: Int, val move: Int)
+
+    fun gaps(d: Dex): Gaps {
+        val g = d.game(game)
+        val types = d.types(g)
+        val def = defense(d)
+        val off = if (attacks(d)) offense(d) else null
+        val counter = def.indices.filter { off != null && off[it] == 0 && def[it][1] == 0 }
+        val stacked = def.indices.filter { it !in counter && def[it][0] * 2 >= members.size && def[it][0] > def[it][1] }
+        val uncovered = def.indices.filter { it !in counter && off != null && off[it] == 0 }
+        val best = { targets: List<Int>, good: (Int, Int) -> Boolean ->
+            types.indices.maxByOrNull { x -> targets.count { good(x, it) } }?.takeIf { x -> targets.any { good(x, it) } } ?: -1
+        }
+        return Gaps(counter, stacked, uncovered,
+            best(counter + stacked) { w, t -> d.factor(g, types[t], listOf(types[w])) < 100 },
+            best(counter + uncovered) { a, t -> d.factor(g, types[a], listOf(types[t])) > 100 })
+    }
+
+    companion object {
+        const val SIZE = 6
+        const val MOVES = 4
+        const val EV_STAT = 252
+        const val EV_TOTAL = 510
+        const val IV_MAX = 31
+        private const val FIELDS = 6 + 6 + 6 + MOVES
+        private const val SHEDINJA = 292
+
+        fun parse(line: String): Team {
+            val f = line.split('\t')
+            val t = Team(f[0], f[1].toInt())
+            if (f[2].isEmpty()) return t
+            for (s in f[2].split(';')) {
+                val v = s.split(',').map { it.toInt() }.toIntArray()
+                require(v.size == FIELDS) { "member has ${v.size} fields: $s" }
+                val m = Member(v[0], v[1], v[5])
+                m.item = v[2]
+                m.nature = v[3]
+                m.tera = v[4]
+                v.copyInto(m.evs, 0, 6, 12)
+                v.copyInto(m.ivs, 0, 12, 18)
+                v.copyInto(m.moves, 0, 18, 18 + MOVES)
+                t.members.add(m)
+            }
+            return t
+        }
+
+        fun parseAll(text: String): MutableList<Team> = text.split('\n').filter { it.isNotBlank() }.mapTo(ArrayList()) { parse(it) }
+
+        /**
+         * No trailing newline: SharedPreferences' XML writer indents the closing tag after text ending in one, so the
+         * value reads back with trailing spaces (blank lines are skipped on parse for data saved that way).
+         */
+        fun formatAll(teams: List<Team>): String = teams.joinToString("\n") { it.format() }
+
+        /**
+         * Gen 3+ formula: HP = (2B + IV + EV/4) * L / 100 + L + 10, others ((2B + IV + EV/4) * L / 100 + 5) * nature.
+         * ponytail: Gen 1-2 DVs and stat experience, Let's Go AVs and Legends effort levels are not modeled.
+         */
+        fun stats(d: Dex, x: Member): IntArray {
+            val m = d.mon(x.num)
+            val n = if (x.nature < 0) null else d.natures[x.nature]
+            return IntArray(6) { i ->
+                val core = (2 * m.stats[i] + x.ivs[i] + x.evs[i] / 4) * x.level / 100
+                if (i == 0) {
+                    if (m.species == SHEDINJA) 1 else core + x.level + 10
+                } else {
+                    val boost = when {
+                        n == null -> 100
+                        n.up == Dex.STATS[i] -> 110
+                        n.down == Dex.STATS[i] -> 90
+                        else -> 100
+                    }
+                    (core + 5) * boost / 100
+                }
+            }
+        }
+
+        /** "\nEVs: 252 Atk / 4 SpD", leaving out stats at the default; "" when all are. */
+        private fun spread(label: String, values: IntArray, skip: Int): String {
+            val parts = (0 until 6).filter { values[it] != skip }.map { "${values[it]} ${Dex.STATS[it]}" }
+            return if (parts.isEmpty()) "" else "\n$label: " + parts.joinToString(" / ")
+        }
+    }
+}

@@ -1,0 +1,264 @@
+Abilities	とくせい
+Search abilities	とくせいを検索
+Gen %d	第%d世代
+Abilities: %d of %d	とくせい %d / %d
+Ability (%d)	通常のとくせい (%d)
+Hidden ability (%d)	かくれとくせい (%d)
+ABILITY  ·  GEN %d	とくせい  ·  第%d世代
+Effect	効果
+No Pokémon has this ability.	このとくせいを持つポケモンはいません。
+Whole Pokédex	全ポケモン図鑑
+Gen %d Pokédex	第%d世代の図鑑
+No.	No.
+Name	名前
+BST	合計
+Power	威力
+Accuracy	命中
+PP	PP
+Types	タイプ
+Pokémon	ポケモン
+Moves	わざ
+HP	HP
+Atk	攻撃
+Def	防御
+SpA	特攻
+SpD	特防
+Spe	素早
+Erratic	60万
+Fast	80万
+Medium	100万
+Medium Slow	105万
+Slow	125万
+Fluctuating	164万
+Level	レベル
+TM	わざマシン
+Egg	タマゴ
+Tutor	わざおしえ
+Other	その他
+Fast Attack	通常わざ
+Charged Attack	スペシャルわざ
+Elite TM	すごいわざマシン
+Choose a game	ゲームを選択
+Generation %s	第%s世代
+Selected	選択中
+%d Pokémon	%d匹
+Nothing matches. Change the search or the filters.	該当なし。検索語かフィルターを変えてください。
+Pokémon, moves, abilities, types	ポケモン、わざ、とくせい、タイプ
+Settings	設定
+Change game	ゲームを変更
+Team builder	パーティ作成
+Plan a team	パーティを考える
+Teams: %d	パーティ %d
+%d moves	わざ %d
+TMs	わざマシン
+Pick a game	ゲームを選択
+None here	なし
+%d machines	%d個
+%d abilities	とくせい %d
+Items	もちもの
+Search items	もちものを検索
+Items: %d of %d	もちもの %d / %d
+%d items	もちもの %d
+Type chart	タイプ相性
+%d types	%dタイプ
+Natures	せいかく
+%d natures	%d種類
+Pokédex	図鑑
+%d of %d caught	捕獲 %d / %d
+Nothing found	見つかりません
+Pokémon of this type	このタイプのポケモン
+Remove from team	パーティから外す
+Set	型
+Smogon set	Smogonの型
+Sets: %d	型: %d
+%s (hidden)	%s (かくれとくせい)
+Ability	とくせい
+Item	もちもの
+None	なし
+Nature	せいかく
+Not set	未設定
+Cancel	キャンセル
+Tera type	テラスタイプ
+Use this set	この型を使う
+Smogon sets	Smogonの型
+No item	もちものなし
+Held item	もちもの
+Empty slot	空き
+Tap to choose a move	タップしてわざを選択
+No move	わざなし
+Leave this slot empty	空けておく
+No learnset for %s: all moves	%sの覚えるわざデータなし: 全わざ
+Evo	進化
+Lv %d	Lv.%d
+Not learnable by %s in %s. For ROM hacks such as Unbound.	%2$sで%1$sが覚えないわざ。Unboundなどの改造ROM向け。
+Learnable	覚える
+Not learnable	覚えない
+Move %d	わざ%d
+Stats	ステータス
+Calculated with the Generation 3 and later formula. %s used DVs and stat experience instead.	第3世代以降の計算式で計算。%sは本来、旧式の個体値と努力値を使います。
+Base	種族
+IV	個体
+EV	努力
+Total	合計
+Stat	実数値
+%d of %d EVs left. At most %d per stat.	努力値 残り%d / %d。1つの能力に最大%d。
+Remove %s?	%sを外しますか？
+Its moves, item and stats are removed from %s.	わざ、もちもの、能力の設定が%sから削除されます。
+Remove	外す
+Tera	テラス
+EVs	努力値
+IVs	個体値
+%s (neutral)	%s (補正なし)
+Not in %s	%sにはいない
+%s #%d  ·  %s	%s No.%d  ·  %s
+Add to team	パーティに追加
+New team	新しいパーティ
+Add %s to	%sの追加先
+Team %d	パーティ%d
+%s already has %d Pokémon	%sにはすでに%d匹います
+Caught	捕獲済み
+Mark caught	捕獲済みにする
+Height	高さ
+Weight	重さ
+Introduced	初登場
+Where to find in %s	%sでの入手場所
+Base stats	種族値
+Type defenses	防御相性
+Breeding and training	育成とタマゴ
+Catch rate	捕獲率
+Base friendship	初期なつき度
+Growth rate	経験値タイプ
+Egg groups	タマゴグループ
+Egg cycles	孵化サイクル
+Gender	性別
+Genderless	性別不明
+%.1f%% male, %.1f%% female	オス %.1f%%、メス %.1f%%
+Shiny	色違い
+Variants	すがた
+Hidden	かくれとくせい
+%s does not evolve	%sは進化しません
+Does not evolve	進化しない
+Female only	メスのみ
+Male only	オスのみ
+No Smogon sets for %s in %s.	%2$sでの%1$sのSmogonの型はありません。
+Smogon sets for %s	%sのSmogonの型
+Copy for Showdown	Showdown用にコピー
+Copied	コピーしました
+No move data for %s.	%sのわざデータはありません。
+Moves in %s	%sで覚えるわざ
+No %s moves for %s. Showing %s.	%2$sの%1$sのわざデータはありません。%3$sのわざを表示します。
+Info	情報
+Evolution	進化
+Builds	型
+Weak x4	弱点 ×4
+Weak x2	弱点 ×2
+Resists x1/2	耐性 ×1/2
+Resists x1/4	耐性 ×1/4
+Immune	無効
+Priority	優先度
+%s in %s	%2$sの%1$s
+Introduced in Gen %d	第%d世代で初登場
+Effect chance %d%%	追加効果 %d%%
+On evolution	進化時
+Level %d	レベル%d
+Learned by %d in %s	%2$sで覚えるポケモン: %1$d匹
+No %s move data.	%sのわざデータはありません。
+Search move or TM number	わざ名かわざマシン番号で検索
+Search moves	わざを検索
+Type	タイプ
+Category	分類
+Sort	並び替え
+TMs in %s: %d of %d	%sのわざマシン: %d / %d
+Moves: %d of %d	わざ: %d / %d
+Sort: %s	並び順: %s
+A nature raises one stat by 10% (its row) and lowers another by 10% (its column). The five on the diagonal change nothing.	せいかくは1つの能力を10%上げ (行)、別の能力を10%下げます (列)。対角線上の5つは何も変えません。
+%s, neutral	%s、補正なし
+%s, raises %s, lowers %s	%s、%sが上がり、%sが下がる
+Search name or number	名前か番号で検索
+Type (must have all)	タイプ (すべて一致)
+Generation	世代
+National	全国
+%s  ·  %d of %d  ·  caught %d	%s  ·  %d / %d  ·  捕獲 %d
+Regional	地方
+Gen	世代
+Gen %s	第%s世代
+All	すべて
+Not caught	未捕獲
+Appearance	表示
+Language	言語
+System	端末
+Theme	テーマ
+Pokémon artwork	ポケモンの画像
+Type labels	タイプ表示
+Layout	レイアウト
+Megas and other forms	メガシンカなどのすがた
+Height and weight	高さと重さ
+Data	データ
+About	このアプリについて
+Caught Pokémon	捕獲済みのポケモン
+Clear	クリア
+Marked: %d	%d匹
+Clear caught marks?	捕獲済みの記録を消しますか？
+Removes the caught mark from every game. Pokémon: %d. This cannot be undone.	すべてのゲームで捕獲済みの記録を消します。ポケモン: %d匹。元に戻せません。
+Data: PokeAPI and pokemondb.net. Artwork and type icons: PokeAPI sprites. Sets: Smogon University, via pkmn. Pokémon names and images © Nintendo / Game Freak.	データ: PokeAPI、pokemondb.net。画像とタイプアイコン: PokeAPI sprites。型: Smogon University (pkmn経由)。ポケモンの名前と画像 © Nintendo / Game Freak。
+Light	ライト
+Dark	ダーク
+3D (HOME)	3D (HOME)
+Official art	公式イラスト
+Pixel art	ドット絵
+Text	文字
+Icon and name	アイコンと名前
+Icon only	アイコンのみ
+Cards	カード
+List	リスト
+On their Pokémon	ポケモン内のみ
+In the list too	一覧にも表示
+Metric	メートル法
+Imperial	ヤード・ポンド法
+Rename	名前を変更
+No moves yet	わざ未設定
+Add Pokémon	ポケモンを追加
+Free slots: %d	空き: %d
+Copy as text	テキストでコピー
+Delete team	パーティを削除
+Members weak to and resisting each attacking type. Red: half the team or more is weak.	各攻撃タイプに弱いメンバーと耐性のあるメンバーの数。赤: パーティの半分以上が弱点。
+Weak	弱点
+Resist	耐性
+Tips	ヒント
+%s and %s	%sと%s
+Weak spots	弱点
+Super effective against half the team or more, and resisted by fewer.	パーティの半分以上にこうかばつぐんで、耐性のあるメンバーのほうが少ないタイプ。
+Nothing counters these	受けられないタイプ
+No member resists them and no move hits them super effectively.	耐性のあるメンバーも、こうかばつぐんを取れるわざもありません。
+Missing coverage	攻撃範囲の穴
+No move hits these super effectively.	こうかばつぐんを取れるわざがないタイプ。
+Try a %s Pokémon	%sタイプのポケモンを入れてみよう
+It resists %s.	%sに耐性があります。
+Try a %s move	%sタイプのわざを覚えさせてみよう
+It hits %s super effectively.	%sにこうかばつぐんです。
+No attacks yet	攻撃わざなし
+Give your Pokémon damaging moves to see what nothing counters.	ダメージを与えるわざを覚えさせると、受けられないタイプがわかります。
+No gaps	穴なし
+Every type is resisted or hit super effectively, and none hits half the team.	すべてのタイプに耐性があるかこうかばつぐんを取れ、パーティの半分以上の弱点となるタイプもありません。
+Team name	パーティ名
+Save	保存
+Delete %s?	%sを削除しますか？
+Its %d Pokémon and their sets are removed from this device.	この端末から%d匹のポケモンとその型が削除されます。
+Delete	削除
+Teams	パーティ
+Up to six Pokémon per team, with moves, items and stats for one game. Saved on this device.	1つのゲーム用に、わざ・もちもの・能力を設定したポケモンを最大6匹までのパーティにできます。この端末に保存されます。
+%d of %d	%d / %d
+New team for %s	%sの新しいパーティ
+As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effective, 0 no effect. Tap a type to see its Pokémon.	%sの相性。行が攻撃、列が防御。2はこうかばつぐん、½はいまひとつ、0は効果なし。タイプをタップするとそのポケモンを表示。
+Pow %s  ·  Acc %s  ·  PP %d	威力 %s  ·  命中 %s  ·  PP %d
+Done	完了
+Search	検索
+, 	、
+Held items	持ち物
+Berries	きのみ
+Type boosters	タイプ強化
+Gems	ジュエル
+Species items	専用アイテム
+Mega Stones	メガストーン
+Z-Crystals	Zクリスタル
+Training	育成

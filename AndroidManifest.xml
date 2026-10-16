@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="demo.dex">
+
+    <application
+        android:label="DexSearch"
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@android:style/Theme.DeviceDefault.DayNight">
+        <activity
+            android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".PokedexActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".MovesActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".AbilitiesActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ItemsActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".MonActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".MoveActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".AbilityActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".TypeChartActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".GamesActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".TeamsActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".TeamActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".MemberActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".SettingsActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".NaturesActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+    </application>
+</manifest>

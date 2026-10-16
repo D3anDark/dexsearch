@@ -1,0 +1,7 @@
+build/
+dexsearch.apk
+*.idsig
+debug.keystore
+__pycache__/
+pdb_cache/
+evidence/
