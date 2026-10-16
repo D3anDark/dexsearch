@@ -16,6 +16,7 @@ import android.text.SpannableStringBuilder
 import android.text.TextUtils
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
+import android.util.TypedValue
 import android.view.GestureDetector
 import android.view.Gravity
 import android.view.MotionEvent
@@ -226,13 +227,19 @@ class MonActivity : Activity() {
 
     private fun hero(m: Dex.Mon, color: Int): View {
         val h = Ui.hero(this, color)
-        // Top-aligned with fixed-width digits, so the arrows stay put from page to page: centered, a name wrapping to
-        // two lines ("Mega Venusaur") moved them down.
+        // One line each, so the hero keeps its height and the arrows their place on every page: a form's full name
+        // ("Paldean Tauros (Combat Breed)") wrapped to three. Big, the species, shrunk if a narrow screen needs it;
+        // small, the form's name ahead of the genus. Not baseline-aligned: that sat the number on the name's baseline,
+        // 6 dp below the arrows.
         val nameRow = LinearLayout(this)
-        nameRow.gravity = Gravity.TOP
-        val name = Ui.white(this, m.name, 30, true)
-        nameRow.addView(name, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        nameRow.isBaselineAligned = false
         val side = Ui.dp(this, 40)
+        val name = Ui.white(this, dex.mon(m.species).name, 30, true)
+        name.maxLines = 1
+        name.ellipsize = TextUtils.TruncateAt.END
+        name.setAutoSizeTextTypeUniformWithConfiguration(18, 30, 1, TypedValue.COMPLEX_UNIT_SP)
+        name.gravity = Gravity.CENTER_VERTICAL
+        nameRow.addView(name, LinearLayout.LayoutParams(0, side, 1f))
         nameRow.addView(navButton(neighbor(-1), -1), LinearLayout.LayoutParams(side, side))
         val number = Ui.white(this, Ui.national(m.species), 17, true)
         number.fontFeatureSettings = "tnum"
@@ -241,7 +248,10 @@ class MonActivity : Activity() {
         nameRow.addView(navButton(neighbor(1), 1), LinearLayout.LayoutParams(side, side))
         // Inside the hero's padding: past it the hero clipped the next arrow's ripple. It lines up with the shiny toggle.
         h.addView(nameRow, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 10, 0, 0))
-        h.addView(Ui.white(this, m.genus, 15, false))
+        val genus = Ui.white(this, if (m.form()) "${m.name}  ·  ${m.genus}" else m.genus, 15, false)
+        genus.maxLines = 1
+        genus.ellipsize = TextUtils.TruncateAt.END
+        h.addView(genus)
 
         val pills = LinearLayout(this)
         pills.gravity = Gravity.CENTER_VERTICAL
