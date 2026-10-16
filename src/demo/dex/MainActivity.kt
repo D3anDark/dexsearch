@@ -38,6 +38,7 @@ class MainActivity : Activity() {
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         dex = Ui.dex(this)
+        if (state == null && intent.getBooleanExtra(SettingsActivity.REOPEN, false)) startActivity(Intent(this, SettingsActivity::class.java))
 
         search = Ui.search(this, L.t("Pokémon, moves, abilities, types"), this::searchChanged)
         resultList = Ui.list(this, false)

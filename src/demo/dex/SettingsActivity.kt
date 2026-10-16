@@ -30,10 +30,11 @@ class SettingsActivity : Activity() {
         look.addView(segments(langs, L.LANGS.indexOf(prefs.getString("lang", "")) + 1) { i ->
             prefs.edit().putString("lang", if (i == 0) "" else L.LANGS[i - 1]).apply()
             if (Ui.lang(this) == L.lang) return@segments
-            // Every open screen holds text in the old language: start over from the home screen, back here on top.
-            startActivities(arrayOf(
-                Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
-                Intent(this, SettingsActivity::class.java)))
+            // Every open screen holds text in the old language: start over from the home screen, which opens this one
+            // on top itself. One queued behind it with startActivities is not created yet and kept the old day/night
+            // mode after a later Light/Dark switch.
+            startActivity(Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK).putExtra(REOPEN, true))
         })
         label(look, L.t("Theme"))
         look.addView(segments(THEMES.map { L.t(it) }.toTypedArray(), prefs.getInt("theme", 0)) { i ->
@@ -187,6 +188,8 @@ class SettingsActivity : Activity() {
     }
 
     companion object {
+        /** Extra for MainActivity: open Settings on top, after a language change. */
+        const val REOPEN = "settings"
         private val CREDITS = L.k("Data: PokeAPI and pokemondb.net. Artwork and type icons: PokeAPI sprites. Sets: Smogon University, via pkmn. Pokémon names and images © Nintendo / Game Freak.")
         /** Each language in itself, in [L.LANGS] order. */
         private val LANG_NAMES = arrayOf("English", "Polski", "Español", "日本語")
