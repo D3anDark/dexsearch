@@ -260,6 +260,70 @@ object Ui {
         override fun getOpacity() = PixelFormat.TRANSLUCENT
     }
 
+    /** The shiny mark in `ink`: a large and a small four-pointed star. */
+    class Sparkle(private val ink: Int) : Drawable() {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val path = Path()
+
+        override fun draw(canvas: Canvas) {
+            val b = bounds
+            val w = b.width().toFloat()
+            val h = b.height().toFloat()
+            path.reset()
+            star(b.left + w * 0.4f, b.top + h * 0.6f, w * 0.4f)
+            star(b.left + w * 0.8f, b.top + h * 0.2f, w * 0.2f)
+            paint.color = ink
+            canvas.drawPath(path, paint)
+        }
+
+        /** Sides curve in toward the center, so the points come out sharp. */
+        private fun star(x: Float, y: Float, r: Float) {
+            path.moveTo(x, y - r)
+            path.quadTo(x, y, x + r, y)
+            path.quadTo(x, y, x, y + r)
+            path.quadTo(x, y, x - r, y)
+            path.quadTo(x, y, x, y - r)
+            path.close()
+        }
+
+        override fun setAlpha(alpha: Int) {}
+        override fun setColorFilter(cf: ColorFilter?) {}
+        @Deprecated("Deprecated in Java")
+        override fun getOpacity() = PixelFormat.TRANSLUCENT
+    }
+
+    /** Arrowhead in `ink` pointing back (`back`) or forward, for previous/next buttons. */
+    class Chevron(private val ink: Int, private val back: Boolean) : Drawable() {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val path = Path()
+
+        init {
+            paint.style = Paint.Style.STROKE
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.strokeJoin = Paint.Join.ROUND
+        }
+
+        override fun draw(canvas: Canvas) {
+            val b = bounds
+            val w = b.width().toFloat()
+            val h = b.height().toFloat()
+            val tip = if (back) b.left + w * 0.3f else b.right - w * 0.3f
+            val tail = if (back) b.left + w * 0.65f else b.right - w * 0.65f
+            path.reset()
+            path.moveTo(tail, b.top + h * 0.15f)
+            path.lineTo(tip, b.top + h * 0.5f)
+            path.lineTo(tail, b.top + h * 0.85f)
+            paint.color = ink
+            paint.strokeWidth = w * 0.16f
+            canvas.drawPath(path, paint)
+        }
+
+        override fun setAlpha(alpha: Int) {}
+        override fun setColorFilter(cf: ColorFilter?) {}
+        @Deprecated("Deprecated in Java")
+        override fun getOpacity() = PixelFormat.TRANSLUCENT
+    }
+
     /** Pixel art at the largest whole-pixel scale that fits, centered and unfiltered, so pixels stay square. */
     class Pixels(c: Context, private val b: Bitmap) : Drawable() {
         private val paint = Paint()

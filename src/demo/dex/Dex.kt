@@ -285,6 +285,21 @@ class Dex private constructor(private val assets: Assets) {
         return listOf(base) + forms[base.num].orEmpty()
     }
 
+    /**
+     * The Pokémon `step` places from `num`'s species in `order` (Pokédex or search order), passing over that species'
+     * forms, which the header's form chips reach, and landing on a species rather than its last form; 0 past either
+     * end, -1 when the species is not in `order`.
+     */
+    fun neighbor(order: IntArray, num: Int, step: Int): Int {
+        val species = mon(num).species
+        var j = order.indexOfFirst { mon(it).species == species }
+        if (j < 0) return -1
+        while (j in order.indices && mon(order[j]).species == species) j += step
+        if (j !in order.indices) return 0
+        val other = mon(order[j]).species
+        return if (other in order) other else order[j]
+    }
+
     fun item(id: Int): Item = itemById.getValue(id)
 
     fun move(id: Int): Move = moveById.getValue(id)
@@ -728,6 +743,11 @@ class Dex private constructor(private val assets: Assets) {
             check(family.size == 9 && family[0][0] == 133 && family[1][1] == 1, "Eevee has 8 branches")
             check(d.chain(d.mon(840)).joinToString { "${it[0]}/${it[1]}" } == "840/0, 841/1, 842/1, 1011/1, 1019/2",
                 "Applin tree: Hydrapple right under Dipplin")
+            val national = d.national.map { it.mon.num }.toIntArray()
+            val megaX = d.family(charizard)[1].num
+            check(d.neighbor(national, 6, 1) == 7 && d.neighbor(national, megaX, 1) == 7 && d.neighbor(national, megaX, -1) == 5
+                    && d.neighbor(national, 7, -1) == 6 && d.neighbor(national, 1, -1) == 0 && d.neighbor(intArrayOf(6, megaX), 6, 1) == 0
+                    && d.neighbor(intArrayOf(1), 6, 1) == -1, "previous/next skip forms")
             check(d.factor(d.whole, "rock", charizard.types) == 400 && d.factor(d.whole, "ground", charizard.types) == 0
                     && d.factor(d.whole, "water", d.mon(9).types) == 50, "type factors")
 

@@ -12,9 +12,13 @@ import android.graphics.drawable.Drawable
 import android.graphics.drawable.InsetDrawable
 import android.os.Build
 import android.os.Bundle
+import android.text.SpannableString
 import android.text.SpannableStringBuilder
+import android.text.Spanned
 import android.text.TextUtils
+import android.text.style.DynamicDrawableSpan
 import android.text.style.ForegroundColorSpan
+import android.text.style.ImageSpan
 import android.text.style.StyleSpan
 import android.view.GestureDetector
 import android.view.Gravity
@@ -57,9 +61,13 @@ class MonActivity : Activity() {
     private lateinit var picture: ImageView
     /** Header shows the shiny coloring; kept while paging through Pokémon. */
     private var shiny = false
-    private lateinit var shinyToggle: TextView
-    /** The Variants strip of the shown Pokémon, null when it has one look. */
-    private var lookStrip: LinearLayout? = null
+    private lateinit var shinyToggle: ImageView
+    /** [lookBar] chips, the one in the header selected; empty when the Pokémon has a single look. */
+    private var lookChips: List<View> = emptyList()
+    /** Species and form thumbnails in [lookBar] with their ids, redrawn when [shiny] flips. */
+    private var formThumbs: List<Pair<ImageView, Int>> = emptyList()
+    /** [lookBar] itself, where a horizontal swipe scrolls the chips instead of paging; null without one. */
+    private var lookScroll: View? = null
     private lateinit var tabs: Array<TextView>
     private lateinit var tabBar: LinearLayout
     /** Copy of the tabs over the top of the page, shown while [tabBar] is scrolled past. */
@@ -120,22 +128,10 @@ class MonActivity : Activity() {
         this.head = head
         heroView = hero(m, color)
         head.addView(heroView)
-        val family = dex.family(m)
-        if (family.size > 1) {
-            val forms = LinearLayout(this)
-            for (x in family) {
-                val chip = Ui.chip(this, x.name) { show(x.num) }
-                Ui.chipActive(chip, x === m)
-                Ui.addChip(forms, chip)
-            }
-            head.addView(Ui.chipBar(this, forms), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 12, 0, 0))
-        }
 
         tabBar = LinearLayout(this)
         tabs = Ui.segments(this, tabBar, Array(TABS.size) { L.t(TABS[it]) }, this::setTab)
         head.addView(tabBar, Ui.wide(this, 16, 12))
-        lookStrip = null
         info = info(m)
         head.addView(info)
         evo = Ui.vertical(this)
@@ -214,7 +210,10 @@ class MonActivity : Activity() {
     override fun dispatchTouchEvent(e: MotionEvent): Boolean {
         if (e.actionMasked == MotionEvent.ACTION_DOWN) {
             val r = Rect()
-            swiping = heroView.getGlobalVisibleRect(r) && r.contains(e.x.toInt(), e.y.toInt())
+            val x = e.x.toInt()
+            val y = e.y.toInt()
+            swiping = heroView.getGlobalVisibleRect(r) && r.contains(x, y)
+                && lookScroll?.let { it.getGlobalVisibleRect(r) && r.contains(x, y) } != true
         }
         if (!swiping || !swipe.onTouchEvent(e) || flung == 0) return super.dispatchTouchEvent(e)
         // The button or chip under the finger gets a cancel, not a click.
@@ -230,11 +229,10 @@ class MonActivity : Activity() {
     private fun hero(m: Dex.Mon, color: Int): View {
         val h = Ui.hero(this, color)
         val nav = LinearLayout(this)
-        val prev = neighbor(-1)
-        val next = neighbor(1)
-        nav.addView(navChip(if (prev == 0) "" else "< " + dex.mon(prev).name, prev, -1))
+        nav.gravity = Gravity.CENTER_VERTICAL
+        nav.addView(navChip(neighbor(-1), -1))
         nav.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-        nav.addView(navChip(if (next == 0) "" else dex.mon(next).name + " >", next, 1))
+        nav.addView(navChip(neighbor(1), 1))
         h.addView(nav, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 0, 10))
 
         val nameRow = LinearLayout(this)
@@ -256,25 +254,26 @@ class MonActivity : Activity() {
             p.setOnClickListener { Ui.open(this, t) }
             pills.addView(p, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 6, 0))
         }
-        h.addView(pills, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 12, 0, 0))
-
-        val stage = FrameLayout(this)
-        picture = ImageView(this)
-        stage.addView(picture, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 200)))
-        picture.setImageDrawable(own(m))
-        shinyToggle = Ui.glassPill(this, L.t("Shiny"))
-        shinyToggle.textSize = 13f
-        shinyToggle.setPadding(Ui.dp(this, 12), Ui.dp(this, 6), Ui.dp(this, 12), Ui.dp(this, 6))
+        pills.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+        shinyToggle = ImageView(this)
+        shinyToggle.contentDescription = L.t("Shiny")
+        shinyToggle.tooltipText = L.t("Shiny")
+        val pad = Ui.dp(this, 10)
+        shinyToggle.setPadding(pad, pad, pad, pad)
         paintShiny(color)
-        shinyToggle.setOnClickListener {
-            shiny = !shiny
-            paintShiny(color)
-            picture.setImageDrawable(own(m))
-            highlight(0)
+        pills.addView(shinyToggle, LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)))
+        h.addView(pills, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 8, 0, 0))
+
+        picture = ImageView(this)
+        picture.setImageDrawable(own(m))
+        h.addView(picture, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 200)))
+        lookBar(m, color)?.let {
+            h.addView(it, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, -20, 6, -20, 0))
         }
-        stage.addView(shinyToggle, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.END))
-        h.addView(stage, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        shinyToggle.setOnClickListener {
+            flipShiny(m)
+            wear(m, formThumbs.find { it.second == m.num }?.first?.parent as View?, null)
+        }
         // The whole Pokédex has no regional number to show.
         if (game !== dex.whole) {
             val regional = game.byNum[m.num]
@@ -301,14 +300,111 @@ class MonActivity : Activity() {
         return h
     }
 
-    /** Previous/next chip; invisible (keeping the row height) at either end of the list. */
-    private fun navChip(label: String, target: Int, step: Int): View {
-        val t = Ui.glassPill(this, label)
+    /**
+     * Previous/next Pokémon: arrow, thumbnail (128 px, 64 KB) and name; invisible (keeping the row height) at either
+     * end of the list.
+     */
+    private fun navChip(target: Int, step: Int): View {
+        val t = Ui.glassPill(this, "")
         t.textSize = 13f
-        t.setPadding(Ui.dp(this, 12), Ui.dp(this, 6), Ui.dp(this, 12), Ui.dp(this, 6))
-        t.visibility = if (target == 0) View.INVISIBLE else View.VISIBLE
+        t.setPadding(Ui.dp(this, 8), Ui.dp(this, 3), Ui.dp(this, 10), Ui.dp(this, 3))
+        if (target == 0) {
+            t.visibility = View.INVISIBLE
+            return t
+        }
+        val name = dex.mon(target).name
+        val pic = Ui.sprite(this, target, 2)
+        t.text = if (pic == null) name else SpannableString("  $name").apply {
+            pic.setBounds(0, 0, Ui.dp(this@MonActivity, 26), Ui.dp(this@MonActivity, 26))
+            setSpan(ImageSpan(pic, DynamicDrawableSpan.ALIGN_CENTER), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        t.maxWidth = Ui.dp(this, 156)
+        t.ellipsize = TextUtils.TruncateAt.END
+        val arrow = Ui.Chevron(Ui.WHITE, step < 0)
+        arrow.setBounds(0, 0, Ui.dp(this, 14), Ui.dp(this, 14))
+        if (step < 0) t.setCompoundDrawablesRelative(arrow, null, null, null)
+        else t.setCompoundDrawablesRelative(null, null, arrow, null)
+        t.compoundDrawablePadding = Ui.dp(this, 2)
         t.setOnClickListener { go(step) }
         return t
+    }
+
+    /**
+     * Chips under the header picture: the species and its forms, each opening its page, then looks that only change
+     * the picture (female Venusaur, Alcremie's 63). Null for a single look. Thumbnails decode at 128 px, 64 KB each:
+     * 4 MB for Alcremie.
+     */
+    private fun lookBar(m: Dex.Mon, color: Int): View? {
+        lookChips = emptyList()
+        formThumbs = emptyList()
+        lookScroll = null
+        val family = dex.family(m)
+        val looks = dex.looks(m.num).drop(1)  // the first is m's own sprite
+        if (family.size + looks.size < 2) return null
+        val chips = LinearLayout(this)
+        formThumbs = family.map { x ->
+            val img = lookChip(chips, x.name, color) { v -> if (x === m) wear(m, v, null) else show(x.num) }
+            img.setImageDrawable(Ui.sprite(this, x.num, 2, shiny = shiny))
+            img to x.num
+        }
+        for ((file, name) in looks) lookChip(chips, name, color) { v -> wear(m, v, file) }.setImageDrawable(Ui.look(this, file, 2))
+        lookChips = List(chips.childCount) { chips.getChildAt(it) }
+        val own = chips.getChildAt(family.indexOfFirst { it === m })
+        select(own)
+        val scroll = HorizontalScrollView(this)
+        scroll.isHorizontalScrollBarEnabled = false
+        scroll.clipToPadding = false
+        scroll.setPadding(Ui.dp(this, 20), 0, Ui.dp(this, 12), 0)
+        scroll.addView(chips)
+        // A form far down the row (Rotom's sixth) starts in view.
+        if (own != null) scroll.post { scroll.scrollTo(own.left - Ui.dp(this, 48), 0) }
+        lookScroll = scroll
+        return scroll
+    }
+
+    /** A [lookBar] chip: a thumbnail, and `name` beside it while selected. Returns the thumbnail's view to fill. */
+    private fun lookChip(into: LinearLayout, name: String, color: Int, l: View.OnClickListener): ImageView {
+        val chip = LinearLayout(this)
+        chip.gravity = Gravity.CENTER_VERTICAL
+        val pad = Ui.dp(this, 4)
+        chip.setPadding(pad, pad, pad, pad)
+        chip.contentDescription = name
+        chip.tooltipText = name
+        chip.setOnClickListener(l)
+        val img = ImageView(this)
+        chip.addView(img, LinearLayout.LayoutParams(Ui.dp(this, 34), Ui.dp(this, 34)))
+        val label = Ui.text(this, name, 13, true)
+        label.setTextColor(color)
+        label.setSingleLine()
+        label.ellipsize = TextUtils.TruncateAt.END
+        label.maxWidth = Ui.dp(this, 160)
+        label.setPadding(Ui.dp(this, 4), 0, Ui.dp(this, 8), 0)
+        chip.addView(label)
+        into.addView(chip, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 8, 0))
+        return img
+    }
+
+    /** Marks `chip` as the look in the header: white, with its name; the rest are glass thumbnails. */
+    private fun select(chip: View?) {
+        for (c in lookChips) {
+            val on = c === chip
+            c.isSelected = on
+            c.background = Ui.pressable(this, Ui.rounded(this, if (on) Ui.WHITE else 0x2E000000, 999), 999)
+            (c as ViewGroup).getChildAt(1).visibility = if (on) View.VISIBLE else View.GONE
+        }
+    }
+
+    /** Shows `look` (a looks/ file, null for `m` itself) in the header picture and selects its `chip`. */
+    private fun wear(m: Dex.Mon, chip: View?, look: String?) {
+        if (look != null && shiny) flipShiny(m)  // looks have no shiny art
+        picture.setImageDrawable(if (look == null) own(m) else Ui.look(this, look, 1))
+        select(chip)
+    }
+
+    private fun flipShiny(m: Dex.Mon) {
+        shiny = !shiny
+        paintShiny(color(m))
+        for ((img, n) in formThumbs) img.setImageDrawable(Ui.sprite(this, n, 2, shiny = shiny))
     }
 
     private fun action(label: String): TextView {
@@ -345,7 +441,7 @@ class MonActivity : Activity() {
     private fun paintShiny(color: Int) {
         shinyToggle.isSelected = shiny
         shinyToggle.background = Ui.pressable(this, Ui.rounded(this, if (shiny) Ui.WHITE else 0x2E000000, 999), 999)
-        shinyToggle.setTextColor(if (shiny) color else Ui.WHITE)
+        shinyToggle.setImageDrawable(Ui.Sparkle(if (shiny) color else Ui.WHITE))
     }
 
     private fun paintCaught(t: TextView, on: Boolean, color: Int) {
@@ -354,18 +450,14 @@ class MonActivity : Activity() {
         t.setTextColor(if (on) color else Ui.WHITE)
     }
 
-    /** Pokémon before/after this one in the list the user came from, else in national order; 0 at either end. */
+    /**
+     * Pokémon before/after this one in the list the user came from, else in national order: also when that list holds
+     * nothing but this species' forms (a search for "charizard"). 0 at either end.
+     */
     private fun neighbor(step: Int): Int {
-        val n = neighbor(list ?: IntArray(0), step)
-        return if (n >= 0) n else neighbor(dex.national.map { it.mon.num }.toIntArray(), step)
-    }
-
-    /** -1 if this Pokémon is not in `order`. */
-    private fun neighbor(order: IntArray, step: Int): Int {
-        val i = order.indexOf(num)
-        if (i < 0) return -1
-        val j = i + step
-        return if (j in order.indices) order[j] else 0
+        val species = dex.mon(num).species
+        val n = list?.takeIf { l -> l.any { dex.mon(it).species != species } }?.let { dex.neighbor(it, num, step) } ?: -1
+        return if (n >= 0) n else dex.neighbor(dex.national.map { it.mon.num }.toIntArray(), num, step)
     }
 
     private fun setTab(t: Int) {
@@ -416,8 +508,6 @@ class MonActivity : Activity() {
         column(facts, L.f("Gen %d", m.gen), L.t("Introduced"))
         about.addView(facts)
         box.addView(about, Ui.wide(this, 0, 12))
-        val looks = dex.looks(m.num)
-        if (looks.isNotEmpty()) box.addView(variants(m, looks), Ui.wide(this, 0, 12))
         if (seen[0].isNotEmpty()) {
             val where = Ui.panel(this, L.f("Where to find in %s", game.name))
             where.addView(Ui.text(this, seen[0], 15, false))
@@ -455,53 +545,6 @@ class MonActivity : Activity() {
             100 - m.genderRate * 12.5, m.genderRate * 12.5))
         box.addView(breeding, Ui.wide(this, 0, 4))
         return box
-    }
-
-    /**
-     * Looks that differ only in appearance as a strip of HOME renders, each decoded at 128 px (64 KB): 4 MB for
-     * Alcremie's 63. Tapping one shows it in the header, in its usual coloring.
-     */
-    private fun variants(m: Dex.Mon, looks: List<Pair<String, String>>): View {
-        val panel = Ui.panel(this, L.t("Variants"))
-        val strip = LinearLayout(this)
-        for ((i, look) in looks.withIndex()) {
-            val (file, name) = look
-            val cell = Ui.vertical(this)
-            cell.gravity = Gravity.CENTER_HORIZONTAL
-            val img = ImageView(this)
-            img.setImageDrawable(if (file.isEmpty()) Ui.sprite(this, m.num, 2, Ui.ART_HOME) else Ui.look(this, file, 2))
-            cell.addView(img, LinearLayout.LayoutParams(Ui.dp(this, 64), Ui.dp(this, 64)))
-            val label = Ui.text(this, name, 12, false)
-            label.gravity = Gravity.CENTER_HORIZONTAL
-            label.maxLines = 2
-            label.ellipsize = TextUtils.TruncateAt.END
-            cell.addView(label, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 4, 0, 0))
-            cell.setPadding(Ui.dp(this, 6), Ui.dp(this, 8), Ui.dp(this, 6), Ui.dp(this, 8))
-            cell.background = Ui.pressable(this, if (i == 0) Ui.rounded(this, Ui.FILL, 14) else null, 14)
-            cell.setOnClickListener {
-                picture.setImageDrawable(if (file.isEmpty()) Ui.sprite(this, m.num, 1) else Ui.look(this, file, 1))
-                if (shiny) {
-                    shiny = false
-                    paintShiny(color(m))
-                }
-                highlight(i)
-            }
-            strip.addView(cell, LinearLayout.LayoutParams(Ui.dp(this, 92), ViewGroup.LayoutParams.WRAP_CONTENT))
-        }
-        lookStrip = strip
-        val scroll = HorizontalScrollView(this)
-        scroll.isHorizontalScrollBarEnabled = false
-        scroll.addView(strip)
-        panel.addView(scroll, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, -6, 4, -6, 0))
-        return panel
-    }
-
-    /** Marks look `i` in the Variants strip as the one in the header. */
-    private fun highlight(i: Int) {
-        val strip = lookStrip ?: return
-        for (k in 0 until strip.childCount) {
-            strip.getChildAt(k).background = Ui.pressable(this, if (k == i) Ui.rounded(this, Ui.FILL, 14) else null, 14)
-        }
     }
 
     private fun column(row: LinearLayout, value: String, label: String) {
