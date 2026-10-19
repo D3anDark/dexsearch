@@ -919,8 +919,11 @@ class Dex private constructor(private val assets: Assets) {
 
             val keys = HashSet<String>()
             val formats = HashSet<String>()
-            for (file in java.io.File(args[0]).absoluteFile.parentFile.resolve("src/demo/dex").listFiles()!!) {
-                if (!file.name.endsWith(".kt")) continue
+            // The web app (web/) shares the tables, so its calls count too.
+            val root = java.io.File(args[0]).absoluteFile.parentFile!!
+            val sources = root.resolve("src/demo/dex").listFiles()!!.filter { it.name.endsWith(".kt") } +
+                root.resolve("web").listFiles()!!.filter { it.name.endsWith(".js") }
+            for (file in sources) {
                 for (m in CALL.findAll(file.readText())) {
                     val lit = m.groupValues[2]
                     check(m.groups[3] != null && '$' !in lit && '\\' !in lit.replace("\\n", ""),

@@ -1,5 +1,6 @@
 name: Pages
-# The latest release (publish.sh) on GitHub Pages: its APK and versionCode, read by installed apps (Update.kt).
+# The latest release (publish.sh) on GitHub Pages: the iPhone web app (web/), plus the APK and versionCode read by
+# installed Android apps (Update.kt).
 on:
   release:
     types: [published]
@@ -18,13 +19,15 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v5
+      - name: iPhone web app
+        run: web/build.sh _site
       - name: Latest release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           tag=$(gh release view --json tagName -q .tagName)
-          mkdir _site
           gh release download "$tag" -p dexsearch.apk -D _site
           echo "${tag#v}" > _site/version
       - uses: actions/configure-pages@v6

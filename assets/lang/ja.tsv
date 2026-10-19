@@ -304,3 +304,6 @@ Version %d	バージョン %d
 Downloading: %d%%	ダウンロード中：%d%%
 Installing	インストール中
 Update failed: %s	アップデートに失敗しました：%s
+Back	戻る
+Could not load the data. Check the connection and reload.	データを読み込めませんでした。接続を確認して再読み込みしてください。
+Could not save on this device.	この端末に保存できませんでした。

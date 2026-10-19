@@ -304,3 +304,6 @@ Version %d	Versión %d
 Downloading: %d%%	Descargando: %d%%
 Installing	Instalando
 Update failed: %s	Error al actualizar: %s
+Back	Atrás
+Could not load the data. Check the connection and reload.	No se pudieron cargar los datos. Revisa la conexión y recarga.
+Could not save on this device.	No se pudo guardar en este dispositivo.

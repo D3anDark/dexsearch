@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DexSearch</title>
+<meta name="description" content="Offline Pokédex and team builder">
+<meta name="theme-color" content="#F3F4F6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111215" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="DexSearch">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="stylesheet" href="style.css">
+<script>
+try {
+  const t = JSON.parse(localStorage.getItem('dex.theme'));
+  if (t === 1) document.documentElement.dataset.theme = 'light';
+  if (t === 2) document.documentElement.dataset.theme = 'dark';
+} catch (e) {}
+</script>
+</head>
+<body>
+<div class="boot" id="boot">DexSearch</div>
+<script src="dex.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

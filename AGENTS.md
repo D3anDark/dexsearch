@@ -25,10 +25,10 @@ adb shell am start -n demo.dex/.MainActivity
 - UI text goes through `L.t("English")`, `L.f("English %d", n)` or `L.k("English")` (a key translated later).
   The English text is the key.
 - `assets/lang/{pl,es,ja}.tsv`: one `English<TAB>translation` per line, `\n` for a line break.
-- `Dex.main` scans `src/demo/dex/*.kt` with a regex for string literals in those calls. Each table must hold exactly
+- `Dex.main` scans `src/demo/dex/*.kt` and `web/*.js` with a regex for string literals in those calls. Each table must hold exactly
   that key set: a missing key and an unused key both fail the build. Format conversions must match between key and
   value (`%d`, `%s`, positional `%1$d` allowed in the value).
-- So: always pass a literal. `L.t(variable)` is invisible to the check. When a string changes, change its key in all
+- So: always pass a literal (in JS a double-quoted one). `L.t(variable)` is invisible to the check. When a string changes, change its key in all
   three tables and delete the old row.
 
 ## Data and assets
@@ -37,6 +37,16 @@ adb shell am start -n demo.dex/.MainActivity
   the TSVs; change the generator and rerun it. File formats are documented at the top of `gen_data.py` and on the
   matching classes in `Dex.kt`.
 - `pdb_cache/`, `evidence/` and `build/` are local and gitignored.
+
+## Web app (iPhone)
+
+- `web/` is the same app for Safari, plain JS with no build step or libraries: `dex.js` reads `assets/` like `Dex.kt`,
+  `app.js` is every screen, `sw.js` caches all files for offline use. Teams live in `localStorage` in the Android
+  app's text format.
+- `web/build.sh <new dir>` runs `node web/check.js assets` (data self-check), copies the app and assets, and writes
+  `sw.js` with a hash per file; a changed hash is what makes installed copies show "Update available".
+- A feature or fix in the Android app usually needs the same change in `web/app.js`. Test in a browser at 390 and
+  360 px wide; `.github/workflows/pages.yml` publishes it with each release.
 
 ## UI conventions
 

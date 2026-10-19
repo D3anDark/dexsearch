@@ -304,3 +304,6 @@ Version %d	Wersja %d
 Downloading: %d%%	Pobieranie: %d%%
 Installing	Instalowanie
 Update failed: %s	Aktualizacja nieudana: %s
+Back	Wstecz
+Could not load the data. Check the connection and reload.	Nie udało się wczytać danych. Sprawdź połączenie i odśwież stronę.
+Could not save on this device.	Nie udało się zapisać na tym urządzeniu.
