@@ -272,3 +272,42 @@ Previous: %s	Poprzedni: %s
 Next: %s	Następny: %s
 Forms and looks	Formy i wygląd
 Show all (%d)	Pokaż wszystkie (%d)
+%d to %d HP	%d do %d PS
+%d%% to %d%% of %d HP	%d%% do %d%% z %d PS
+%s %d against %s %d	%s %d przeciw %s %d
+%s and %s overlap	%s i %s się dublują
+%s has no base power: status moves and fixed damage such as Seismic Toss are not calculated.	%s nie ma mocy bazowej: ruchy statusowe i stałe obrażenia (np. Seismic Toss) nie są liczone.
+Attacker	Atakujący
+BST %d+	BST %d+
+Box	Box
+Choose a Pokémon	Wybierz Pokémona
+Choose a move	Wybierz ruch
+Choose both Pokémon and a move.	Wybierz obu Pokémonów i ruch.
+Compare	Porównaj
+Damage	Obrażenia
+Damage calc	Kalkulator obrażeń
+Defender	Broniący
+Devolve to %s	Cofnij do %s
+Effectiveness %s	Skuteczność %s
+Evolve into %s	Ewoluuj w %s
+Faints in %d hits	Pada po %d ciosach
+Faints in %d to %d hits	Pada po %d do %d ciosach
+Faints in one hit	Pada po jednym ciosie
+Gen 5 and later formula. Not counted: abilities, items, weather, critical hits, stat changes and burns.	Wzór od 5. generacji. Nie liczone: zdolności, przedmioty, pogoda, trafienia krytyczne, zmiany statystyk i oparzenia.
+Hold a Pokémon to swap it for another.	Przytrzymaj Pokémona, by go zamienić.
+Its moves	Jego ruchy
+Lowest base stat total	Minimalna suma statystyk
+Move	Ruch
+Move: %s	Ruch: %s
+No effect	Brak efektu
+Not its type	Nie jego typ
+One move, lowest to highest roll	Jeden ruch, od najniższego do najwyższego rzutu
+Power %d	Moc %d
+Same type x1.5	Ten sam typ x1,5
+Suggested	Propozycje
+Suggestions	Propozycje
+Swap	Zamień
+Swap %s	Zamień: %s
+Swap sides	Zamień strony
+They share these weaknesses, so one adds little. Swap it for a Pokémon that covers them.	Mają te same słabości, więc jeden niewiele wnosi. Zamień go na Pokémona, który je pokrywa.
+Two Pokémon side by side	Dwa Pokémony obok siebie

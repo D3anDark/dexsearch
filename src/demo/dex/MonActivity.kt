@@ -556,17 +556,12 @@ class MonActivity : Activity() {
         val stats = Ui.panel(this, L.t("Base stats"))
         for ((i, s) in Dex.STATS.withIndex()) stats.addView(statRow(L.t(s), m.stats[i], true))
         stats.addView(statRow(L.t("Total"), m.bst, false))
+        stats.addView(Ui.chip(this, L.t("Compare")) { CompareActivity.open(this, m.num, game.id) },
+            Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 10, 0, 0))
         box.addView(stats, Ui.wide(this, 0, 12))
 
         val defenses = Ui.panel(this, L.t("Type defenses"))
-        for ((i, f) in DEFENSE.withIndex()) {
-            val hit = dex.types(game).filter { dex.factor(game, it, dex.types(game, m)) == f }
-            if (hit.isEmpty()) continue
-            val label = Ui.caption(this, L.t(DEFENSE_LABEL[i]))
-            label.setPadding(0, Ui.dp(this, 6), 0, Ui.dp(this, 2))
-            defenses.addView(label)
-            defenses.addView(Ui.typePills(this, hit, 4))
-        }
+        defenses.addView(defenses(this, dex, game, m, 4))
         box.addView(defenses, Ui.wide(this, 0, 12))
 
         val breeding = Ui.panel(this, L.t("Breeding and training"))
@@ -792,6 +787,20 @@ class MonActivity : Activity() {
         private const val COLS = 4
         private const val FOLD = 8
         private val TABS = arrayOf(L.k("Info"), L.k("Evolution"), L.k("Moves"), L.k("Builds"))
+        /** Attacking types under "Weak x4" down to "Immune", `perRow` pills a row; empty groups are left out. */
+        fun defenses(a: Activity, dex: Dex, game: Dex.Game, m: Dex.Mon, perRow: Int): LinearLayout {
+            val col = Ui.vertical(a)
+            for ((i, f) in DEFENSE.withIndex()) {
+                val hit = dex.types(game).filter { dex.factor(game, it, dex.types(game, m)) == f }
+                if (hit.isEmpty()) continue
+                val label = Ui.caption(a, L.t(DEFENSE_LABEL[i]))
+                label.setPadding(0, Ui.dp(a, 6), 0, Ui.dp(a, 2))
+                col.addView(label)
+                col.addView(Ui.typePills(a, hit, perRow))
+            }
+            return col
+        }
+
         private val DEFENSE = intArrayOf(400, 200, 50, 25, 0)
         private val DEFENSE_LABEL = arrayOf(L.k("Weak x4"), L.k("Weak x2"), L.k("Resists x1/2"), L.k("Resists x1/4"), L.k("Immune"))
     }

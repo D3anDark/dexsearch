@@ -18,6 +18,8 @@ class PokedexActivity : ListScreen() {
     private val types = TreeSet<String>()
     private val gens = TreeSet<Int>()
     private var caughtFilter = 0
+    /** Lowest base stat total shown, 0 for any. */
+    private var minBst = 0
     private var sort = Dex.Sort.NUMBER
     private var national = false
     /** 0, or the generation whose Pokédex is the selected game. */
@@ -28,6 +30,7 @@ class PokedexActivity : ListScreen() {
     private lateinit var typeChip: TextView
     private lateinit var genChip: TextView
     private lateinit var caughtChip: TextView
+    private lateinit var bstChip: TextView
     private lateinit var sortChip: TextView
 
     override fun heading() = if (gen > 0) L.f("Gen %d Pokédex", gen) else L.t("Pokédex")
@@ -57,6 +60,12 @@ class PokedexActivity : ListScreen() {
                 refresh()
             }
         }
+        bstChip = addChip {
+            Ui.pickOne(this, L.t("Lowest base stat total"), BST.map { if (it == 0) L.t("All") else "$it+" }, BST.indexOf(minBst)) { i ->
+                minBst = BST[i]
+                refresh()
+            }
+        }
         sortChip = addChip {
             Ui.pickOne(this, L.t("Sort"), sorts, sort.ordinal) { i ->
                 sort = Dex.Sort.entries[i]
@@ -69,8 +78,7 @@ class PokedexActivity : ListScreen() {
         val all = if (gen > 0) game.dex else if (national) dex.national else game.dex
         source = if (Ui.prefs(this).getInt("forms", 0) == 1) all else all.filter { !it.mon.form() }
         caught = Ui.caught(this)
-        val keep: (Dex.Mon) -> Boolean = if (caughtFilter == 0) { _ -> true }
-                                         else { m -> (m.num.toString() in caught) == (caughtFilter == 1) }
+        val keep = { m: Dex.Mon -> m.bst >= minBst && (caughtFilter == 0 || (m.num.toString() in caught) == (caughtFilter == 1)) }
         return dex.pokedex(game, source, query, types, gens, keep, sort).map { e ->
             val m = e.mon
             val number = if (national) Ui.national(e.number) else "#%03d".format(Locale.ROOT, e.number)
@@ -96,6 +104,8 @@ class PokedexActivity : ListScreen() {
         Ui.chipActive(genChip, gens.isNotEmpty())
         caughtChip.text = if (caughtFilter == 0) L.t("Caught") else L.t(CAUGHT[caughtFilter])
         Ui.chipActive(caughtChip, caughtFilter != 0)
+        bstChip.text = if (minBst == 0) L.t("BST") else L.f("BST %d+", minBst)
+        Ui.chipActive(bstChip, minBst != 0)
         sortChip.text = L.f("Sort: %s", L.t(sort.label))
         Ui.chipActive(sortChip, sort != Dex.Sort.NUMBER)
     }
@@ -166,6 +176,8 @@ class PokedexActivity : ListScreen() {
 
     companion object {
         private val CAUGHT = listOf(L.k("All"), L.k("Caught"), L.k("Not caught"))
+        /** Floors for the BST chip; 0 is any, 600 the pseudo-legendaries' total (Garchomp, Dragonite). */
+        private val BST = listOf(0, 300, 400, 450, 500, 525, 550, 600)
         /** Generation tiles to a row: three keeps three starters at 28 dp in a tile on a 360 dp screen. */
         private const val COLS = 3
     }

@@ -12,7 +12,6 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Toast
-import java.util.Locale
 
 /** One team: its six slots, a type weakness table and move coverage, rename, copy as text, delete. */
 class TeamActivity : Activity() {
@@ -73,6 +72,10 @@ class TeamActivity : Activity() {
             Ui.bind(row, Ui.Item(m.num, L.f("Lv %d", x.level), m.name,
                 held + if (moves.isEmpty()) L.t("No moves yet") else moves.joinToString(L.t(", ")), dex.types(game, m), m))
             row.setOnClickListener { MemberActivity.open(this, index, k) }
+            row.setOnLongClickListener {
+                replace(k)
+                true
+            }
             slots.addView(row)
         }
         if (team.members.size < Team.SIZE) {
@@ -81,7 +84,10 @@ class TeamActivity : Activity() {
             add.setOnClickListener { addMember() }
             slots.addView(add)
         }
-        root.addView(slots, Ui.wide(this, 0, 12))
+        root.addView(slots, Ui.wide(this, 0, 0))
+        val hold = Ui.muted(this, L.t("Hold a Pokémon to swap it for another."), 13)
+        hold.setPadding(Ui.dp(this, 20), Ui.dp(this, 6), Ui.dp(this, 20), Ui.dp(this, 12))
+        root.addView(hold)
 
         if (team.members.isNotEmpty()) {
             root.addView(tips(), Ui.wide(this, 0, 12))
@@ -89,23 +95,32 @@ class TeamActivity : Activity() {
         }
 
         val actions = LinearLayout(this)
-        val copyChip = Ui.chip(this, L.t("Copy as text")) { copy() }
         val deleteChip = Ui.chip(this, L.t("Delete team")) { delete() }
         deleteChip.setTextColor(if (Ui.night) 0xFFFF8A65.toInt() else Ui.ACCENT)
-        Ui.addChip(actions, copyChip)
+        Ui.addChip(actions, Ui.chip(this, L.t("Compare")) { CompareActivity.open(this, 0, game.id) })
+        Ui.addChip(actions, Ui.chip(this, L.t("Damage calc")) { CalcActivity.open(this, index, -1) })
+        Ui.addChip(actions, Ui.chip(this, L.t("Copy as text")) { copy() })
         Ui.addChip(actions, deleteChip)
-        actions.setPadding(Ui.dp(this, 16), 0, Ui.dp(this, 16), 0)
-        root.addView(actions)
+        root.addView(Ui.chipBar(this, actions))
         return root
     }
 
-    /** Pokémon of this team's game (species and their forms), by regional number. */
+    /** Pokémon of this team's game (species and their forms), by regional number, suggestions first. */
     private fun addMember() {
-        val items = game.dex.map { Ui.Item.mon(it.mon, dex.types(game, it.mon), "#%03d".format(Locale.ROOT, it.number), "") }
-        Ui.pickSearch(this, L.t("Add Pokémon"), items) { ref ->
-            team.members.add(TeamsActivity.member(ref as Dex.Mon))
+        pick(this, dex, team, -1, L.t("Add Pokémon")) { m ->
+            team.members.add(TeamsActivity.member(m))
             TeamsActivity.save(this, teams)
             MemberActivity.open(this, index, team.members.size - 1)
+        }
+    }
+
+    /** Swaps slot `k` for another Pokémon, which starts a new set at the old one's level. */
+    private fun replace(k: Int) {
+        val old = team.members[k]
+        pick(this, dex, team, k, L.f("Swap %s", dex.mon(old.num).name)) { m ->
+            team.members[k] = TeamsActivity.member(m).also { it.level = old.level }
+            TeamsActivity.save(this, teams)
+            onResume()
         }
     }
 
@@ -163,22 +178,38 @@ class TeamActivity : Activity() {
         if (g.stacked.isNotEmpty()) tip(p, L.t("Weak spots"), L.t("Super effective against half the team or more, and resisted by fewer."), g.stacked)
         if (g.counter.isNotEmpty()) tip(p, L.t("Nothing counters these"), L.t("No member resists them and no move hits them super effectively."), g.counter)
         if (g.uncovered.isNotEmpty()) tip(p, L.t("Missing coverage"), L.t("No move hits these super effectively."), g.uncovered)
-        if (g.wall >= 0) tip(p, L.f("Try a %s Pokémon", dex.label(types[g.wall])), L.f("It resists %s.",
-            names((g.counter + g.stacked).filter { dex.factor(game, types[it], listOf(types[g.wall])) < 100 })), emptyList())
+        if (g.wall >= 0) {
+            val detail = L.f("It resists %s.", names((g.counter + g.stacked).filter { dex.factor(game, types[it], listOf(types[g.wall])) < 100 }))
+            if (team.members.size < Team.SIZE) tip(p, L.f("Try a %s Pokémon", dex.label(types[g.wall])), detail, emptyList(), L.t("Suggestions")) { addMember() }
+            else tip(p, L.f("Try a %s Pokémon", dex.label(types[g.wall])), detail, emptyList())
+        }
         if (g.move >= 0) tip(p, L.f("Try a %s move", dex.label(types[g.move])), L.f("It hits %s super effectively.",
             names((g.counter + g.uncovered).filter { dex.factor(game, types[g.move], listOf(types[it])) > 100 })), emptyList())
         if (!team.attacks(dex)) tip(p, L.t("No attacks yet"), L.t("Give your Pokémon damaging moves to see what nothing counters."), emptyList())
         else if (p.childCount == 1) tip(p, L.t("No gaps"), L.t("Every type is resisted or hit super effectively, and none hits half the team."), emptyList())
+        // The lower base stat total of a pair is the one to swap: Noibat beside Garchomp.
+        for (o in team.overlaps(dex)) {
+            val a = dex.mon(team.members[o.a].num)
+            val b = dex.mon(team.members[o.b].num)
+            val k = if (b.bst <= a.bst) o.b else o.a
+            tip(p, L.f("%s and %s overlap", a.name, b.name), L.t("They share these weaknesses, so one adds little. Swap it for a Pokémon that covers them."),
+                o.weak, L.f("Swap %s", dex.mon(team.members[k].num).name)) { replace(k) }
+        }
         return p
     }
 
-    /** Bold title, muted detail, then the types as pills. */
-    private fun tip(p: LinearLayout, title: String, detail: String, list: List<Int>) {
+    /** Bold title, muted detail, then the types as pills and an optional `action` chip. */
+    private fun tip(p: LinearLayout, title: String, detail: String, list: List<Int>, action: String? = null, act: () -> Unit = {}) {
         val box = Ui.vertical(this)
         box.addView(Ui.text(this, title, 15, true))
         box.addView(Ui.muted(this, detail, 13), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 2, 0, 0))
         if (list.isNotEmpty()) box.addView(Ui.typePills(this, list.map { dex.types(game)[it] }, 4),
             Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 6, 0, 0))
+        if (action != null) {
+            val chip = Ui.chip(this, action) { act() }
+            Ui.chipActive(chip, true)
+            box.addView(chip, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 8, 0, 0))
+        }
         p.addView(box, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0,
             if (p.childCount == 1) 0 else 14, 0, 0))
     }
@@ -209,6 +240,14 @@ class TeamActivity : Activity() {
     companion object {
         fun open(a: Activity, team: Int) {
             a.startActivity(Intent(a, TeamActivity::class.java).putExtra("team", team))
+        }
+
+        /** A Pokémon for slot `skip` of `team` (-1: a new slot), with [Team.suggest]ions in the first tab. */
+        fun pick(a: Activity, dex: Dex, team: Team, skip: Int, heading: String, picked: (Dex.Mon) -> Unit) {
+            val game = dex.game(team.game)
+            TeamsActivity.pick(a, dex, game, heading, L.t("Suggested") to team.suggest(dex, skip).map { TeamsActivity.monItem(dex, game, it) }) {
+                picked(dex.mon(it.num))
+            }
         }
     }
 }

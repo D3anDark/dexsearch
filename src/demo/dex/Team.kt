@@ -113,6 +113,47 @@ class Team(var name: String, val game: Int) {
             best(counter + uncovered) { a, t -> d.factor(g, types[a], listOf(types[t])) > 100 })
     }
 
+    /** Members `a` < `b` that double up, and the attacking types (index into the game's types) both are weak to. */
+    class Overlap(val a: Int, val b: Int, val weak: List<Int>)
+
+    /** Pairs sharing a type and a weakness (Garchomp and Noibat), or two or more weaknesses. */
+    fun overlaps(d: Dex): List<Overlap> {
+        val g = d.game(game)
+        val types = members.map { d.types(g, d.mon(it.num)) }
+        val out = ArrayList<Overlap>()
+        for (a in members.indices) for (b in a + 1 until members.size) overlap(d, g, types[a], types[b])?.let { out.add(Overlap(a, b, it)) }
+        return out
+    }
+
+    /**
+     * Final-stage Pokémon of the game for slot `skip` (-1: a new one), best first. Against each of the other members'
+     * [gaps]: +1 if it resists, -1 if weak, +1 if one of its types hits it super effectively; ties by base stat total.
+     * Anything that would overlap a member is left out, and so are [LEGENDS]: on a team built while playing, the top
+     * of a BST tie is otherwise Zamazenta and Victini. ponytail: types only, top 30; forms outside evolution (Megas,
+     * Rotom's appliances) are left out.
+     */
+    fun suggest(d: Dex, skip: Int): List<Dex.Mon> {
+        val g = d.game(game)
+        val rest = Team(name, game)
+        for ((i, m) in members.withIndex()) if (i != skip) rest.members.add(m)
+        val gp = rest.gaps(d)
+        val need = (gp.counter + gp.stacked + gp.uncovered).map { d.types(g)[it] }
+        val have = rest.members.map { d.types(g, d.mon(it.num)) }
+        val species = rest.members.mapTo(HashSet()) { d.mon(it.num).species }
+        return g.dex.asSequence().map { it.mon }
+            .filter { m -> d.evolutions(m.num).isEmpty() && (!m.form() || d.evo(m.num) != null) && m.species !in species && !legend(m.species) }
+            .map { m -> m to d.types(g, m) }
+            .filter { (_, t) -> have.none { overlap(d, g, it, t) != null } }
+            .map { (m, t) ->
+                m to need.sumOf { x ->
+                    val f = d.factor(g, x, t)
+                    (if (f < 100) 1 else if (f > 100) -1 else 0) + (if (t.any { d.factor(g, it, listOf(x)) > 100 }) 1 else 0)
+                }
+            }
+            .sortedWith(compareByDescending<Pair<Dex.Mon, Int>> { it.second }.thenByDescending { it.first.bst })
+            .take(30).map { it.first }.toList()
+    }
+
     companion object {
         const val SIZE = 6
         const val MOVES = 4
@@ -121,6 +162,11 @@ class Team(var name: String, val game: Int) {
         const val IV_MAX = 31
         private const val FIELDS = 6 + 6 + 6 + MOVES
         private const val SHEDINJA = 292
+        /** Legendary, mythical, Ultra Beast and Paradox species, Articuno to Pecharunt; the data has no flag for them. */
+        private val LEGENDS = listOf(144..146, 150..151, 243..245, 249..251, 377..386, 480..494, 638..649, 716..721,
+            772..773, 785..809, 888..898, 905..905, 984..995, 1001..1010, 1014..1017, 1020..1025)
+
+        fun legend(species: Int) = LEGENDS.any { species in it }
 
         fun parse(line: String): Team {
             val f = line.split('\t')
@@ -170,6 +216,28 @@ class Team(var name: String, val game: Int) {
                     (core + 5) * boost / 100
                 }
             }
+        }
+
+        /**
+         * Lowest and highest roll, Gen 5+ formula: base from level, power and attacking over defending stat, the
+         * 85-100% roll, 1.5x same-type bonus, then `factor` (x100, [Dex.factor]); at least 1 unless immune.
+         * ponytail: no abilities, items, weather, critical hits, stat stages, burn, Tera or Gen 1-4 differences.
+         */
+        fun damage(level: Int, power: Int, atk: Int, def: Int, stab: Boolean, factor: Int): IntArray {
+            val base = (2 * level / 5 + 2) * power * atk / def / 50 + 2
+            return IntArray(2) { i ->
+                var x = base * (if (i == 0) 85 else 100) / 100
+                if (stab) x = (x * 6144 + 2047) / 4096
+                x = x * factor / 100
+                if (factor > 0) maxOf(1, x) else 0
+            }
+        }
+
+        /** Attacking types both type lists are weak to, if they double up (see [overlaps]), else null. */
+        private fun overlap(d: Dex, g: Dex.Game, a: List<String>, b: List<String>): List<Int>? {
+            val types = d.types(g)
+            val weak = types.indices.filter { d.factor(g, types[it], a) > 100 && d.factor(g, types[it], b) > 100 }
+            return if (weak.size >= 2 || weak.isNotEmpty() && a.any { it in b }) weak else null
         }
 
         /** "\nEVs: 252 Atk / 4 SpD", leaving out stats at the default; "" when all are. */

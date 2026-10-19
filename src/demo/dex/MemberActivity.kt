@@ -1,6 +1,7 @@
 package demo.dex
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
@@ -64,14 +65,19 @@ class MemberActivity : Activity() {
         root.setPadding(0, 0, 0, Ui.dp(this, 16))
         root.addView(hero(m, color))
 
+        // Devolve, forms, then each evolution in this game; moves, item and stats carry over.
         val forms = dex.family(m).filter { it === m || game.byNum.containsKey(it.num) }
-        if (forms.size > 1) {
+        val from = dex.evo(m.num)?.from?.takeIf { game.byNum.containsKey(it) }?.let { dex.mon(it) }
+        val into = dex.evolutions(m.num).map { it.to }.distinct().filter { game.byNum.containsKey(it) }.map { dex.mon(it) }
+        if (forms.size > 1 || from != null || into.isNotEmpty()) {
             val chips = LinearLayout(this)
-            for (f in forms) {
+            if (from != null) Ui.addChip(chips, Ui.chip(this, L.f("Devolve to %s", from.name)) { setForm(from) })
+            if (forms.size > 1) for (f in forms) {
                 val chip = Ui.chip(this, f.name) { setForm(f) }
                 Ui.chipActive(chip, f === m)
                 Ui.addChip(chips, chip)
             }
+            for (e in into) Ui.addChip(chips, Ui.chip(this, L.f("Evolve into %s", e.name)) { setForm(e) })
             root.addView(Ui.chipBar(this, chips), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 12, 0, 0))
         }
@@ -83,9 +89,18 @@ class MemberActivity : Activity() {
         val remove = Ui.chip(this, L.t("Remove from team")) { remove(m) }
         remove.setTextColor(if (Ui.night) 0xFFFF8A65.toInt() else Ui.ACCENT)
         val actions = LinearLayout(this)
+        val k = team.members.indexOf(x)
+        Ui.addChip(actions, Ui.chip(this, L.t("Swap")) {
+            TeamActivity.pick(this, dex, team, k, L.f("Swap %s", m.name)) { new ->
+                x = TeamsActivity.member(new).also { it.level = x.level }
+                team.members[k] = x
+                render()
+            }
+        })
+        Ui.addChip(actions, Ui.chip(this, L.t("Compare")) { CompareActivity.open(this, m.num, game.id) })
+        Ui.addChip(actions, Ui.chip(this, L.t("Damage calc")) { CalcActivity.open(this, teams.indexOf(team), k) })
         Ui.addChip(actions, remove)
-        actions.setPadding(Ui.dp(this, 16), 0, Ui.dp(this, 16), 0)
-        root.addView(actions)
+        root.addView(Ui.chipBar(this, actions))
 
         val s = ScrollView(this)
         s.addView(root)
@@ -172,7 +187,7 @@ class MemberActivity : Activity() {
         val level = Ui.settingRow(this, L.t("Level"))
         lateinit var box: EditText
         val quick = LEVELS.map { v -> Ui.chip(this, v.toString()) { box.setText(v.toString()) } }
-        box = number(x.level, 1, 100) { v ->
+        box = number(this, x.level, 1, 100) { v ->
             x.level = v
             for ((i, q) in quick.withIndex()) Ui.chipActive(q, LEVELS[i] == v)
             refreshStats()
@@ -307,12 +322,12 @@ class MemberActivity : Activity() {
             val label = Ui.text(this, L.t(stat) + if (up) " +" else if (down) " -" else "", 15, true)
             if (up) label.setTextColor(Ui.UP)
             if (down) label.setTextColor(Ui.DOWN)
-            val iv = number(x.ivs[s], 0, Team.IV_MAX) { v ->
+            val iv = number(this, x.ivs[s], 0, Team.IV_MAX) { v ->
                 x.ivs[s] = v
                 refreshStats()
                 v
             }
-            val ev = number(x.evs[s], 0, Team.EV_STAT) { v ->
+            val ev = number(this, x.evs[s], 0, Team.EV_STAT) { v ->
                 x.evs[s] = minOf(v, x.evRoom(s))
                 refreshStats()
                 x.evs[s]
@@ -350,38 +365,6 @@ class MemberActivity : Activity() {
         val s = Team.stats(dex, x)
         for ((i, t) in totals.withIndex()) t.text = s[i].toString()
         left.text = L.f("%d of %d EVs left. At most %d per stat.", Team.EV_TOTAL - x.evs.sum(), Team.EV_TOTAL, Team.EV_STAT)
-    }
-
-    /**
-     * Numeric box; `set` gets each value as typed, clamped to [min, max] (an empty box counts as min), and returns the
-     * value it kept, which the box then shows. A box left empty shows min again.
-     */
-    private fun number(value: Int, min: Int, max: Int, set: (Int) -> Int): EditText {
-        val e = EditText(this)
-        e.setText(value.toString())
-        e.inputType = InputType.TYPE_CLASS_NUMBER
-        e.imeOptions = EditorInfo.IME_ACTION_DONE
-        e.setSelectAllOnFocus(true)
-        e.setSingleLine()
-        e.textSize = 15f
-        e.setTextColor(Ui.TEXT)
-        e.gravity = Gravity.CENTER
-        e.background = Ui.rounded(this, Ui.FILL, 10)
-        e.setPadding(Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 6))
-        e.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable) {
-                val t = s.toString()
-                val kept = set(if (t.isEmpty()) min else if (t.length > 3) max else t.toInt().coerceIn(min, max))
-                if (t.isNotEmpty() && t != kept.toString()) {
-                    e.setText(kept.toString())
-                    e.setSelection(e.length())
-                }
-            }
-        })
-        e.setOnFocusChangeListener { _, focused -> if (!focused && e.length() == 0) e.setText(min.toString()) }
-        return e
     }
 
     private fun remove(m: Dex.Mon) {
@@ -520,6 +503,38 @@ class MemberActivity : Activity() {
             cell.setPadding(Ui.dp(a, 12), Ui.dp(a, 8), Ui.dp(a, 12), Ui.dp(a, 8))
             cell.setOnClickListener { Ui.open(a, m) }
             return cell
+        }
+
+        /**
+         * Numeric box; `set` gets each value as typed, clamped to [min, max] (an empty box counts as min), and returns the
+         * value it kept, which the box then shows. A box left empty shows min again.
+         */
+        fun number(c: Context, value: Int, min: Int, max: Int, set: (Int) -> Int): EditText {
+            val e = EditText(c)
+            e.setText(value.toString())
+            e.inputType = InputType.TYPE_CLASS_NUMBER
+            e.imeOptions = EditorInfo.IME_ACTION_DONE
+            e.setSelectAllOnFocus(true)
+            e.setSingleLine()
+            e.textSize = 15f
+            e.setTextColor(Ui.TEXT)
+            e.gravity = Gravity.CENTER
+            e.background = Ui.rounded(c, Ui.FILL, 10)
+            e.setPadding(Ui.dp(c, 6), Ui.dp(c, 6), Ui.dp(c, 6), Ui.dp(c, 6))
+            e.addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
+                override fun afterTextChanged(s: Editable) {
+                    val t = s.toString()
+                    val kept = set(if (t.isEmpty()) min else if (t.length > 3) max else t.toInt().coerceIn(min, max))
+                    if (t.isNotEmpty() && t != kept.toString()) {
+                        e.setText(kept.toString())
+                        e.setSelection(e.length())
+                    }
+                }
+            })
+            e.setOnFocusChangeListener { _, focused -> if (!focused && e.length() == 0) e.setText(min.toString()) }
+            return e
         }
 
         /** A new member of `b`'s form with `b` applied. */

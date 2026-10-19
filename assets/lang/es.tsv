@@ -272,3 +272,42 @@ Previous: %s	Anterior: %s
 Next: %s	Siguiente: %s
 Forms and looks	Formas y aspectos
 Show all (%d)	Mostrar todo (%d)
+%d to %d HP	%d a %d PS
+%d%% to %d%% of %d HP	%d%% a %d%% de %d PS
+%s %d against %s %d	%s %d contra %s %d
+%s and %s overlap	%s y %s se solapan
+%s has no base power: status moves and fixed damage such as Seismic Toss are not calculated.	%s no tiene potencia base: los movimientos de estado y el daño fijo, como Sísmico, no se calculan.
+Attacker	Atacante
+BST %d+	Total %d+
+Box	Caja
+Choose a Pokémon	Elige un Pokémon
+Choose a move	Elige un movimiento
+Choose both Pokémon and a move.	Elige los dos Pokémon y un movimiento.
+Compare	Comparar
+Damage	Daño
+Damage calc	Calculadora de daño
+Defender	Defensor
+Devolve to %s	Volver a %s
+Effectiveness %s	Eficacia %s
+Evolve into %s	Evolucionar a %s
+Faints in %d hits	Se debilita en %d golpes
+Faints in %d to %d hits	Se debilita en %d a %d golpes
+Faints in one hit	Se debilita de un golpe
+Gen 5 and later formula. Not counted: abilities, items, weather, critical hits, stat changes and burns.	Fórmula de la 5.ª generación en adelante. No se cuentan: habilidades, objetos, clima, golpes críticos, cambios de características ni quemaduras.
+Hold a Pokémon to swap it for another.	Mantén pulsado un Pokémon para cambiarlo por otro.
+Its moves	Sus movimientos
+Lowest base stat total	Total mínimo de características base
+Move	Movimiento
+Move: %s	Movimiento: %s
+No effect	No afecta
+Not its type	No es de su tipo
+One move, lowest to highest roll	Un movimiento, de la tirada más baja a la más alta
+Power %d	Potencia %d
+Same type x1.5	Mismo tipo x1,5
+Suggested	Sugeridos
+Suggestions	Sugerencias
+Swap	Cambiar
+Swap %s	Cambiar a %s
+Swap sides	Intercambiar lados
+They share these weaknesses, so one adds little. Swap it for a Pokémon that covers them.	Comparten estas debilidades, así que uno aporta poco. Cámbialo por un Pokémon que las cubra.
+Two Pokémon side by side	Dos Pokémon lado a lado

@@ -107,6 +107,8 @@ class MainActivity : Activity() {
             tile(L.t("Items"), count(L.f("%d items", dex.items.size)), "electric", Intent(this, ItemsActivity::class.java)))
         tiles(tile(L.t("Type chart"), count(L.f("%d types", dex.types(game).size)), "dragon", Intent(this, TypeChartActivity::class.java)),
             tile(L.t("Natures"), count(L.f("%d natures", dex.natures.size)), "ground", Intent(this, NaturesActivity::class.java)))
+        tiles(tile(L.t("Compare"), words(L.t("Two Pokémon side by side")), "steel", Intent(this, CompareActivity::class.java)),
+            tile(L.t("Damage calc"), words(L.t("One move, lowest to highest roll")), "fighting", Intent(this, CalcActivity::class.java)))
         searchChanged()
     }
 

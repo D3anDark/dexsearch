@@ -371,6 +371,9 @@ class Dex private constructor(private val assets: Assets) {
     /** How `num` (species or form) evolves from its parent; null for the first stage and forms outside evolution (Megas). */
     fun evo(num: Int): Evo? = evoInto[num]
 
+    /** What `num` evolves into; empty for a final stage. */
+    fun evolutions(num: Int): List<Evo> = evoFrom[num].orEmpty()
+
     /**
      * Evolution family in tree order, rows of {species or form, depth}: each first stage, species before forms
      * (Meowth, Alolan Meowth, Galarian Meowth), then what it evolves into. A species that does not evolve stays in
@@ -881,6 +884,19 @@ class Dex private constructor(private val assets: Assets) {
             check(eq.counter.map { svTypes[it] }.containsAll(listOf("flying", "ice")) && "ice" !in eq.stacked.map { svTypes[it] }
                     && (eq.counter + eq.uncovered).none { svTypes[it] == "steel" || svTypes[it] == "fire" } && eq.move >= 0,
                 "Garchomp with Earthquake: nothing counters Flying or Ice; Steel and Fire are covered")
+            lone.members[0].moves[0] = 0
+            lone.members.add(Team.Member(714, 0, 50))
+            val twin = lone.overlaps(d)
+            check(twin.size == 1 && twin[0].a == 0 && twin[0].b == 1 && twin[0].weak.map { svTypes[it] }.toSet() == setOf("ice", "dragon", "fairy"),
+                "Garchomp and Noibat overlap on Ice, Dragon and Fairy")
+            val swap = lone.suggest(d, 1)
+            val pairs = swap.map { Team("", sv.id).apply { members.add(Team.Member(445, 0, 50)); members.add(Team.Member(it.num, 0, 50)) } }
+            check(swap.size == 30 && swap.none { d.evolutions(it.num).isNotEmpty() || Team.legend(it.species) } && pairs.all { it.overlaps(d).isEmpty() }
+                    && listOf("ice", "dragon", "fairy").all { d.factor(sv, it, d.types(sv, swap[0])) < 100 },
+                "Noibat's swap: final stages, no legendaries, none overlapping Garchomp, the first resisting all its weaknesses: ${swap.take(5).map { it.name }}")
+            check(Team.damage(75, 65, 123, 163, true, 400).contentEquals(intArrayOf(168, 196))
+                    && Team.damage(50, 40, 10, 400, false, 50)[0] == 1 && Team.damage(50, 90, 100, 100, true, 0)[1] == 0,
+                "damage: Glaceon's Ice Fang on Garchomp 168-196 (Bulbapedia), at least 1, 0 if immune")
 
             val hits = d.search(d.whole, "char", 20)
             check((hits.getValue("Pokémon")[0] as Mon).name == "Charmander", "global search ranks prefix first")

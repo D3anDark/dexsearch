@@ -34,13 +34,16 @@ import android.text.TextWatcher
 import android.text.style.DynamicDrawableSpan
 import android.text.style.ImageSpan
 import android.util.TypedValue
+import android.os.Bundle
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.EditorInfo
 import android.widget.AbsListView
 import android.widget.BaseAdapter
@@ -563,9 +566,23 @@ object Ui {
         }
     }
 
-    /** Rounded search box; `changed` runs on every edit. */
+    /**
+     * Rounded search box; `changed` runs on every edit. An X at the end, while there is text, empties it; screen
+     * readers get the same as a "Clear" action.
+     */
     fun search(c: Context, hint: String, changed: () -> Unit): EditText {
-        val e = EditText(c)
+        val e = object : EditText(c) {
+            override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
+                super.onInitializeAccessibilityNodeInfo(info)
+                if (text.isNotEmpty()) info.addAction(AccessibilityNodeInfo.AccessibilityAction(android.R.id.closeButton, L.t("Clear")))
+            }
+
+            override fun performAccessibilityAction(action: Int, arguments: Bundle?): Boolean {
+                if (action != android.R.id.closeButton) return super.performAccessibilityAction(action, arguments)
+                text.clear()
+                return true
+            }
+        }
         e.hint = hint
         e.setSingleLine()
         e.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
@@ -580,11 +597,25 @@ object Ui {
         icon.setBounds(0, 0, dp(c, 22), dp(c, 22))
         e.setCompoundDrawablesRelative(icon, null, null, null)
         e.compoundDrawablePadding = dp(c, 8)
+        val clear = c.getDrawable(android.R.drawable.ic_menu_close_clear_cancel)!!.mutate()
+        clear.setTint(MUTED)
+        clear.setBounds(0, 0, dp(c, 22), dp(c, 22))
         e.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) = changed()
+            override fun afterTextChanged(s: Editable?) {
+                e.setCompoundDrawablesRelative(icon, null, if (e.text.isEmpty()) null else clear, null)
+                changed()
+            }
         })
+        // The X plus its padding, at the end side (the left in right-to-left layouts).
+        e.setOnTouchListener { _, ev ->
+            val reach = e.paddingEnd + dp(c, 22 + 8)
+            val hit = e.compoundDrawablesRelative[2] != null
+                    && if (e.layoutDirection == View.LAYOUT_DIRECTION_RTL) ev.x < reach else ev.x > e.width - reach
+            if (hit && ev.action == MotionEvent.ACTION_UP) e.text.clear()
+            hit
+        }
         return e
     }
 

@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import java.util.Locale
 
 /** Saved teams, each with its game and six slots, and a button that starts a new one in the selected game. */
 class TeamsActivity : Activity() {
@@ -90,5 +91,28 @@ class TeamsActivity : Activity() {
 
         /** New team member: first regular ability, level 50 (the usual battle level). */
         fun member(m: Dex.Mon) = Team.Member(m.num, if (m.abilities.isNotEmpty()) m.abilities[0] else m.hidden, 50)
+
+        /**
+         * Picks a Pokémon of `game` in tabs: `first` (title and rows) when given, then the caught ones (Box), then all.
+         * A row whose ref is a team member passes that member, any other a new one ([member]).
+         */
+        fun pick(a: Activity, dex: Dex, game: Dex.Game, heading: String, first: Pair<String, List<Ui.Item>>?, picked: (Team.Member) -> Unit) {
+            val caught = Ui.caught(a)
+            val all = game.dex.map { monItem(dex, game, it.mon) }
+            val tabs = listOfNotNull(first?.first, L.t("Box"), L.t("All"))
+            val lists = listOfNotNull(first?.second, all.filter { (it.ref as Dex.Mon).num.toString() in caught }, all)
+            Ui.pickSearch(a, heading, tabs.toTypedArray(), lists) { ref -> picked(ref as? Team.Member ?: member(ref as Dex.Mon)) }
+        }
+
+        fun monItem(dex: Dex, game: Dex.Game, m: Dex.Mon) =
+            Ui.Item.mon(m, dex.types(game, m), game.byNum[m.num]?.let { "#%03d".format(Locale.ROOT, it.number) } ?: "", "")
+
+        /** Every saved team's members under the team's name, for [pick]'s first tab. */
+        fun members(c: Context, dex: Dex, game: Dex.Game): List<Ui.Item> = load(c).flatMap { t ->
+            listOf(Ui.Item.header(t.name)) + t.members.map { x ->
+                val m = dex.mon(x.num)
+                Ui.Item(m.num, L.f("Lv %d", x.level), m.name, "", dex.types(game, m), x)
+            }
+        }
     }
 }
