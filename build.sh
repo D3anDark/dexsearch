@@ -11,6 +11,8 @@ TOOLS="$SDK/build-tools/$BT"
 KOTLINC="${KOTLINC:-$(command -v kotlinc || echo "$HOME/.local/opt/kotlinc/bin/kotlinc")}"
 STDLIB="$(dirname "$KOTLINC")/../lib/kotlin-stdlib.jar"
 cd "$(dirname "$0")"
+# The commit count: it only grows on main, and installed apps update when the published one is higher (Update.kt).
+CODE="${VERSION_CODE:-$(git rev-list --count HEAD)}"
 
 rm -rf build && mkdir -p build/classes build/dex
 [ -f debug.keystore ] || keytool -genkeypair -keystore debug.keystore -storepass android \
@@ -19,7 +21,8 @@ rm -rf build && mkdir -p build/classes build/dex
 
 "$TOOLS/aapt2" compile --dir res -o build/res.zip
 "$TOOLS/aapt2" link --manifest AndroidManifest.xml -I "$JAR" -A assets build/res.zip \
-    --min-sdk-version 31 --target-sdk-version 35 -o build/base.apk --proguard build/rules.pro
+    --min-sdk-version 31 --target-sdk-version 35 --version-code "$CODE" --version-name "$CODE" \
+    -o build/base.apk --proguard build/rules.pro
 "$KOTLINC" -cp "$JAR" -jvm-target 17 -d build/classes src/demo/dex/*.kt
 java -cp "build/classes:$STDLIB" demo.dex.Dex assets
 # R8 drops the unused part of the Kotlin stdlib (2.8 MB of dex without it). Activities are kept by the rules aapt2

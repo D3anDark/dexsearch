@@ -34,6 +34,8 @@ class MainActivity : Activity() {
     private lateinit var resultList: AbsListView
     private lateinit var tileScroll: ScrollView
     private lateinit var content: LinearLayout
+    /** Published versionCode newer than this build, from [Update.check]; 0 when none. */
+    private var newer = 0
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
@@ -65,6 +67,11 @@ class MainActivity : Activity() {
         root.addView(resultList, fill)
         root.addView(tileScroll, fill)
         Ui.show(this, root)
+        // Also when restored: granting "install unknown apps" for an update restarts the process.
+        Update.check(this) { code ->
+            newer = code
+            refresh()
+        }
     }
 
     /** The workspace switch, in the game card: a workspace is what that card shows, its game and caught marks. */
@@ -91,6 +98,9 @@ class MainActivity : Activity() {
     private fun refresh() {
         game = Ui.game(this)
         content.removeAllViews()
+        if (newer > 0) content.addView(tile(L.t("Update available"), words(L.f("Version %d. Tap to download and install.", newer)), "grass") {
+            Update.install(this, newer)
+        }, Ui.wide(this, 0, 12))
         val banner = GamesActivity.card(this, game, L.t("Change game"), caught(), spacePill()) {
             startActivity(Intent(this, GamesActivity::class.java))
         }
@@ -223,7 +233,9 @@ class MainActivity : Activity() {
     }
 
     /** Neutral tile washed in `type`'s color, title over a [count] or [words] line. */
-    private fun tile(title: String, line: (Int) -> CharSequence, type: String, open: Intent): View {
+    private fun tile(title: String, line: (Int) -> CharSequence, type: String, open: Intent): View = tile(title, line, type) { startActivity(open) }
+
+    private fun tile(title: String, line: (Int) -> CharSequence, type: String, tap: () -> Unit): View {
         val color = Ui.color(type)
         val t = Ui.vertical(this)
         t.background = Ui.pressable(this, Ui.rounded(this, Ui.tonal(color), 18), 18)
@@ -231,7 +243,7 @@ class MainActivity : Activity() {
         t.addView(Ui.text(this, title, 15, true))
         t.addView(Ui.text(this, line(color), 14, false),
             Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 2, 0, 0))
-        t.setOnClickListener { startActivity(open) }
+        t.setOnClickListener { tap() }
         return t
     }
 

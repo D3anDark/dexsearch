@@ -1,8 +1,8 @@
 # DexSearch
 
 Offline Pokédex and team builder for Android. Every Pokémon, form, move, ability and held item from Gen 1 to Gen 9,
-per-game Pokédexes and TMs, type chart, Smogon sets, teams exported for Showdown. No network permission: all data
-ships in `assets/`.
+per-game Pokédexes and TMs, type chart, Smogon sets, teams exported for Showdown. All data ships in `assets/`; the
+network is used only to check for and download updates.
 
 UI languages: English, Polski, Español, 日本語.
 
@@ -16,7 +16,20 @@ Needs the Android SDK (platform `android-36`, build-tools `36.0.0`), JDK 17+ and
 adb install -r dexsearch.apk
 ```
 
-The build runs a data self-check (`demo.dex.Dex`) before packaging.
+The build runs a data self-check (`demo.dex.Dex`) before packaging. The versionCode is the commit count
+(`VERSION_CODE=n ./build.sh` overrides it).
+
+## Updates
+
+`./publish.sh` builds the committed state, pushes it and creates release `v<versionCode>` with the APK. The release
+starts `.github/workflows/pages.yml`, which puts `dexsearch.apk` and `version` on GitHub Pages
+(`https://d3andark.github.io/dexsearch/`, set as `Update.BASE`). The app reads `version` on launch and, when it is
+newer, offers the update on the home screen. Once: in repository Settings > Pages, set Source to "GitHub Actions".
+
+On the phone the first update asks to allow "Install unknown apps" for DexSearch and to confirm; later ones install
+without the system's confirm (Android 14+ via `UPDATE_PACKAGES_WITHOUT_USER_ACTION`). Google Play Protect still asks
+about every new APK, since it has not seen it: "More details", then "Install without scanning". Updates must be
+signed with the same `debug.keystore`, so keep it.
 
 ## Data
 

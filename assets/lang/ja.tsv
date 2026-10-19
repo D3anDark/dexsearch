@@ -311,3 +311,9 @@ Swap %s	%sを入れ替え
 Swap sides	攻守を入れ替え
 They share these weaknesses, so one adds little. Swap it for a Pokémon that covers them.	弱点が重なっているので、片方はあまり役に立ちません。弱点をカバーできるポケモンに入れ替えましょう。
 Two Pokémon side by side	ポケモン2匹を並べて比較
+Update available	アップデートがあります
+Version %d. Tap to download and install.	バージョン %d。タップしてダウンロードしてインストール。
+Version %d	バージョン %d
+Downloading: %d%%	ダウンロード中：%d%%
+Installing	インストール中
+Update failed: %s	アップデートに失敗しました：%s
