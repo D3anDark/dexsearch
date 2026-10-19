@@ -65,6 +65,20 @@ class MemberActivity : Activity() {
         root.setPadding(0, 0, 0, Ui.dp(this, 16))
         root.addView(hero(m, color))
 
+        val actions = LinearLayout(this)
+        val k = team.members.indexOf(x)
+        Ui.addChip(actions, Ui.chip(this, L.t("Swap")) {
+            TeamActivity.pick(this, dex, team, k, L.f("Swap %s", m.name)) { new ->
+                x = TeamsActivity.member(new).also { it.level = x.level }
+                team.members[k] = x
+                render()
+            }
+        })
+        Ui.addChip(actions, Ui.chip(this, L.t("Compare")) { CompareActivity.open(this, m.num, game.id) })
+        Ui.addChip(actions, Ui.chip(this, L.t("Damage calc")) { CalcActivity.open(this, teams.indexOf(team), k) })
+        root.addView(Ui.chipBar(this, actions), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 12, 0, 0))
+
         // Devolve, forms, then each evolution in this game; moves, item and stats carry over.
         val forms = dex.family(m).filter { it === m || game.byNum.containsKey(it.num) }
         val from = dex.evo(m.num)?.from?.takeIf { game.byNum.containsKey(it) }?.let { dex.mon(it) }
@@ -79,7 +93,7 @@ class MemberActivity : Activity() {
             }
             for (e in into) Ui.addChip(chips, Ui.chip(this, L.f("Evolve into %s", e.name)) { setForm(e) })
             root.addView(Ui.chipBar(this, chips), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 12, 0, 0))
+                ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 8, 0, 0))
         }
 
         root.addView(details(m), Ui.wide(this, 12, 0))
@@ -88,19 +102,9 @@ class MemberActivity : Activity() {
 
         val remove = Ui.chip(this, L.t("Remove from team")) { remove(m) }
         remove.setTextColor(if (Ui.night) 0xFFFF8A65.toInt() else Ui.ACCENT)
-        val actions = LinearLayout(this)
-        val k = team.members.indexOf(x)
-        Ui.addChip(actions, Ui.chip(this, L.t("Swap")) {
-            TeamActivity.pick(this, dex, team, k, L.f("Swap %s", m.name)) { new ->
-                x = TeamsActivity.member(new).also { it.level = x.level }
-                team.members[k] = x
-                render()
-            }
-        })
-        Ui.addChip(actions, Ui.chip(this, L.t("Compare")) { CompareActivity.open(this, m.num, game.id) })
-        Ui.addChip(actions, Ui.chip(this, L.t("Damage calc")) { CalcActivity.open(this, teams.indexOf(team), k) })
-        Ui.addChip(actions, remove)
-        root.addView(Ui.chipBar(this, actions))
+        val last = LinearLayout(this)
+        Ui.addChip(last, remove)
+        root.addView(Ui.chipBar(this, last))
 
         val s = ScrollView(this)
         s.addView(root)
@@ -257,8 +261,8 @@ class MemberActivity : Activity() {
         for (i in 0 until Team.MOVES) {
             val row = Ui.row(this)
             val id = x.moves[i]
-            Ui.bind(row, if (id == 0) Ui.Item(0, "${i + 1}", L.t("Empty slot"), L.t("Tap to choose a move"), emptyList(), "")
-                         else Ui.Item.move(dex.move(game, id), "${i + 1}"))
+            Ui.bind(row, if (id == 0) Ui.Item(0, "", L.t("Empty slot"), L.t("Tap to choose a move"), emptyList(), "")
+                         else Ui.Item.move(dex.move(game, id), ""))
             row.setOnClickListener { pickMove(m, i) }
             p.addView(row)
         }

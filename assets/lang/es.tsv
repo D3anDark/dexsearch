@@ -49,20 +49,14 @@ Change game	Cambiar juego
 Team builder	Creador de equipos
 Plan a team	Planifica un equipo
 Teams: %d	Equipos: %d
-%d moves	%d movimientos
 TMs	MT
 Pick a game	Elige un juego
 None here	No hay
-%d machines	%d máquinas
-%d abilities	%d habilidades
 Items	Objetos
 Search items	Buscar objetos
 Items: %d of %d	Objetos: %d de %d
-%d items	%d objetos
 Type chart	Tabla de tipos
-%d types	%d tipos
 Natures	Naturalezas
-%d natures	%d naturalezas
 Pokédex	Pokédex
 %d of %d caught	Capturados: %d de %d
 Nothing found	Sin resultados
@@ -272,9 +266,8 @@ Previous: %s	Anterior: %s
 Next: %s	Siguiente: %s
 Forms and looks	Formas y aspectos
 Show all (%d)	Mostrar todo (%d)
-%d to %d HP	%d a %d PS
-%d%% to %d%% of %d HP	%d%% a %d%% de %d PS
-%s %d against %s %d	%s %d contra %s %d
+%d to %d of %d HP	%d a %d de %d PS
+%d%% to %d%%	%d%% a %d%%
 %s and %s overlap	%s y %s se solapan
 %s has no base power: status moves and fixed damage such as Seismic Toss are not calculated.	%s no tiene potencia base: los movimientos de estado y el daño fijo, como Sísmico, no se calculan.
 Attacker	Atacante
@@ -288,7 +281,7 @@ Damage	Daño
 Damage calc	Calculadora de daño
 Defender	Defensor
 Devolve to %s	Volver a %s
-Effectiveness %s	Eficacia %s
+Effectiveness	Efectividad
 Evolve into %s	Evolucionar a %s
 Faints in %d hits	Se debilita en %d golpes
 Faints in %d to %d hits	Se debilita en %d a %d golpes
@@ -298,21 +291,15 @@ Hold a Pokémon to swap it for another.	Mantén pulsado un Pokémon para cambiar
 Its moves	Sus movimientos
 Lowest base stat total	Total mínimo de características base
 Move	Movimiento
-Move: %s	Movimiento: %s
 No effect	No afecta
-Not its type	No es de su tipo
-One move, lowest to highest roll	Un movimiento, de la tirada más baja a la más alta
-Power %d	Potencia %d
-Same type x1.5	Mismo tipo x1,5
+Same type	Mismo tipo
 Suggested	Sugeridos
 Suggestions	Sugerencias
 Swap	Cambiar
 Swap %s	Cambiar a %s
 Swap sides	Intercambiar lados
 They share these weaknesses, so one adds little. Swap it for a Pokémon that covers them.	Comparten estas debilidades, así que uno aporta poco. Cámbialo por un Pokémon que las cubra.
-Two Pokémon side by side	Dos Pokémon lado a lado
 Update available	Actualización disponible
-Version %d. Tap to download and install.	Versión %d. Toca para descargar e instalar.
 Version %d	Versión %d
 Downloading: %d%%	Descargando: %d%%
 Installing	Instalando

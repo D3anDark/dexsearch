@@ -49,20 +49,14 @@ Change game	Zmień grę
 Team builder	Kreator drużyn
 Plan a team	Zaplanuj drużynę
 Teams: %d	Drużyny: %d
-%d moves	Ruchy: %d
 TMs	TM-y
 Pick a game	Wybierz grę
 None here	Brak w tej grze
-%d machines	Maszyny: %d
-%d abilities	Zdolności: %d
 Items	Przedmioty
 Search items	Szukaj przedmiotów
 Items: %d of %d	Przedmioty: %d z %d
-%d items	Przedmioty: %d
 Type chart	Tabela typów
-%d types	Typy: %d
 Natures	Natury
-%d natures	Natury: %d
 Pokédex	Pokédex
 %d of %d caught	Złapane: %d z %d
 Nothing found	Nic nie znaleziono
@@ -272,9 +266,8 @@ Previous: %s	Poprzedni: %s
 Next: %s	Następny: %s
 Forms and looks	Formy i wygląd
 Show all (%d)	Pokaż wszystkie (%d)
-%d to %d HP	%d do %d PS
-%d%% to %d%% of %d HP	%d%% do %d%% z %d PS
-%s %d against %s %d	%s %d przeciw %s %d
+%d to %d of %d HP	%d do %d z %d PS
+%d%% to %d%%	%d%% do %d%%
 %s and %s overlap	%s i %s się dublują
 %s has no base power: status moves and fixed damage such as Seismic Toss are not calculated.	%s nie ma mocy bazowej: ruchy statusowe i stałe obrażenia (np. Seismic Toss) nie są liczone.
 Attacker	Atakujący
@@ -288,7 +281,7 @@ Damage	Obrażenia
 Damage calc	Kalkulator obrażeń
 Defender	Broniący
 Devolve to %s	Cofnij do %s
-Effectiveness %s	Skuteczność %s
+Effectiveness	Skuteczność
 Evolve into %s	Ewoluuj w %s
 Faints in %d hits	Pada po %d ciosach
 Faints in %d to %d hits	Pada po %d do %d ciosach
@@ -298,21 +291,15 @@ Hold a Pokémon to swap it for another.	Przytrzymaj Pokémona, by go zamienić.
 Its moves	Jego ruchy
 Lowest base stat total	Minimalna suma statystyk
 Move	Ruch
-Move: %s	Ruch: %s
 No effect	Brak efektu
-Not its type	Nie jego typ
-One move, lowest to highest roll	Jeden ruch, od najniższego do najwyższego rzutu
-Power %d	Moc %d
-Same type x1.5	Ten sam typ x1,5
+Same type	Ten sam typ
 Suggested	Propozycje
 Suggestions	Propozycje
 Swap	Zamień
 Swap %s	Zamień: %s
 Swap sides	Zamień strony
 They share these weaknesses, so one adds little. Swap it for a Pokémon that covers them.	Mają te same słabości, więc jeden niewiele wnosi. Zamień go na Pokémona, który je pokrywa.
-Two Pokémon side by side	Dwa Pokémony obok siebie
 Update available	Dostępna aktualizacja
-Version %d. Tap to download and install.	Wersja %d. Dotknij, by pobrać i zainstalować.
 Version %d	Wersja %d
 Downloading: %d%%	Pobieranie: %d%%
 Installing	Instalowanie

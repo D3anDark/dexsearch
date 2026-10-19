@@ -49,20 +49,14 @@ Change game	ゲームを変更
 Team builder	パーティ作成
 Plan a team	パーティを考える
 Teams: %d	パーティ %d
-%d moves	わざ %d
 TMs	わざマシン
 Pick a game	ゲームを選択
 None here	なし
-%d machines	%d個
-%d abilities	とくせい %d
 Items	もちもの
 Search items	もちものを検索
 Items: %d of %d	もちもの %d / %d
-%d items	もちもの %d
 Type chart	タイプ相性
-%d types	%dタイプ
 Natures	せいかく
-%d natures	%d種類
 Pokédex	図鑑
 %d of %d caught	捕獲 %d / %d
 Nothing found	見つかりません
@@ -272,9 +266,8 @@ Previous: %s	前: %s
 Next: %s	次: %s
 Forms and looks	フォルムとすがた
 Show all (%d)	すべて表示 (%d)
-%d to %d HP	%d～%d HP
-%d%% to %d%% of %d HP	%3$d HPのうち%1$d%%～%2$d%%
-%s %d against %s %d	%s %d 対 %s %d
+%d to %d of %d HP	%3$d HPのうち%1$d～%2$d
+%d%% to %d%%	%d%%～%d%%
 %s and %s overlap	%sと%sが重複
 %s has no base power: status moves and fixed damage such as Seismic Toss are not calculated.	%sには威力がありません。変化技やちきゅうなげのような固定ダメージは計算しません。
 Attacker	攻撃側
@@ -288,7 +281,7 @@ Damage	ダメージ
 Damage calc	ダメージ計算
 Defender	防御側
 Devolve to %s	%sに戻す
-Effectiveness %s	相性 %s
+Effectiveness	相性
 Evolve into %s	%sに進化
 Faints in %d hits	%d発で倒れる
 Faints in %d to %d hits	%d～%d発で倒れる
@@ -298,21 +291,15 @@ Hold a Pokémon to swap it for another.	ポケモンを長押しで入れ替え
 Its moves	覚えているわざ
 Lowest base stat total	種族値合計の下限
 Move	わざ
-Move: %s	わざ: %s
 No effect	効果なし
-Not its type	タイプ不一致
-One move, lowest to highest roll	わざ1つ、最低乱数から最高乱数まで
-Power %d	威力 %d
-Same type x1.5	タイプ一致 ×1.5
+Same type	タイプ一致
 Suggested	おすすめ
 Suggestions	おすすめ
 Swap	入れ替え
 Swap %s	%sを入れ替え
 Swap sides	攻守を入れ替え
 They share these weaknesses, so one adds little. Swap it for a Pokémon that covers them.	弱点が重なっているので、片方はあまり役に立ちません。弱点をカバーできるポケモンに入れ替えましょう。
-Two Pokémon side by side	ポケモン2匹を並べて比較
 Update available	アップデートがあります
-Version %d. Tap to download and install.	バージョン %d。タップしてダウンロードしてインストール。
 Version %d	バージョン %d
 Downloading: %d%%	ダウンロード中：%d%%
 Installing	インストール中

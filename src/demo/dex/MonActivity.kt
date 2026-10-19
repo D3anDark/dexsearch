@@ -609,22 +609,7 @@ class MonActivity : Activity() {
         row.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 4))
         row.addView(Ui.muted(this, label, 14), LinearLayout.LayoutParams(Ui.dp(this, 48), ViewGroup.LayoutParams.WRAP_CONTENT))
         row.addView(Ui.text(this, value.toString(), 14, true), LinearLayout.LayoutParams(Ui.dp(this, 44), ViewGroup.LayoutParams.WRAP_CONTENT))
-        if (bar) {
-            val track = LinearLayout(this)
-            track.background = Ui.rounded(this, Ui.FILL, 999)
-            track.weightSum = 255f
-            val fill = View(this)
-            val c = when {
-                value < 50 -> 0xFFF34444
-                value < 80 -> 0xFFFF7F0F
-                value < 100 -> 0xFFFFC107
-                value < 120 -> 0xFFA0E515
-                else -> 0xFF23CD5E
-            }
-            fill.background = Ui.rounded(this, c.toInt(), 999)
-            track.addView(fill, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, value.toFloat()))
-            row.addView(track, LinearLayout.LayoutParams(0, Ui.dp(this, 8), 1f))
-        }
+        if (bar) row.addView(bar(this, value, Gravity.START), LinearLayout.LayoutParams(0, Ui.dp(this, 8), 1f))
         return row
     }
 
@@ -799,6 +784,25 @@ class MonActivity : Activity() {
                 col.addView(Ui.typePills(a, hit, perRow))
             }
             return col
+        }
+
+        /** Rounded track filled to a base stat out of 255 (the highest possible) in its tier's color; END fills from the end side. */
+        fun bar(c: Context, value: Int, gravity: Int): LinearLayout {
+            val track = LinearLayout(c)
+            track.background = Ui.rounded(c, Ui.FILL, 999)
+            track.weightSum = 255f
+            track.gravity = gravity
+            val fill = View(c)
+            val color = when {
+                value < 50 -> 0xFFF34444
+                value < 80 -> 0xFFFF7F0F
+                value < 100 -> 0xFFFFC107
+                value < 120 -> 0xFFA0E515
+                else -> 0xFF23CD5E
+            }
+            fill.background = Ui.rounded(c, color.toInt(), 999)
+            track.addView(fill, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, value.toFloat()))
+            return track
         }
 
         private val DEFENSE = intArrayOf(400, 200, 50, 25, 0)

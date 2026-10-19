@@ -2,6 +2,7 @@ package demo.dex
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Paint
 import android.graphics.Typeface
 import android.os.Bundle
 import android.text.SpannableString
@@ -10,6 +11,7 @@ import android.text.TextUtils
 import android.text.style.ForegroundColorSpan
 import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -23,8 +25,9 @@ import android.widget.TextView
 
 /**
  * Home: title with Settings, one search box across Pokémon, moves, abilities, items and types, then the selected
- * game's card opening its Pokédex, a team builder card and two-column reference tiles. Sized to fit 360 x 780 dp
- * without scrolling; larger fonts scroll.
+ * game's card opening its Pokédex, a team builder card with Compare and Damage calc, and three-column reference tiles.
+ * The page fills the screen without scrolling at 360 x 640 dp and up, an update banner included: the game card and
+ * the tiles share the height left over. Only what cannot fit (landscape, the largest fonts) scrolls.
  */
 class MainActivity : Activity() {
     private val results = Ui.Adapter()
@@ -50,8 +53,9 @@ class MainActivity : Activity() {
             if (ref is Dex.Mon) Ui.openMon(this, ref.num, Ui.nums(results.items())) else Ui.open(this, ref)
         }
         content = Ui.vertical(this)
-        content.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 16))
+        content.setPadding(0, 0, 0, Ui.dp(this, 4))
         tileScroll = ScrollView(this)
+        tileScroll.isFillViewport = true
         tileScroll.addView(content)
 
         val head = LinearLayout(this)
@@ -98,27 +102,25 @@ class MainActivity : Activity() {
     private fun refresh() {
         game = Ui.game(this)
         content.removeAllViews()
-        if (newer > 0) content.addView(tile(L.t("Update available"), words(L.f("Version %d. Tap to download and install.", newer)), "grass") {
-            Update.install(this, newer)
-        }, Ui.wide(this, 0, 12))
+        if (newer > 0) content.addView(update(), Ui.wide(this, 0, 10))
         val banner = GamesActivity.card(this, game, L.t("Change game"), caught(), spacePill()) {
             startActivity(Intent(this, GamesActivity::class.java))
         }
         banner.setOnClickListener { startActivity(Intent(this, PokedexActivity::class.java)) }
-        content.addView(banner, Ui.wide(this, 0, 12))
+        content.addView(banner, grow(12))
         content.addView(teams(), Ui.wide(this, 0, 12))
 
         val tms = dex.tmGame(game)
-        tiles(tile(L.t("Moves"), count(L.f("%d moves", dex.moves(game).size)), "fire", Intent(this, MovesActivity::class.java)),
-            if (tms.virtual) tile(L.t("TMs"), words(L.t("Pick a game")), "water", Intent(this, GamesActivity::class.java))
-            else tile(L.t("TMs"), if (tms.tms.isEmpty()) words(L.t("None here")) else count(L.f("%d machines", tms.tms.size)), "water",
-                Intent(this, MovesActivity::class.java).putExtra("tm", true)))
-        tiles(tile(L.t("Abilities"), count(L.f("%d abilities", dex.abilities.size)), "psychic", Intent(this, AbilitiesActivity::class.java)),
-            tile(L.t("Items"), count(L.f("%d items", dex.items.size)), "electric", Intent(this, ItemsActivity::class.java)))
-        tiles(tile(L.t("Type chart"), count(L.f("%d types", dex.types(game).size)), "dragon", Intent(this, TypeChartActivity::class.java)),
-            tile(L.t("Natures"), count(L.f("%d natures", dex.natures.size)), "ground", Intent(this, NaturesActivity::class.java)))
-        tiles(tile(L.t("Compare"), words(L.t("Two Pokémon side by side")), "steel", Intent(this, CompareActivity::class.java)),
-            tile(L.t("Damage calc"), words(L.t("One move, lowest to highest roll")), "fighting", Intent(this, CalcActivity::class.java)))
+        val names = arrayOf(L.t("Moves"), L.t("TMs"), L.t("Abilities"), L.t("Items"), L.t("Type chart"), L.t("Natures"))
+        val sp = titleSize(names)
+        tiles(tile(names[0], sp, count(dex.moves(game).size), "fire", Intent(this, MovesActivity::class.java)),
+            if (tms.virtual) tile(names[1], sp, words(L.t("Pick a game")), "water", Intent(this, GamesActivity::class.java))
+            else tile(names[1], sp, if (tms.tms.isEmpty()) words(L.t("None here")) else count(tms.tms.size), "water",
+                Intent(this, MovesActivity::class.java).putExtra("tm", true)),
+            tile(names[2], sp, count(dex.abilities.size), "psychic", Intent(this, AbilitiesActivity::class.java)))
+        tiles(tile(names[3], sp, count(dex.items.size), "electric", Intent(this, ItemsActivity::class.java)),
+            tile(names[4], sp, count(dex.types(game).size), "dragon", Intent(this, TypeChartActivity::class.java)),
+            tile(names[5], sp, count(dex.natures.size), "ground", Intent(this, NaturesActivity::class.java)))
         searchChanged()
     }
 
@@ -175,27 +177,26 @@ class MainActivity : Activity() {
         return v
     }
 
-    /** Wide tile: team count and the newest team's members, the one most likely being built. */
+    /**
+     * Team builder across the page: team count and the newest team's members, the one most likely being built, on the
+     * right; below, Compare and Damage calc, the tools used while building. Sprites decode at 128 px, 64 KB each, on
+     * every return to this screen (the style may have changed).
+     */
     private fun teams(): View {
         val teams = TeamsActivity.load(this)
         val color = Ui.color("fighting")
+        val card = Ui.vertical(this)
+        card.background = Ui.pressable(this, Ui.rounded(this, Ui.tonal(color), 18), 18)
+        card.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 12))
+        card.setOnClickListener { startActivity(Intent(this, TeamsActivity::class.java)) }
+
         val texts = Ui.vertical(this)
         texts.addView(Ui.text(this, L.t("Team builder"), 15, true))
         val line = if (teams.isEmpty()) words(L.t("Plan a team")) else count(L.f("Teams: %d", teams.size))
         texts.addView(Ui.text(this, line(color), 14, false),
             Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 2, 0, 0))
-        val members = teams.lastOrNull { it.members.isNotEmpty() }?.members ?: emptyList()
-        return wide(color, Intent(this, TeamsActivity::class.java), texts, members.map { it.num }, 44)
-    }
-
-    /**
-     * Tile across the page washed in `color`: `texts` on the left, the `nums` sprites overlapping on the right at
-     * `size` dp. Sprites decode at 128 px, 64 KB each, on every return to this screen (the style may have changed).
-     */
-    private fun wide(color: Int, open: Intent, texts: LinearLayout, nums: List<Int>, size: Int): View {
-        val f = FrameLayout(this)
-        f.background = Ui.pressable(this, Ui.rounded(this, Ui.tonal(color), 18), 18)
-        f.setOnClickListener { startActivity(open) }
+        val nums = teams.lastOrNull { it.members.isNotEmpty() }?.members?.map { it.num } ?: emptyList()
+        val size = 44
         val art = LinearLayout(this)
         art.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
         for ((k, num) in nums.withIndex()) {
@@ -203,13 +204,35 @@ class MainActivity : Activity() {
             img.setImageDrawable(Ui.sprite(this, num, 2))
             art.addView(img, Ui.margins(Ui.dp(this, size), Ui.dp(this, size), this, if (k == 0) 0 else -14, 0, 0, 0))
         }
-        f.addView(art, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-            Gravity.END or Gravity.CENTER_VERTICAL).apply { marginEnd = Ui.dp(this@MainActivity, 10) })
-        texts.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 16), Ui.dp(this, 12))
-        val artWidth = if (nums.isEmpty()) 0 else 10 + size + (size - 14) * (nums.size - 1)
-        f.addView(texts, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            .apply { marginEnd = Ui.dp(this@MainActivity, artWidth) })
-        return f
+        val top = FrameLayout(this)
+        top.addView(art, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+            Gravity.END or Gravity.CENTER_VERTICAL))
+        val artWidth = if (nums.isEmpty()) 0 else 8 + size + (size - 14) * (nums.size - 1)
+        top.addView(texts, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+            Gravity.CENTER_VERTICAL).apply { marginEnd = Ui.dp(this@MainActivity, artWidth) })
+        card.addView(top)
+
+        val tools = LinearLayout(this)
+        tools.addView(Ui.chip(this, L.t("Compare")) { startActivity(Intent(this, CompareActivity::class.java)) })
+        tools.addView(Ui.chip(this, L.t("Damage calc")) { startActivity(Intent(this, CalcActivity::class.java)) },
+            Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 8, 0, 0, 0))
+        card.addView(tools, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 10, 0, 0))
+        return card
+    }
+
+    /** One line washed in green: the published version; a tap downloads and installs it. */
+    private fun update(): View {
+        val color = Ui.color("grass")
+        val head = L.t("Update available")
+        val s = head + "  " + L.f("Version %d", newer)
+        val t = Ui.text(this, big(s, head.length, s.length, color, 1f), 15, true)
+        t.background = Ui.pressable(this, Ui.rounded(this, Ui.tonal(color), 18), 18)
+        t.setPadding(Ui.dp(this, 16), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12))
+        val more = Ui.Chevron(Ui.ink(color), false)
+        more.setBounds(0, 0, Ui.dp(this, 10), Ui.dp(this, 10))
+        t.setCompoundDrawablesRelative(null, null, more, null)
+        t.setOnClickListener { Update.install(this, newer) }
+        return t
     }
 
     /** 6 dp white bar, `done` of `total` filled. */
@@ -223,31 +246,61 @@ class MainActivity : Activity() {
         return track
     }
 
+    /** Full width minus the side margins, `bottom` dp below, plus an equal share of the height the page has left. */
+    private fun grow(bottom: Int): LinearLayout.LayoutParams =
+        Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 16, 0, 16, bottom).apply { weight = 1f }
+
     private fun tiles(vararg views: View) {
         val row = LinearLayout(this)
         for ((k, v) in views.withIndex()) {
             row.addView(v, Ui.margins(0, ViewGroup.LayoutParams.MATCH_PARENT, this, if (k == 0) 0 else 6, 0,
                 if (k == views.size - 1) 0 else 6, 0).apply { weight = 1f })
         }
-        content.addView(row, Ui.wide(this, 0, 12))
+        content.addView(row, grow(12))
     }
 
-    /** Neutral tile washed in `type`'s color, title over a [count] or [words] line. */
-    private fun tile(title: String, line: (Int) -> CharSequence, type: String, open: Intent): View = tile(title, line, type) { startActivity(open) }
-
-    private fun tile(title: String, line: (Int) -> CharSequence, type: String, tap: () -> Unit): View {
+    /** Neutral tile washed in `type`'s color: its title at `sp` up to two lines, a [count] or [words] at the bottom. */
+    private fun tile(title: String, sp: Float, line: (Int) -> CharSequence, type: String, open: Intent): View {
         val color = Ui.color(type)
         val t = Ui.vertical(this)
         t.background = Ui.pressable(this, Ui.rounded(this, Ui.tonal(color), 18), 18)
-        t.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12))
-        t.addView(Ui.text(this, title, 15, true))
-        t.addView(Ui.text(this, line(color), 14, false),
-            Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 2, 0, 0))
-        t.setOnClickListener { tap() }
+        t.setPadding(Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 12), Ui.dp(this, 10))
+        val name = Ui.text(this, title, 15, true)
+        name.textSize = sp
+        name.maxLines = 2
+        name.ellipsize = TextUtils.TruncateAt.END
+        t.addView(name)
+        // The line takes the spare height and sits at its bottom; a bare View spacer would claim the whole height
+        // when the page is first measured without a limit and squeeze the game card to nothing.
+        val bottom = Ui.text(this, line(color), 14, false)
+        bottom.gravity = Gravity.BOTTOM or Gravity.START
+        t.addView(bottom, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, 0, this, 0, 2, 0, 0).apply { weight = 1f })
+        t.setOnClickListener { startActivity(open) }
         return t
     }
 
-    /** "919 moves": the number at 1.6 times the size (22 sp, large text), bold, in the tile's ink, wherever the language puts it. */
+    /**
+     * Size of the tile titles: the largest from 15 down to 11 sp at which every word of every title fits a third of
+     * the width, so a long title wraps between words, never inside one.
+     */
+    private fun titleSize(titles: Array<String>): Float {
+        val m = resources.displayMetrics
+        val inner = (m.widthPixels - Ui.dp(this, 32 + 2 * 12)) / 3f - Ui.dp(this, 24)
+        val p = Paint()
+        p.typeface = Typeface.DEFAULT_BOLD
+        var sp = 15f
+        while (sp > 11f) {
+            p.textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, m)
+            if (titles.all { t -> t.split(' ').all { p.measureText(it) <= inner } }) break
+            sp--
+        }
+        return sp
+    }
+
+    /** A number at 1.6 times the size (22 sp, large text), bold, in the tile's ink. */
+    private fun count(n: Int): (Int) -> CharSequence = count(n.toString())
+
+    /** "Teams: 3": its number as in [count], wherever the language puts it. */
     private fun count(text: String): (Int) -> CharSequence = { color -> count(text, color) }
 
     private fun count(text: String, color: Int): CharSequence {

@@ -11,7 +11,10 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 
-/** Two Pokémon side by side: types, base stats with the higher one marked, type defenses and abilities. */
+/**
+ * Two Pokémon side by side: types, base stats on bars growing out from the middle, every attacking type that is not
+ * neutral on both with each side's multiplier, and abilities. The better value of each pair is marked.
+ */
 class CompareActivity : Activity() {
     private lateinit var dex: Dex
     private lateinit var game: Dex.Game
@@ -53,14 +56,21 @@ class CompareActivity : Activity() {
         val b = mons[1]
         if (a != null && b != null) {
             val stats = Ui.panel(this, L.t("Base stats"))
-            for (s in 0..Dex.STATS.size) {
-                val label = if (s < Dex.STATS.size) L.t(Dex.STATS[s]) else L.t("Total")
-                stats.addView(statRow(label, if (s < Dex.STATS.size) a.stats[s] else a.bst, if (s < Dex.STATS.size) b.stats[s] else b.bst))
-            }
+            for (s in Dex.STATS.indices) stats.addView(sides(label(L.t(Dex.STATS[s])), a.stats[s], b.stats[s], a.stats[s].toString(),
+                b.stats[s].toString(), true))
+            stats.addView(sides(label(L.t("Total")), a.bst, b.bst, a.bst.toString(), b.bst.toString(), false))
             root.addView(stats, Ui.wide(this, 0, 12))
 
             val defenses = Ui.panel(this, L.t("Type defenses"))
-            defenses.addView(pair(this, MonActivity.defenses(this, dex, game, a, 2), MonActivity.defenses(this, dex, game, b, 2), 12))
+            val ta = dex.types(game, a)
+            val tb = dex.types(game, b)
+            for (t in dex.types(game)) {
+                val fa = dex.factor(game, t, ta)
+                val fb = dex.factor(game, t, tb)
+                if (fa == 100 && fb == 100) continue
+                // Less damage taken is better, so the values go in negated.
+                defenses.addView(sides(Ui.pill(this, t), -fa, -fb, CalcActivity.effect(fa), CalcActivity.effect(fb), false))
+            }
             root.addView(defenses, Ui.wide(this, 0, 12))
 
             val abilities = Ui.panel(this, L.t("Abilities"))
@@ -89,21 +99,35 @@ class CompareActivity : Activity() {
         return h
     }
 
-    /** Both values around the stat's name, the higher one bold in the natures' "raised" color. */
-    private fun statRow(label: String, a: Int, b: Int): View {
+    private fun label(s: String): View {
+        val t = Ui.muted(this, s, 14)
+        t.gravity = Gravity.CENTER
+        return t
+    }
+
+    /**
+     * `shownA` at the start edge and `shownB` at the end edge with `middle` between them; base-stat `bars` grow out from
+     * the middle. The higher of `a` and `b` is bold in the natures' "raised" color.
+     */
+    private fun sides(middle: View, a: Int, b: Int, shownA: String, shownB: String, bars: Boolean): View {
         val row = LinearLayout(this)
         row.gravity = Gravity.CENTER_VERTICAL
-        row.setPadding(0, Ui.dp(this, 3), 0, Ui.dp(this, 3))
+        row.setPadding(0, Ui.dp(this, if (bars) 4 else 5), 0, Ui.dp(this, if (bars) 4 else 5))
+        val wrap = ViewGroup.LayoutParams.WRAP_CONTENT
         for ((k, v) in listOf(a, b).withIndex()) {
-            val higher = v > (if (k == 0) b else a)
-            val t = Ui.text(this, v.toString(), 15, higher)
-            if (higher) t.setTextColor(Ui.UP)
-            t.gravity = if (k == 0) Gravity.END else Gravity.START
-            row.addView(t, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            val better = v > (if (k == 0) b else a)
+            val t = Ui.text(this, if (k == 0) shownA else shownB, 15, better)
+            if (better) t.setTextColor(Ui.UP)
+            t.gravity = if (k == 0) Gravity.START else Gravity.END
+            val space = if (bars) MonActivity.bar(this, v, if (k == 0) Gravity.END else Gravity.START) else View(this)
+            val spaceLp = Ui.margins(0, if (bars) Ui.dp(this, 8) else 0, this, 8, 0, 8, 0).apply { weight = 1f }
             if (k == 0) {
-                val name = Ui.muted(this, label, 14)
-                name.gravity = Gravity.CENTER
-                row.addView(name, LinearLayout.LayoutParams(Ui.dp(this, 72), ViewGroup.LayoutParams.WRAP_CONTENT))
+                row.addView(t, LinearLayout.LayoutParams(Ui.dp(this, 40), wrap))
+                row.addView(space, spaceLp)
+                row.addView(middle, LinearLayout.LayoutParams(Ui.dp(this, 80), wrap))
+            } else {
+                row.addView(space, spaceLp)
+                row.addView(t, LinearLayout.LayoutParams(Ui.dp(this, 40), wrap))
             }
         }
         return row

@@ -9,7 +9,6 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.TextView
 
 /**
  * Damage of one move from an attacker to a defender, each a team member or a new one at level 50 with neutral stats.
@@ -19,7 +18,7 @@ class CalcActivity : Activity() {
     private lateinit var dex: Dex
     private lateinit var game: Dex.Game
     private lateinit var heads: LinearLayout
-    private lateinit var moveChip: TextView
+    private lateinit var moveRow: View
     private lateinit var out: LinearLayout
     /** Attacker and defender, null until picked. */
     private val sides = arrayOfNulls<Team.Member>(2)
@@ -36,22 +35,29 @@ class CalcActivity : Activity() {
         val root = Ui.vertical(this)
         root.setPadding(0, 0, 0, Ui.dp(this, 16))
         root.addView(Ui.title(this, L.t("Damage calc")))
-        val sub = Ui.muted(this, game.name + "\n" + L.t("Gen 5 and later formula. Not counted: abilities, items, weather, critical hits, stat changes and burns."), 14)
+        val sub = Ui.muted(this, game.name, 14)
         sub.setPadding(Ui.dp(this, 16), 0, Ui.dp(this, 16), Ui.dp(this, 12))
         root.addView(sub)
         heads = Ui.vertical(this)
         root.addView(heads, Ui.wide(this, 0, 12))
         val chips = LinearLayout(this)
-        moveChip = Ui.chip(this, "") { pickMove() }
-        Ui.chipActive(moveChip, true)
-        Ui.addChip(chips, moveChip)
         Ui.addChip(chips, Ui.chip(this, L.t("Swap sides")) {
             sides.reverse()
             render()
         })
-        root.addView(Ui.chipBar(this, chips), Ui.wide(this, 0, 12))
+        root.addView(Ui.chipBar(this, chips), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 0, 12))
+        val moves = Ui.panel(this, L.t("Move"))
+        moves.setPadding(0, Ui.dp(this, 14), 0, Ui.dp(this, 8))
+        moves.getChildAt(0).setPadding(Ui.dp(this, 16), 0, Ui.dp(this, 16), Ui.dp(this, 4))
+        moveRow = Ui.row(this)
+        moveRow.setOnClickListener { pickMove() }
+        moves.addView(moveRow)
+        root.addView(moves, Ui.wide(this, 0, 12))
         out = Ui.panel(this, L.t("Damage"))
-        root.addView(out, Ui.wide(this, 0, 12))
+        root.addView(out, Ui.wide(this, 0, 8))
+        val note = Ui.muted(this, L.t("Gen 5 and later formula. Not counted: abilities, items, weather, critical hits, stat changes and burns."), 13)
+        note.setPadding(Ui.dp(this, 16), 0, Ui.dp(this, 16), 0)
+        root.addView(note)
         val scroll = ScrollView(this)
         scroll.addView(root)
         Ui.show(this, scroll)
@@ -86,7 +92,7 @@ class CalcActivity : Activity() {
     private fun render() {
         heads.removeAllViews()
         heads.addView(CompareActivity.pair(this, head(0), head(1), 12))
-        moveChip.text = if (move == 0) L.t("Choose a move") else L.f("Move: %s", dex.move(game, move).name)
+        Ui.bind(moveRow, if (move == 0) Ui.Item(0, "", L.t("Choose a move"), "", emptyList(), "") else Ui.Item.move(dex.move(game, move), ""))
         result()
     }
 
@@ -119,7 +125,7 @@ class CalcActivity : Activity() {
         return h
     }
 
-    /** Min to max damage, as HP and as a share of the defender's HP, hits to faint it and what went into it. */
+    /** Min to max damage as a share of the defender's HP, on a bar and in HP, hits to faint it and what went into it. */
     private fun result() {
         while (out.childCount > 1) out.removeViewAt(1)
         val a = sides[0]
@@ -141,8 +147,11 @@ class CalcActivity : Activity() {
         val stab = mv.type in dex.types(game, dex.mon(a.num))
         val hit = Team.damage(a.level, mv.power, atk, guard, stab, factor)
         val hp = def[0]
-        out.addView(Ui.text(this, L.f("%d to %d HP", hit[0], hit[1]), 22, true))
-        out.addView(Ui.text(this, L.f("%d%% to %d%% of %d HP", hit[0] * 100 / hp, hit[1] * 100 / hp, hp), 15, false))
+        val wrap = ViewGroup.LayoutParams.WRAP_CONTENT
+        out.addView(Ui.text(this, L.f("%d%% to %d%%", hit[0] * 100 / hp, hit[1] * 100 / hp), 30, true))
+        out.addView(hpBar(minOf(hit[0], hp), minOf(hit[1], hp), hp),
+            Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 10), this, 0, 8, 0, 8))
+        out.addView(Ui.text(this, L.f("%d to %d of %d HP", hit[0], hit[1], hp), 15, false))
         // At least 1 per hit unless immune, so only an immune defender has a 0 here.
         val fast = if (hit[1] == 0) 0 else (hp + hit[1] - 1) / hit[1]
         val slow = if (hit[0] == 0) 0 else (hp + hit[0] - 1) / hit[0]
@@ -152,19 +161,43 @@ class CalcActivity : Activity() {
             fast == slow -> L.f("Faints in %d hits", fast)
             else -> L.f("Faints in %d to %d hits", fast, slow)
         }
-        out.addView(Ui.text(this, ko, 15, true), Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 6, 0, 0))
-        val parts = listOf(
-            L.f("%s %d against %s %d", L.t(Dex.STATS[if (special) 3 else 1]), atk, L.t(Dex.STATS[if (special) 4 else 2]), guard),
-            L.f("Power %d", mv.power),
-            L.f("Effectiveness %s", EFFECT[factor] ?: "x${factor / 100.0}"),
-            if (stab) L.t("Same type x1.5") else L.t("Not its type"),
-        )
-        out.addView(Ui.muted(this, parts.joinToString("\n"), 14), Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 10, 0, 0))
+        out.addView(Ui.text(this, ko, 17, true), Ui.margins(wrap, wrap, this, 0, 4, 0, 10))
+        fact(L.t(Dex.STATS[if (special) 3 else 1]) + "  ·  " + dex.mon(a.num).name, atk.toString())
+        fact(L.t(Dex.STATS[if (special) 4 else 2]) + "  ·  " + dex.mon(d.num).name, guard.toString())
+        fact(L.t("Power"), mv.power.toString())
+        fact(L.t("Effectiveness"), effect(factor))
+        fact(L.t("Same type"), if (stab) "x1.5" else "x1")
+    }
+
+    private fun fact(label: String, value: String) {
+        val row = LinearLayout(this)
+        row.setPadding(0, Ui.dp(this, 4), 0, Ui.dp(this, 4))
+        row.addView(Ui.muted(this, label, 14), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        row.addView(Ui.text(this, value, 15, true))
+        out.addView(row)
+    }
+
+    /** The defender's HP as a track: the least damage solid, the most damage faint behind it, both from the start. */
+    private fun hpBar(least: Int, most: Int, hp: Int): View {
+        val track = LinearLayout(this)
+        track.background = Ui.rounded(this, Ui.FILL, 999)
+        track.weightSum = hp.toFloat()
+        val range = LinearLayout(this)
+        range.background = Ui.rounded(this, Ui.alpha(Ui.ACCENT, 0x66), 999)
+        range.weightSum = most.toFloat()
+        val sure = View(this)
+        sure.background = Ui.rounded(this, Ui.ACCENT, 999)
+        range.addView(sure, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, least.toFloat()))
+        track.addView(range, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, most.toFloat()))
+        return track
     }
 
     companion object {
         private val SIDES = arrayOf(L.k("Attacker"), L.k("Defender"))
         private val EFFECT = mapOf(0 to "x0", 25 to "x1/4", 50 to "x1/2", 100 to "x1", 200 to "x2", 400 to "x4")
+
+        /** A type multiplier in hundredths as shown: "x1/2", "x2". */
+        fun effect(factor: Int): String = EFFECT[factor] ?: "x${factor / 100.0}"
 
         /** `team` -1 for none; `member` of that team (-1 for none) attacks. */
         fun open(a: Activity, team: Int, member: Int) {
