@@ -330,6 +330,14 @@ What will %s evolve into?	W co ewoluuje %s?
 Tips count it as it is until you pick.	Do czasu wyboru wskazówki liczą go bez ewolucji.
 Pick evolution	Wybierz ewolucję
 Evolves into	Ewoluuje w
+Change evolution	Zmień ewolucję
+%s will evolve into %s	%s ewoluuje w %s
+Tips count its types once evolved.	Wskazówki liczą jego typy po ewolucji.
+Teach %s to %s?	Czy %2$s ma nauczyć się %1$s?
+Forgets	Zapomina
+Learns	Uczy się
+Swap %s for %s?	Zamienić %s na %s?
+%s goes to the Box. Its moves, item and stats are not kept.	%s trafia do Boxa. Ruchy, przedmiot i statystyki nie zostaną zachowane.
 %s can learn %s in place of %s.	%s może nauczyć się %s zamiast %s.
 %s can learn %s.	%s może nauczyć się %s.
 Teach %s	Naucz: %s

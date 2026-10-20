@@ -1631,13 +1631,13 @@ function teamScreen(p, ti) {
       open(q => memberScreen(q, ti, team.members.length - 1));
     });
     // The old one goes to the Box, as in the games' PC.
-    const replace = k => pick(k, L.f("Swap %s", d.mon(team.members[k].num).name), x => {
+    const replace = k => pick(k, L.f("Swap %s", d.mon(team.members[k].num).name), x => confirmSwap(g, d.mon(team.members[k].num), d.mon(x.num), () => {
       setCaught(team.members[k].num, true);
       x.level = team.members[k].level;
       team.members[k] = x;
       save();
       render();
-    });
+    }));
     const rename = () => askName(L.t("Team name"), team.name, s => {
       team.name = s;
       save();
@@ -1738,24 +1738,26 @@ function tips(team, g, add, replace, edited) {
       const move = d.move(g, t.move).name;
       f.querySelector('p').append(' ' + (x.moves[t.slot] ? L.f("%s can learn %s in place of %s.", mon, move, d.move(g, x.moves[t.slot]).name)
         : L.f("%s can learn %s.", mon, move)));
-      f.append(chip(L.f("Teach %s", move), () => {
+      f.append(chip(L.f("Teach %s", move), () => confirmTeach(g, mon, x, t.slot, t.move, () => {
         x.moves[t.slot] = t.move;
         edited();
-      }));
+      })));
     });
   }
   if (!team.attacks(d)) tip(L.t("No attacks yet"), L.t("Give your Pokémon damaging moves to see what nothing counters."), []);
   else if (!count) tip(L.t("No gaps"), L.t("Every type is resisted or hit super effectively, and none hits half the team."), []);
   const ends = team.members.map(x => team.evolved(d, g, x));
-  // Until picked, a branching Pokémon counts as it is: Eevee stays Normal.
+  // Until picked, a branching Pokémon counts as it is: Eevee stays Normal. The pick keeps its tip, to change it there.
+  const branching = new Set();
   team.members.forEach((x, i) => {
     const ways = team.branches(d, g, x);
-    if (!ways.length || ways.some(w => w.num === ends[i].num)) return;
-    tip(L.f("What will %s evolve into?", d.mon(x.num).name), L.t("Tips count it as it is until you pick."), [], L.t("Pick evolution"),
-      () => pickOne(L.t("Evolves into"), ways.map(w => w.name), -1, j => {
-        x.evo = ways[j].num;
-        edited();
-      }));
+    if (!ways.length) return;
+    branching.add(i);
+    const name = d.mon(x.num).name;
+    const into = ways.find(w => w.num === ends[i].num);
+    const pick = () => pickEvolution(team, g, x, edited);
+    if (into) tip(L.f("%s will evolve into %s", name, into.name), L.t("Tips count its types once evolved."), [], L.t("Change evolution"), pick);
+    else tip(L.f("What will %s evolve into?", name), L.t("Tips count it as it is until you pick."), [], L.t("Pick evolution"), pick);
   });
   // The lower base stat total once evolved is the one to swap: Noibat beside Garchomp, but Gible beside Noivern.
   for (const o of team.overlaps(d)) {
@@ -1767,9 +1769,59 @@ function tips(team, g, add, replace, edited) {
   }
   // Only evolutions that change types change the tips; Gabite into Garchomp goes unsaid.
   const changed = team.members.map((x, i) => [d.mon(x.num), ends[i]])
-    .filter(([m, e]) => d.typesOf(g, e).join() !== d.typesOf(g, m).join()).map(([m, e]) => L.f("%s as %s", m.name, e.name));
+    .filter(([m, e], i) => !branching.has(i) && d.typesOf(g, e).join() !== d.typesOf(g, m).join()).map(([m, e]) => L.f("%s as %s", m.name, e.name));
   if (changed.length) box.append(h('p', { class: 'note', style: 'margin-top:12px' }, L.f("Counted as evolved: %s.", changed.join(L.t(", ")))));
   return box;
+}
+
+/** team.branches of `x` as Pokémon rows, the picked one ringed; picking one sets x.evo. */
+function pickEvolution(team, g, x, done) {
+  const s = sheet(L.f("What will %s evolve into?", d.mon(x.num).name));
+  const box = h('div', 'choices');
+  for (const m of team.branches(d, g, x)) {
+    const r = row(teamMonEntry(g, m), () => {
+      if (!s.close()) return;
+      x.evo = m.num;
+      done();
+    });
+    r.classList.toggle('on', m.num === x.evo);
+    box.append(r);
+  }
+  s.body.append(box);
+  s.button(L.t("Cancel")).show();
+}
+
+/** Asks before a tip's move goes into `slot` of `x` (shown as `mon`): the move it forgets and the one it learns side by side. */
+function confirmTeach(g, mon, x, slot, id, yes) {
+  const nw = d.move(g, id);
+  const old = x.moves[slot] ? d.move(g, x.moves[slot]) : null;
+  const s = sheet(L.f("Teach %s to %s?", nw.name, mon));
+  const shown = v => (v ? String(v) : '-');
+  // Accuracy 0 never misses, so it counts above 100. An empty slot takes the new values, so neither side is marked.
+  const sure = m => (m.accuracy === 0 ? 101 : m.accuracy);
+  const o = old ?? nw;
+  s.body.append(h('div', 'pair mb12',
+    half(L.t("Forgets"), 0, old ? old.name : L.t("Empty slot"), old ? [old.type, old.category] : [], old ? old.shortEffect : ''),
+    half(L.t("Learns"), 0, nw.name, [nw.type, nw.category], nw.shortEffect)),
+  sides(L.t("Power"), o.power, nw.power, false, old ? shown(old.power) : '-', shown(nw.power)),
+  sides(L.t("Accuracy"), sure(o), sure(nw), false, old ? shown(old.accuracy) : '-', shown(nw.accuracy)),
+  sides(L.t("PP"), o.pp, nw.pp, false, old ? String(old.pp) : '-', String(nw.pp)));
+  s.button(L.t("Cancel")).button(L.f("Teach %s", nw.name), true, yes).show();
+}
+
+/** Asks before `nw` takes `old`'s slot: both with their base stats side by side, and what goes with the old one. */
+function confirmSwap(g, old, nw, yes) {
+  const s = sheet(L.f("Swap %s for %s?", old.name, nw.name));
+  s.body.append(h('div', 'pair mb12', half(null, old.num, old.name, d.typesOf(g, old), ''), half(null, nw.num, nw.name, d.typesOf(g, nw), '')),
+    ...STATS.map((st, i) => sides(L.t(st), old.stats[i], nw.stats[i], true)), sides(L.t("Total"), old.bst, nw.bst, false),
+    h('p', 'note mt8', L.f("%s goes to the Box. Its moves, item and stats are not kept.", old.name)));
+  s.button(L.t("Cancel")).button(L.t("Swap"), true, yes).show();
+}
+
+/** One side of a confirm: `caption` or the sprite of `num`, the name, pills two to a line as in Compare, and `note`. */
+function half(caption, num, name, pills, note) {
+  return h('div', 'half', caption ? h('div', 'caption', caption) : sprite(num), h('div', 'nm', name),
+    pills.length ? typePills(pills, 2) : null, note ? h('p', 'note', note) : null);
 }
 
 /** Per attacking type: members it hits super effectively and members that resist it, in two columns. */
@@ -1900,14 +1952,14 @@ function memberScreen(p, ti, k) {
       art));
     const evo = stages(m);
     if (evo) top.append(evo);
-    const swap = () => pickMon(g, L.f("Swap %s", m.name), [L.t("Suggested"), team.suggest(d, k).map(o => teamMonEntry(g, o))], nx => {
+    const swap = () => pickMon(g, L.f("Swap %s", m.name), [L.t("Suggested"), team.suggest(d, k).map(o => teamMonEntry(g, o))], nx => confirmSwap(g, m, d.mon(nx.num), () => {
       // Off the team but still caught, as in the games' PC; an evolution (setForm) is not a swap.
       setCaught(x.num, true);
       nx.level = x.level;
       team.members[k] = x = nx;
       save();
       build();
-    });
+    }));
     const remove = () => confirm(L.f("Remove %s?", m.name), L.f("Its moves, item and stats are removed from %s.", team.name), L.t("Remove"), () => {
       team.members.splice(k, 1);
       setCaught(x.num, true);
@@ -1961,10 +2013,7 @@ function memberScreen(p, ti, k) {
     const ways = team.branches(d, g, x);
     if (ways.length) {
       box.append(setting(L.t("Evolves into"), ways.find(w => w.num === x.evo)?.name ?? L.t("Not set"),
-        () => pickOne(L.t("Evolves into"), ways.map(w => w.name), ways.findIndex(w => w.num === x.evo), i => {
-          x.evo = ways[i].num;
-          redo();
-        })));
+        () => pickEvolution(team, g, x, redo)));
     }
     const smogon = h('div');
     box.append(smogon);

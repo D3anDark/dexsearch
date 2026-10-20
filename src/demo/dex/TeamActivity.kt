@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Toast
@@ -120,11 +121,14 @@ class TeamActivity : Activity() {
     /** Swaps slot `k` for another Pokémon, which starts a new set at the old one's level; the old one goes to the Box. */
     private fun replace(k: Int) {
         val old = team.members[k]
-        pick(this, dex, team, k, L.f("Swap %s", dex.mon(old.num).name)) { m ->
-            Ui.setCaught(this, old.num, true)
-            team.members[k] = TeamsActivity.member(m).also { it.level = old.level }
-            TeamsActivity.save(this, teams)
-            onResume()
+        val was = dex.mon(old.num)
+        pick(this, dex, team, k, L.f("Swap %s", was.name)) { m ->
+            confirmSwap(this, dex, game, was, m) {
+                Ui.setCaught(this, old.num, true)
+                team.members[k] = TeamsActivity.member(m).also { it.level = old.level }
+                TeamsActivity.save(this, teams)
+                onResume()
+            }
         }
     }
 
@@ -200,26 +204,33 @@ class TeamActivity : Activity() {
                 val how = if (x.moves[t.slot] == 0) L.f("%s can learn %s.", mon, move)
                     else L.f("%s can learn %s in place of %s.", mon, move, dex.move(game, x.moves[t.slot]).name)
                 fix((uncovered ?: counter)!!, L.f("Try a %s move", dex.label(types[g.move])), "$hits $how", L.f("Teach %s", move)) {
-                    x.moves[t.slot] = t.move
-                    TeamsActivity.save(this, teams)
-                    onResume()
+                    confirmTeach(this, dex, game, mon, x, t.slot, t.move) {
+                        x.moves[t.slot] = t.move
+                        TeamsActivity.save(this, teams)
+                        onResume()
+                    }
                 }
             }
         }
         if (!team.attacks(dex)) tip(p, L.t("No attacks yet"), L.t("Give your Pokémon damaging moves to see what nothing counters."), emptyList())
         else if (p.childCount == 1) tip(p, L.t("No gaps"), L.t("Every type is resisted or hit super effectively, and none hits half the team."), emptyList())
         val ends = team.members.map { team.evolved(dex, game, it) }
-        // Until picked, a branching Pokémon counts as it is: Eevee stays Normal.
+        // Until picked, a branching Pokémon counts as it is: Eevee stays Normal. The pick keeps its tip, to change it there.
+        val branching = BooleanArray(team.members.size)
         for ((i, x) in team.members.withIndex()) {
             val ways = team.branches(dex, game, x)
-            if (ways.isEmpty() || ways.any { it.num == ends[i].num }) continue
-            tip(p, L.f("What will %s evolve into?", dex.mon(x.num).name), L.t("Tips count it as it is until you pick."), emptyList(), L.t("Pick evolution")) {
-                Ui.pickOne(this, L.t("Evolves into"), ways.map { it.name }, -1) { j ->
-                    x.evo = ways[j].num
+            if (ways.isEmpty()) continue
+            branching[i] = true
+            val name = dex.mon(x.num).name
+            val pick = {
+                pickEvolution(this, dex, team, x) {
                     TeamsActivity.save(this, teams)
                     onResume()
                 }
             }
+            val into = ways.firstOrNull { it.num == ends[i].num }
+            if (into == null) tip(p, L.f("What will %s evolve into?", name), L.t("Tips count it as it is until you pick."), emptyList(), L.t("Pick evolution"), pick)
+            else tip(p, L.f("%s will evolve into %s", name, into.name), L.t("Tips count its types once evolved."), emptyList(), L.t("Change evolution"), pick)
         }
         // The lower base stat total once evolved is the one to swap: Noibat beside Garchomp, but Gible beside Noivern.
         for (o in team.overlaps(dex)) {
@@ -230,7 +241,7 @@ class TeamActivity : Activity() {
                 o.weak, L.f("Swap %s", dex.mon(team.members[k].num).name)) { replace(k) }
         }
         // Only evolutions that change types change the tips; Gabite into Garchomp goes unsaid.
-        val changed = team.members.withIndex().filter { (i, x) -> dex.types(game, ends[i]) != dex.types(game, dex.mon(x.num)) }
+        val changed = team.members.withIndex().filter { (i, x) -> !branching[i] && dex.types(game, ends[i]) != dex.types(game, dex.mon(x.num)) }
             .map { (i, x) -> L.f("%s as %s", dex.mon(x.num).name, ends[i].name) }
         if (changed.isNotEmpty()) p.addView(Ui.muted(this, L.f("Counted as evolved: %s.", changed.joinToString(L.t(", "))), 13),
             Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 12, 0, 0))
@@ -295,6 +306,106 @@ class TeamActivity : Activity() {
     companion object {
         fun open(a: Activity, team: Int) {
             a.startActivity(Intent(a, TeamActivity::class.java).putExtra("team", team))
+        }
+
+        /**
+         * [Team.branches] of `x` as Pokémon rows, the picked one ringed; picking one sets [Team.Member.evo]. Eevee's
+         * eight rows hold a sprite each while it is open, 64 KB apiece.
+         */
+        fun pickEvolution(a: Activity, dex: Dex, team: Team, x: Team.Member, done: () -> Unit) {
+            val game = dex.game(team.game)
+            val s = Ui.Sheet(a, L.f("What will %s evolve into?", dex.mon(x.num).name))
+            val rows = Ui.vertical(a)
+            for (m in team.branches(dex, game, x)) {
+                val r = Ui.row(a)
+                Ui.bind(r, TeamsActivity.monItem(dex, game, m))
+                r.background = Ui.choice(a, m.num == x.evo, 14)
+                r.isSelected = m.num == x.evo
+                r.setOnClickListener {
+                    if (s.close()) {
+                        x.evo = m.num
+                        done()
+                    }
+                }
+                rows.addView(r, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, a, 0, 0, 0, 6))
+            }
+            val scroll = ScrollView(a)
+            scroll.addView(rows)
+            s.body.addView(scroll)
+            s.button(L.t("Cancel"))
+            s.show()
+        }
+
+        /** Asks before a tip's move goes into `slot` of `x` (shown as `mon`): the move it forgets and the one it learns side by side. */
+        fun confirmTeach(a: Activity, dex: Dex, game: Dex.Game, mon: String, x: Team.Member, slot: Int, id: Int, yes: () -> Unit) {
+            val new = dex.move(game, id)
+            val old = if (x.moves[slot] == 0) null else dex.move(game, x.moves[slot])
+            val box = Ui.vertical(a)
+            box.addView(CompareActivity.pair(a,
+                side(a, L.t("Forgets"), 0, old?.name ?: L.t("Empty slot"), old?.let { listOf(it.type, it.category) } ?: emptyList(), old?.shortEffect ?: ""),
+                side(a, L.t("Learns"), 0, new.name, listOf(new.type, new.category), new.shortEffect), 12),
+                Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, a, 0, 0, 0, 10))
+            val row = { name: String, x: Int, y: Int, shownX: String, shownY: String ->
+                box.addView(CompareActivity.sides(a, CompareActivity.label(a, name), x, y, shownX, shownY, false))
+            }
+            val shown = { v: Int -> if (v == 0) "-" else v.toString() }
+            // Accuracy 0 never misses, so it counts above 100. An empty slot takes the new values, so neither side is marked.
+            val sure = { m: Dex.Move -> if (m.accuracy == 0) 101 else m.accuracy }
+            row(L.t("Power"), old?.power ?: new.power, new.power, old?.let { shown(it.power) } ?: "-", shown(new.power))
+            row(L.t("Accuracy"), old?.let(sure) ?: sure(new), sure(new), old?.let { shown(it.accuracy) } ?: "-", shown(new.accuracy))
+            row(L.t("PP"), old?.pp ?: new.pp, new.pp, old?.pp?.toString() ?: "-", new.pp.toString())
+            val scroll = ScrollView(a)
+            scroll.addView(box)
+            val s = Ui.Sheet(a, L.f("Teach %s to %s?", new.name, mon))
+            s.body.addView(scroll)
+            s.button(L.t("Cancel"))
+            s.button(L.f("Teach %s", new.name), main = true, act = yes)
+            s.show()
+        }
+
+        /** Asks before `new` takes `old`'s slot: both with their base stats side by side, and what goes with the old one. */
+        fun confirmSwap(a: Activity, dex: Dex, game: Dex.Game, old: Dex.Mon, new: Dex.Mon, yes: () -> Unit) {
+            val box = Ui.vertical(a)
+            box.addView(CompareActivity.pair(a, side(a, null, old.num, old.name, dex.types(game, old), ""),
+                side(a, null, new.num, new.name, dex.types(game, new), ""), 12),
+                Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, a, 0, 0, 0, 10))
+            for (i in Dex.STATS.indices) box.addView(CompareActivity.sides(a, CompareActivity.label(a, L.t(Dex.STATS[i])), old.stats[i], new.stats[i],
+                old.stats[i].toString(), new.stats[i].toString(), true))
+            box.addView(CompareActivity.sides(a, CompareActivity.label(a, L.t("Total")), old.bst, new.bst, old.bst.toString(), new.bst.toString(), false))
+            box.addView(Ui.muted(a, L.f("%s goes to the Box. Its moves, item and stats are not kept.", old.name), 13),
+                Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, a, 0, 10, 0, 0))
+            val scroll = ScrollView(a)
+            scroll.addView(box)
+            val s = Ui.Sheet(a, L.f("Swap %s for %s?", old.name, new.name))
+            s.body.addView(scroll)
+            s.button(L.t("Cancel"))
+            s.button(L.t("Swap"), main = true, act = yes)
+            s.show()
+        }
+
+        /** One side of a confirm: `caption` or the sprite of `num`, the name, pills that do not navigate away, and `note`. */
+        private fun side(a: Activity, caption: String?, num: Int, name: String, pills: List<String>, note: String): View {
+            val col = Ui.vertical(a)
+            col.gravity = Gravity.CENTER_HORIZONTAL
+            if (caption != null) col.addView(Ui.caption(a, caption))
+            else col.addView(ImageView(a).apply { setImageDrawable(Ui.sprite(a, num, 2)) }, LinearLayout.LayoutParams(Ui.dp(a, 72), Ui.dp(a, 72)))
+            val t = Ui.text(a, name, 16, true)
+            t.gravity = Gravity.CENTER
+            col.addView(t)
+            if (pills.isNotEmpty()) {
+                // Half the width each, as in Compare: one type sits at the start.
+                val row = LinearLayout(a)
+                row.weightSum = 2f
+                for (key in pills) {
+                    val p = Ui.pill(a, key)
+                    p.setPadding(0, Ui.dp(a, 5), 0, Ui.dp(a, 5))
+                    row.addView(p, Ui.margins(0, ViewGroup.LayoutParams.WRAP_CONTENT, a, 3, 0, 3, 0).apply { weight = 1f })
+                }
+                col.addView(row, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, a, 0, 6, 0, 0))
+            }
+            if (note.isNotEmpty()) col.addView(Ui.muted(a, note, 13).apply { gravity = Gravity.CENTER },
+                Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, a, 0, 6, 0, 0))
+            return col
         }
 
         /** A Pokémon for slot `skip` of `team` (-1: a new slot), with [Team.suggest]ions in the first tab. */

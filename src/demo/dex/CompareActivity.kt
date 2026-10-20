@@ -64,9 +64,9 @@ class CompareActivity : Activity() {
         val b = mons[1]
         if (a != null && b != null) {
             val stats = Ui.panel(this, L.t("Base stats"))
-            for (s in Dex.STATS.indices) stats.addView(sides(label(L.t(Dex.STATS[s])), a.stats[s], b.stats[s], a.stats[s].toString(),
+            for (s in Dex.STATS.indices) stats.addView(sides(this, label(this, L.t(Dex.STATS[s])), a.stats[s], b.stats[s], a.stats[s].toString(),
                 b.stats[s].toString(), true))
-            stats.addView(sides(label(L.t("Total")), a.bst, b.bst, a.bst.toString(), b.bst.toString(), false))
+            stats.addView(sides(this, label(this, L.t("Total")), a.bst, b.bst, a.bst.toString(), b.bst.toString(), false))
             root.addView(stats, Ui.wide(this, 0, 12))
 
             val defenses = Ui.panel(this, L.t("Type defenses"))
@@ -84,7 +84,7 @@ class CompareActivity : Activity() {
                 }
                 if (fa == 100 && fb == 100) continue
                 // Less damage taken is better, so the values go in negated.
-                defenses.addView(sides(Ui.pill(this, t), -fa, -fb, CalcActivity.effect(fa), CalcActivity.effect(fb), false))
+                defenses.addView(sides(this, Ui.pill(this, t), -fa, -fb, CalcActivity.effect(fa), CalcActivity.effect(fb), false))
             }
             root.addView(defenses, Ui.wide(this, 0, 12))
 
@@ -121,7 +121,7 @@ class CompareActivity : Activity() {
             else L.f("Better in %d of these %d.", maxOf(wins[0], wins[1]), rows.size), 13))
         top.addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         p.addView(top)
-        for ((name, x, y) in rows) p.addView(sides(label(name), x, y, abs(x).toString(), abs(y).toString(), false))
+        for ((name, x, y) in rows) p.addView(sides(this, label(this, name), x, y, abs(x).toString(), abs(y).toString(), false))
         return p
     }
 
@@ -179,40 +179,6 @@ class CompareActivity : Activity() {
         return row
     }
 
-    private fun label(s: String): View {
-        val t = Ui.muted(this, s, 14)
-        t.gravity = Gravity.CENTER
-        return t
-    }
-
-    /**
-     * `shownA` at the start edge and `shownB` at the end edge with `middle` between them; base-stat `bars` grow out from
-     * the middle. The higher of `a` and `b` is bold in [Ui.GOOD].
-     */
-    private fun sides(middle: View, a: Int, b: Int, shownA: String, shownB: String, bars: Boolean): View {
-        val row = LinearLayout(this)
-        row.gravity = Gravity.CENTER_VERTICAL
-        row.setPadding(0, Ui.dp(this, if (bars) 4 else 5), 0, Ui.dp(this, if (bars) 4 else 5))
-        val wrap = ViewGroup.LayoutParams.WRAP_CONTENT
-        for ((k, v) in listOf(a, b).withIndex()) {
-            val better = v > (if (k == 0) b else a)
-            val t = Ui.text(this, if (k == 0) shownA else shownB, 15, better)
-            if (better) t.setTextColor(Ui.GOOD)
-            t.gravity = if (k == 0) Gravity.START else Gravity.END
-            val space = if (bars) MonActivity.bar(this, v, if (k == 0) Gravity.END else Gravity.START) else View(this)
-            val spaceLp = Ui.margins(0, if (bars) Ui.dp(this, 8) else 0, this, 8, 0, 8, 0).apply { weight = 1f }
-            if (k == 0) {
-                row.addView(t, LinearLayout.LayoutParams(Ui.dp(this, 40), wrap))
-                row.addView(space, spaceLp)
-                row.addView(middle, LinearLayout.LayoutParams(Ui.dp(this, 80), wrap))
-            } else {
-                row.addView(space, spaceLp)
-                row.addView(t, LinearLayout.LayoutParams(Ui.dp(this, 40), wrap))
-            }
-        }
-        return row
-    }
-
     private fun abilities(m: Dex.Mon): View {
         val col = Ui.vertical(this)
         for (id in m.abilities) col.addView(Ui.text(this, dex.ability(id).name, 14, false))
@@ -221,6 +187,40 @@ class CompareActivity : Activity() {
     }
 
     companion object {
+        fun label(c: Context, s: String): View {
+            val t = Ui.muted(c, s, 14)
+            t.gravity = Gravity.CENTER
+            return t
+        }
+
+        /**
+         * `shownA` at the start edge and `shownB` at the end edge with `middle` between them; base-stat `bars` grow out
+         * from the middle. The higher of `a` and `b` is bold in [Ui.GOOD].
+         */
+        fun sides(c: Context, middle: View, a: Int, b: Int, shownA: String, shownB: String, bars: Boolean): View {
+            val row = LinearLayout(c)
+            row.gravity = Gravity.CENTER_VERTICAL
+            row.setPadding(0, Ui.dp(c, if (bars) 4 else 5), 0, Ui.dp(c, if (bars) 4 else 5))
+            val wrap = ViewGroup.LayoutParams.WRAP_CONTENT
+            for ((k, v) in listOf(a, b).withIndex()) {
+                val better = v > (if (k == 0) b else a)
+                val t = Ui.text(c, if (k == 0) shownA else shownB, 15, better)
+                if (better) t.setTextColor(Ui.GOOD)
+                t.gravity = if (k == 0) Gravity.START else Gravity.END
+                val space = if (bars) MonActivity.bar(c, v, if (k == 0) Gravity.END else Gravity.START) else View(c)
+                val spaceLp = Ui.margins(0, if (bars) Ui.dp(c, 8) else 0, c, 8, 0, 8, 0).apply { weight = 1f }
+                if (k == 0) {
+                    row.addView(t, LinearLayout.LayoutParams(Ui.dp(c, 40), wrap))
+                    row.addView(space, spaceLp)
+                    row.addView(middle, LinearLayout.LayoutParams(Ui.dp(c, 80), wrap))
+                } else {
+                    row.addView(space, spaceLp)
+                    row.addView(t, LinearLayout.LayoutParams(Ui.dp(c, 40), wrap))
+                }
+            }
+            return row
+        }
+
         /** `left` and `right` sharing the width, `gap` dp apart. */
         fun pair(c: Context, left: View, right: View, gap: Int): LinearLayout {
             val row = LinearLayout(c)

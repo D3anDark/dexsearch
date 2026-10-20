@@ -330,6 +330,14 @@ What will %s evolve into?	%sを何に進化させる？
 Tips count it as it is until you pick.	選ぶまでは、ヒントは今の姿で計算します。
 Pick evolution	進化先を選ぶ
 Evolves into	進化先
+Change evolution	進化先を変える
+%s will evolve into %s	%sを%sに進化させる
+Tips count its types once evolved.	ヒントは進化後のタイプで計算します。
+Teach %s to %s?	%2$sに%1$sを覚えさせますか？
+Forgets	忘れる
+Learns	覚える
+Swap %s for %s?	%sを%sと入れ替えますか？
+%s goes to the Box. Its moves, item and stats are not kept.	%sはボックスに送られます。わざ、もちもの、能力の設定は残りません。
 %s can learn %s in place of %s.	%1$sは%3$sの代わりに%2$sを覚えられます。
 %s can learn %s.	%sは%sを覚えられます。
 Teach %s	%sを覚えさせる

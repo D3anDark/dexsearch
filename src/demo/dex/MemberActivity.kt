@@ -70,11 +70,13 @@ class MemberActivity : Activity() {
         val k = team.members.indexOf(x)
         Ui.addChip(actions, Ui.chip(this, L.t("Swap")) {
             TeamActivity.pick(this, dex, team, k, L.f("Swap %s", m.name)) { new ->
-                // Off the team but still caught, as in the games' PC; an evolution (setForm) is not a swap.
-                Ui.setCaught(this, x.num, true)
-                x = TeamsActivity.member(new).also { it.level = x.level }
-                team.members[k] = x
-                render()
+                TeamActivity.confirmSwap(this, dex, game, m, new) {
+                    // Off the team but still caught, as in the games' PC; an evolution (setForm) is not a swap.
+                    Ui.setCaught(this, x.num, true)
+                    x = TeamsActivity.member(new).also { it.level = x.level }
+                    team.members[k] = x
+                    render()
+                }
             }
         })
         Ui.addChip(actions, Ui.chip(this, L.t("Compare")) { CompareActivity.open(this, m.num, game.id) })
@@ -179,10 +181,7 @@ class MemberActivity : Activity() {
         // What Team.evolved counts it as in the tips, where the line branches.
         val ways = team.branches(dex, game, x)
         if (ways.isNotEmpty()) p.addView(Ui.setting(this, L.t("Evolves into"), ways.firstOrNull { it.num == x.evo }?.name ?: L.t("Not set")) {
-            Ui.pickOne(this, L.t("Evolves into"), ways.map { it.name }, ways.indexOfFirst { it.num == x.evo }) { i ->
-                x.evo = ways[i].num
-                render()
-            }
+            TeamActivity.pickEvolution(this, dex, team, x) { render() }
         })
         val sets = builds(m)
         if (sets.isNotEmpty()) p.addView(Ui.setting(this, L.t("Smogon set"), L.f("Sets: %d", sets.size)) { pickBuild(sets) })

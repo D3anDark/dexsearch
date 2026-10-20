@@ -330,6 +330,14 @@ What will %s evolve into?	¿En qué evolucionará %s?
 Tips count it as it is until you pick.	Hasta que elijas, los consejos lo cuentan tal como está.
 Pick evolution	Elegir evolución
 Evolves into	Evoluciona a
+Change evolution	Cambiar evolución
+%s will evolve into %s	%s evolucionará a %s
+Tips count its types once evolved.	Los consejos cuentan sus tipos ya evolucionado.
+Teach %s to %s?	¿Enseñar %s a %s?
+Forgets	Olvida
+Learns	Aprende
+Swap %s for %s?	¿Cambiar %s por %s?
+%s goes to the Box. Its moves, item and stats are not kept.	%s va a la Caja. Sus movimientos, objeto y características no se conservan.
 %s can learn %s in place of %s.	%s puede aprender %s en lugar de %s.
 %s can learn %s.	%s puede aprender %s.
 Teach %s	Enseñar %s

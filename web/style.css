@@ -301,6 +301,13 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .slot .nm { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
 .slot.empty { background: var(--surface); outline: 2px dashed var(--muted); outline-offset: -2px; }
 .slot.empty .nm { color: var(--muted); }
+/* One side of a teach or swap confirm, above the values compared. */
+.half { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.half img { width: 72px; height: 72px; object-fit: contain; }
+.half .nm { font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+.half .pills { width: 100%; margin-top: 2px; }
+.choices .row { background: var(--fill); border-radius: 14px; margin-bottom: 6px; }
+.choices .row.on { box-shadow: inset 0 0 0 2px var(--accent); }
 .verdict { display: flex; align-items: center; gap: 10px; padding-bottom: 8px; }
 .verdict img { width: 56px; height: 56px; object-fit: contain; flex: none; }
 .verdict .h { font-size: 17px; font-weight: 700; text-wrap: balance; }
