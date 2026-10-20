@@ -69,8 +69,8 @@ class MemberActivity : Activity() {
         val actions = LinearLayout(this)
         val k = team.members.indexOf(x)
         Ui.addChip(actions, Ui.chip(this, L.t("Swap")) {
-            TeamActivity.pick(this, dex, team, k, L.f("Swap %s", m.name)) { new ->
-                TeamActivity.confirmSwap(this, dex, game, x, new) { nx ->
+            TeamActivity.pick(this, dex, team, k, L.f("Swap %s", m.name)) { new, boxed ->
+                TeamActivity.confirmSwap(this, dex, game, x, new, boxed) { nx ->
                     x = nx
                     team.members[k] = x
                     render()
@@ -478,22 +478,15 @@ class MemberActivity : Activity() {
         left.text = L.f("%d of %d EVs left. At most %d per stat.", Team.EV_TOTAL - x.evs.sum(), Team.EV_TOTAL, Team.EV_STAT)
     }
 
-    /** Off the team, and either into the Box with its set or forgotten; an evolution (setForm) is not a removal. */
+    /** Off the team and into the Box with its set, as in the games; the Box's Release forgets it. An evolution (setForm) is not a removal. */
     private fun remove(m: Dex.Mon) {
-        var keep = 0
-        val s = Ui.Sheet(this, L.f("Remove %s?", m.name))
-        s.body.addView(TeamActivity.choice(this, arrayOf(L.t("To the Box"), L.t("Forget"))) { keep = it })
-        s.body.addView(Ui.muted(this, L.t("The Box keeps its moves, item and stats for later."), 13),
-            Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 6, 0, 0))
-        s.button(L.t("Cancel"))
-        s.button(L.t("Remove"), main = true) {
-            if (keep == 0) Ui.toBox(this, x)
+        Ui.confirm(this, L.f("Remove %s?", m.name), L.f("%s goes to the Box with its moves and item.", m.name), L.t("Remove")) {
+            Ui.toBox(this, x)
             team.members.remove(x)
             TeamsActivity.save(this, teams)
             removed = true
             finish()
         }
-        s.show()
     }
 
     companion object {

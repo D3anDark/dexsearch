@@ -307,10 +307,12 @@ class MonActivity : Activity() {
             val on = m.num.toString() !in Ui.caught(this)
             Ui.setCaught(this, m.num, on)
             paintCaught(caught, on, color)
+            // Caught is what fills the Box; saying so ties the two words together.
+            if (on) Toast.makeText(this, L.f("%s is in the Box", m.name), Toast.LENGTH_SHORT).show()
         }
         val team = action(L.t("Add to team"))
         team.background = Ui.pressable(this, Ui.rounded(this, 0x2E000000, 999), 999)
-        team.setOnClickListener { addToTeam(m) }
+        team.setOnClickListener { TeamsActivity.addTo(this, m) }
         actions.addView(caught, Ui.margins(0, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 5, 0).apply { weight = 1f })
         actions.addView(team, Ui.margins(0, ViewGroup.LayoutParams.WRAP_CONTENT, this, 5, 0, 0, 0).apply { weight = 1f })
         h.addView(actions, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 14, 0, 0))
@@ -445,25 +447,6 @@ class MonActivity : Activity() {
         t.gravity = Gravity.CENTER
         t.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 10))
         return t
-    }
-
-    /** Picks a team (or starts one in the selected game), adds this Pokémon and opens it in the team builder. */
-    /** @param member the new member, `m` with a Smogon set applied; null adds `m` with its first ability at level 50. */
-    private fun addToTeam(m: Dex.Mon, member: Team.Member? = null) {
-        val teams = TeamsActivity.load(this)
-        val labels = teams.map { "${it.name}  (${it.members.size}/${Team.SIZE}, ${dex.game(it.game).name})" } + L.t("New team")
-        Ui.pickOne(this, L.f("Add %s to", m.name), labels, -1) { i ->
-            if (i == teams.size) teams.add(Team(L.f("Team %d", i + 1), game.id))
-            val t = teams[i]
-            if (t.members.size >= Team.SIZE) {
-                Toast.makeText(this, L.f("%s already has %d Pokémon", t.name, Team.SIZE), Toast.LENGTH_SHORT).show()
-                return@pickOne
-            }
-            // A set kept in the Box moves onto the team, as an empty slot's picker does with it.
-            t.members.add(member ?: Ui.fromBox(this, m.num) ?: TeamsActivity.member(m))
-            TeamsActivity.save(this, teams)
-            MemberActivity.open(this, i, t.members.size - 1)
-        }
     }
 
     /** The header picture, 256 KB decoded: the [worn] look, else the Pokémon itself; shiny when switched on. */
@@ -676,7 +659,7 @@ class MonActivity : Activity() {
         if (sets.isEmpty()) return
         buildBox.addView(MemberActivity.buildList(this, dex, game, sets, m.num, format, Ui.SURFACE, { b ->
             val row = LinearLayout(this)
-            val add = Ui.chip(this, L.t("Add to team")) { addToTeam(dex.mon(b.num), MemberActivity.member(dex, b)) }
+            val add = Ui.chip(this, L.t("Add to team")) { TeamsActivity.addTo(this, dex.mon(b.num), MemberActivity.member(dex, b)) }
             Ui.chipActive(add, true)
             // Half the card each, wrapping to two lines: "Copiar para Showdown" overran the card on one.
             for ((i, chip) in listOf(add, Ui.chip(this, L.t("Copy for Showdown")) { copy(b) }).withIndex()) {

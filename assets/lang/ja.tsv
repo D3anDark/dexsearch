@@ -334,10 +334,6 @@ Swap %s for %s?	%sを%sと入れ替えますか？
 %s can learn %s in place of %s.	%1$sは%3$sの代わりに%2$sを覚えられます。
 %s can learn %s.	%sは%sを覚えられます。
 Teach %s	%sを覚えさせる
-To the Box	ボックスへ
-Forget	忘れる
-From the Box	ボックスから
-The Box keeps its moves, item and stats for later.	ボックスには技、持ち物、ステータスが後のために残ります。
 Each workspace is a separate playthrough with its own caught marks, teams, Box and game.	ワークスペースはそれぞれ別のプレイで、捕獲済みの記録、チーム、ボックス、ゲームを持ちます。
 Its caught marks, teams, Box and selected game are removed from this device. This cannot be undone.	捕獲済みの記録、チーム、ボックス、選んだゲームがこの端末から削除されます。元に戻せません。
 As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effective, 0 no effect. Tap a row to read it in words, a type to see its Pokémon.	%sの相性。行が攻撃、列が防御。2はこうかばつぐん、½はいまひとつ、0は効果なし。行をタップすると言葉で表示、タイプをタップするとそのポケモンを表示。
@@ -367,3 +363,12 @@ Loses %s	%sへの有効打を失う
 Search the Box	ボックスを検索
 Box: %d of %d	ボックス %d / %d
 Nothing here yet. Mark a Pokémon caught on its page, or take one off a team, and it lands in the Box.	まだ何もありません。ポケモンのページで捕獲済みにするか、パーティから外すと、ボックスに入ります。
+%s is in the Box	%sはボックスにいます
+%s goes to the Box with its moves and item.	%sは技と持ち物ごとボックスに入ります。
+%s comes from the Box: %s	%sはボックスから来ます: %s
+%s joins new at level %d.	%sは新しくレベル%dで加わります。
+Pokémon page	ポケモンのページ
+Release	逃がす
+Release %s?	%sを逃がしますか?
+Its moves, item and stats are forgotten and it no longer counts as caught. This cannot be undone.	技、持ち物、ステータスは消え、捕まえた数にも入らなくなります。元に戻せません。
+It no longer counts as caught.	捕まえた数に入らなくなります。
