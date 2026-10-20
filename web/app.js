@@ -146,16 +146,43 @@ function icon(path, size) {
   return t.content.firstChild;
 }
 
-/** A form without its own picture shows its species'. */
-function sprite(num, cls) {
-  const img = h('img', { class: cls, src: `assets/sprites/${num}.webp`, alt: '', loading: 'lazy', decoding: 'async' });
+/** Asset folder per artwork style (Settings: HOME, official, pixel), as in Ui.kt. */
+const ART_DIRS = ['sprites', 'art', 'pixel'];
+const SHINY_DIRS = ['shiny', 'shiny-art', 'shiny-pixel'];
+
+/**
+ * In the Settings artwork style unless `style` is given. A form without its own picture shows its species', a style
+ * without one (or one not downloaded yet, offline) the HOME render. Pixel sprites scale unfiltered.
+ */
+function sprite(num, cls, shiny = false, style = store.get('art', 0)) {
+  const dirs = shiny ? SHINY_DIRS : ART_DIRS;
+  const s = d.monOrNull(num)?.species ?? num;
+  const tries = [...new Set([style, 0])].flatMap(k => [...new Set([num, s])].map(n => `assets/${dirs[k]}/${n}.webp`));
+  const img = h('img', { class: cls, alt: '', loading: 'lazy', decoding: 'async' });
+  let i = 0;
+  const load = () => {
+    img.classList.toggle('pixel', tries[i].includes('pixel/'));
+    img.src = tries[i];
+  };
   img.onerror = () => {
-    img.onerror = null;
-    const s = d.monOrNull(num)?.species;
-    if (s && s !== num) img.src = `assets/sprites/${s}.webp`;
+    if (++i < tries.length) load();
     else img.style.visibility = 'hidden';
   };
+  load();
   return img;
+}
+
+/** The shiny mark: a large and a small four-pointed star, as Ui.Sparkle. */
+function sparkle() {
+  const t = document.createElement('template');
+  t.innerHTML = '<svg viewBox="0 0 20 20" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 4Q8 12 16 12Q8 12 8 20Q8 12 0 12Q8 12 8 4ZM16 0Q16 4 20 4Q16 4 16 8Q16 4 12 4Q16 4 16 0Z"/></svg>';
+  return t.content.firstChild;
+}
+
+/** Asks the service worker to keep the picked artwork style for offline use; the HOME renders always are. */
+function keepArt() {
+  const art = ART_DIRS[store.get('art', 0)];
+  if (art !== 'sprites') navigator.serviceWorker?.ready.then(r => r.active?.postMessage({ art }));
 }
 
 function itemIcon(id) {
@@ -904,6 +931,10 @@ function monScreen(p, start, list) {
   /** Bumped on every redraw, so a late async tab does not draw over a newer one. */
   let token = 0;
   let body = null;
+  /** Shiny coloring for the picture and form thumbnails; kept while paging through Pokémon. */
+  let shiny = false;
+  /** Form thumbnails on the Info tab with their numbers, one family at most; redrawn when `shiny` flips. */
+  let thumbs = [];
   const step = (num, k) => {
     const n = own ? d.neighbor(own, num, k) : -1;
     return n < 0 ? d.neighbor(nationalOrder(), num, k) : n;
@@ -916,15 +947,30 @@ function monScreen(p, start, list) {
     const prev = step(num, -1);
     const next = step(num, 1);
     const e = g.byNum.get(num);
-    const top = hero(deep(color(types[0])));
+    const ink = deep(color(types[0]));
+    const top = hero(ink);
+    let pic = sprite(num, 'main', shiny);
+    const toggle = h('button', {
+      class: 'shiny', style: `--ink:${css(ink)}`, 'aria-label': L.t("Shiny"), title: L.t("Shiny"), 'aria-pressed': String(shiny),
+      onclick: () => {
+        shiny = !shiny;
+        toggle.setAttribute('aria-pressed', String(shiny));
+        pic.replaceWith(pic = sprite(num, 'main', shiny));
+        thumbs = thumbs.map(([img, n]) => {
+          const x = sprite(n, null, shiny);
+          img.replaceWith(x);
+          return [x, n];
+        });
+      },
+    }, sparkle());
     top.append(
       h('div', 'line', h('h1', null, d.mon(m.species).name),
         h('button', { class: 'nav', hidden: prev <= 0, 'aria-label': prev > 0 ? L.f("Previous: %s", d.mon(prev).name) : null, onclick: () => show(prev) }, icon(BACK, 20)),
         h('span', 'no', national(m.species)),
         h('button', { class: 'nav', hidden: next <= 0, 'aria-label': next > 0 ? L.f("Next: %s", d.mon(next).name) : null, onclick: () => show(next) }, icon(NEXT, 20))),
       h('div', { style: 'font-size:15px' }, isForm(m) ? m.name + '  ·  ' + m.genus : m.genus),
-      h('div', 'mt8', types.map(glass)),
-      sprite(num, 'main'),
+      h('div', 'mt8 typerow', types.map(glass), toggle),
+      pic,
       g === d.whole ? null : h('div', 'where', e ? L.f("%s #%d  ·  %s", e.dex, e.number, g.name) : L.f("Not in %s", g.name)),
       h('button', { class: 'add', onclick: () => addToTeam(m) }, L.t("Add to team")));
     const tabs = seg([L.t("Info"), L.t("Evolution"), L.t("Moves")], tab, i => {
@@ -941,6 +987,7 @@ function monScreen(p, start, list) {
   function fillTab(m) {
     const t = ++token;
     body.replaceChildren();
+    thumbs = [];
     if (tab === 0) info(m, t);
     else if (tab === 1) evolution(m);
     else learnset(m, t);
@@ -1000,7 +1047,11 @@ function monScreen(p, start, list) {
   function forms(fam, m) {
     const box = panel(L.t("Forms and looks"));
     const grid = h('div', 'forms');
-    const btn = f => h('button', { class: f === m ? 'on' : null, onclick: () => show(f.num) }, sprite(f.num), f.name);
+    const btn = f => {
+      const img = sprite(f.num, null, shiny);
+      thumbs.push([img, f.num]);
+      return h('button', { class: f === m ? 'on' : null, onclick: () => show(f.num) }, img, f.name);
+    };
     const many = fam.length > 12;
     grid.append(...(many ? fam.slice(0, 8) : fam).map(btn));
     box.append(grid);
@@ -1155,6 +1206,12 @@ function settings(p) {
   look.append(seg([L.t("System"), L.t("Light"), L.t("Dark")], store.get('theme', 0), i => {
     store.set('theme', i);
     theme();
+  }));
+  label(look, L.t("Pokémon artwork"));
+  const arts = [L.t("3D (HOME)"), L.t("Official art"), L.t("Pixel art")];
+  look.append(seg(arts.map((s, i) => [sprite(25, 'pv', false, i), s]), store.get('art', 0), i => {
+    store.set('art', i);
+    keepArt();
   }));
 
   const list = section(L.t("Pokédex"));
@@ -1769,6 +1826,7 @@ function update() {
   if (!('serviceWorker' in navigator)) return;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (updating) location.reload(); });
   const reg = await navigator.serviceWorker.register('sw.js');
+  keepArt();
   const offer = w => {
     waiting = w;
     pages[0]?.resume?.();

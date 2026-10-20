@@ -10,8 +10,8 @@ cd "$(dirname "$0")/.."
 node web/check.js assets
 mkdir -p "$out/assets"
 cp web/index.html web/style.css web/dex.js web/app.js web/manifest.webmanifest web/icon.png "$out/"
-# Not read on the web: artwork, pixel and shiny sprites, looks, Smogon sets and type icons.
-cp -r assets/sprites assets/items assets/learn assets/info assets/names assets/lang "$out/assets/"
+# Not read on the web: looks, Smogon sets and type icons.
+cp -r assets/sprites assets/art assets/pixel assets/shiny assets/shiny-art assets/shiny-pixel assets/items assets/learn assets/info assets/names assets/lang "$out/assets/"
 for f in pokemon merged evo moves abilities items natures games types past; do cp "assets/$f.tsv" "$out/assets/"; done
 
 node -e '

@@ -41,7 +41,7 @@ adb shell am start -n demo.dex/.MainActivity
 ## Web app (iPhone)
 
 - `web/` is the same app for Safari, plain JS with no build step or libraries: `dex.js` reads `assets/` like `Dex.kt`,
-  `app.js` is every screen, `sw.js` caches all files for offline use. Teams live in `localStorage` in the Android
+  `app.js` is every screen, `sw.js` caches them for offline use (other artwork styles and shiny pictures only once used). Teams live in `localStorage` in the Android
   app's text format.
 - `web/build.sh <new dir>` runs `node web/check.js assets` (data self-check), copies the app and assets, and writes
   `sw.js` with a hash per file; a changed hash is what makes installed copies show "Update available".

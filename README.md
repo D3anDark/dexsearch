@@ -42,6 +42,9 @@ into GitHub Pages by the same workflow on every release.
 2. Tap Share, then "Add to Home Screen", then "Add".
 3. Open DexSearch from the new icon. The first launch downloads about 23 MB; after that it works offline.
 
+Settings > Pokémon artwork picks 3D, official or pixel art; the picked style downloads in the background (17 or 5 MB),
+shiny pictures as they are shown.
+
 When a newer release is on Pages, the home screen shows "Update available"; tap it. Teams are stored in the web app on
 that phone only, and deleting the icon deletes them, so keep a copy with "Copy as text".
 
