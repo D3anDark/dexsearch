@@ -244,6 +244,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .teamcard .art img + img { margin-left: -14px; }
 /* Side by side on a wide screen; on a phone the game card, team card and tiles stack as children of .homebox. */
 .halves, .halves > .side { display: contents; }
+.homedex { display: none; }
 .tiles { display: flex; gap: 12px; }
 .tile { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 10px 12px; text-align: start; }
 .tile b { font-size: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -392,6 +393,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
   .split > .hero { grid-row: span 2; position: sticky; top: 0; }
   /* The home sizes to its content: the game card, its box art under the text, beside the team card and tiles. */
   .homebox { flex: none; }
+  .homedex { display: block; }
   .halves { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
   .halves > .side { display: flex; flex-direction: column; gap: 12px; }
   .halves .tiles { min-height: 96px; max-height: none; }

@@ -408,17 +408,22 @@ function card(it, tap) {
   return el;
 }
 
-/** `items` as rows, CHUNK at a time: the batch after the last loads when a marker past it nears `scroller`'s view. */
-function fill(box, items, make, scroller) {
+/**
+ * `items` as rows, CHUNK at a time: the batch after the last loads when a marker past it nears `scroller`'s view.
+ * `keep` starts with as many rows as `box` had, so a page returned to stays where it was scrolled.
+ */
+function fill(box, items, make, scroller, keep = false) {
   box._more?.disconnect();
+  const had = keep ? box._n ?? 0 : 0;
   box.replaceChildren();
   let n = 0;
   const end = h('div');
-  const add = () => {
+  const add = (count = CHUNK) => {
     end.remove();
     const part = document.createDocumentFragment();
-    for (const it of items.slice(n, n + CHUNK)) part.append(make(it));
-    n += CHUNK;
+    for (const it of items.slice(n, n + count)) part.append(make(it));
+    n += count;
+    box._n = n;
     box.append(part);
     if (n >= items.length) return;
     box.append(end);
@@ -427,7 +432,7 @@ function fill(box, items, make, scroller) {
     box._more.observe(end);
   };
   box._more = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) add(); }, { root: scroller, rootMargin: '800px' });
-  add();
+  add(Math.max(CHUNK, had));
 }
 
 function itemSections(items, make) {
@@ -632,6 +637,9 @@ function pickMon(g, heading, first, picked) {
 
 // --- home ------------------------------------------------------------------------------------
 
+/** The width where style.css's wide layout starts. */
+const WIDE = matchMedia('(min-width: 900px)');
+
 /** Set when a new build's service worker waits; the home screen then offers it. */
 let waiting = null;
 let updating = false;
@@ -640,17 +648,21 @@ function home(p) {
   p.el.classList.add('fixed');
   const results = h('div', 'rows');
   const box = h('div', 'homebox');
+  const dex = h('div');
+  const below = h('div', 'homedex', h('div', 'hdr caption', L.t("Pokédex")), dex);
   const search = searchBox(L.t("Pokémon, moves, abilities, types"), q => find(q));
   search.el.classList.add('wide', 'mb10');
-  p.el.append(h('div', 'col broad', h('div', 'head home', h('h1', 'title', 'DexSearch'), chip(L.t("Settings"), () => open(settings))), search.el, results, box));
+  p.el.append(h('div', 'col broad', h('div', 'head home', h('h1', 'title', 'DexSearch'), chip(L.t("Settings"), () => open(settings))), search.el, results, box, below));
   p.resume = () => {
     render();
     find(search.input.value);
   };
+  // A property, not a listener: the home a language change mounts replaces the old one's.
+  WIDE.onchange = listDex;
   render();
 
   function find(q) {
-    box.style.display = q.trim() ? 'none' : '';
+    box.style.display = below.style.display = q.trim() ? 'none' : '';
     if (!q.trim()) return results.replaceChildren();
     const g = game();
     const items = [];
@@ -701,6 +713,23 @@ function home(p) {
         tile(L.t("Items"), 'electric', count(d.items.length), () => open(items)),
         tile(L.t("Type chart"), 'dragon', count(d.typesIn(g).length), () => open(typeChart)),
         tile(L.t("Natures"), 'ground', count(d.natures.length), () => open(natures))))));
+    listDex();
+  }
+
+  /** On a computer the game's Pokédex fills the height below the cards; a phone's home has no room for it. */
+  function listDex() {
+    if (!WIDE.matches) {
+      dex._more?.disconnect();
+      return dex.replaceChildren();
+    }
+    const g = game();
+    const nationalDex = g.virtual || store.get('national', false);
+    const have = caughtSet();
+    const shown = dexSource(g, nationalDex).map(e => dexEntry(g, e, nationalDex, have));
+    const order = nums(shown);
+    const cards = store.get('layout', 0) === 0;
+    dex.className = cards ? 'cards' : 'rows';
+    fill(dex, shown, it => (cards ? card : row)(it, () => openMon(it.ref.num, order)), p.el, true);
   }
 
   /** Tap one to switch to it. New starts one in the current game and opens the game picker; Delete asks first. */
@@ -854,9 +883,9 @@ function listScreen(p, s) {
   p.refresh = refresh;
   refresh();
 
-  function refresh() {
+  function refresh(keep = false) {
     const shown = s.items(search.input.value);
-    fill(list, shown, it => (s.cards ? card : row)(it, () => (s.open ? s.open(it, shown) : openRef(it.ref))), p.el);
+    fill(list, shown, it => (s.cards ? card : row)(it, () => (s.open ? s.open(it, shown) : openRef(it.ref))), p.el, keep);
     count.textContent = s.count(shown);
     none.textContent = shown.length ? '' : L.t("Nothing matches. Change the search or the filters.");
     s.labels?.();
@@ -880,7 +909,7 @@ function pokedex(p, type) {
   // Marks change on the Pokémon page above this one.
   p.resume = () => {
     have = caughtSet();
-    p.refresh();
+    p.refresh(true);
   };
   listScreen(p, {
     heading: gen ? L.f("Gen %d Pokédex", gen) : L.t("Pokédex"),
@@ -909,15 +938,10 @@ function pokedex(p, type) {
       }));
     },
     items(q) {
-      const all = gen || !nationalDex ? g.dex : d.national;
-      source = store.get('forms', 0) === 1 ? all : all.filter(e => !isForm(e.mon));
+      source = dexSource(g, nationalDex);
       const keep = e => !caughtFilter || have.has(e.mon.num) === (caughtFilter === 1);
-      return d.pokedex(g, source, q, types, gens, minBst, sort).filter(keep).map(e => {
-        const m = e.mon;
-        const shown = nationalDex ? national(e.number) : '#' + String(e.number).padStart(3, '0');
-        const stat = sort.stat ? L.t(sort.label) + ' ' + sort.stat(m) : '';
-        return monEntry(m, d.typesOf(g, m), shown, have.has(m.num) ? (stat ? stat + '  ·  ' : '') + L.t("Caught") : stat);
-      });
+      return d.pokedex(g, source, q, types, gens, minBst, sort).filter(keep)
+        .map(e => dexEntry(g, e, nationalDex, have, sort.stat ? L.t(sort.label) + ' ' + sort.stat(e.mon) : ''));
     },
     count: shown => L.f("%s  ·  %d of %d  ·  caught %d", gen ? g.dex[0].dex : nationalDex ? L.t("National") : g.name, shown.length, source.length,
       source.filter(e => have.has(e.mon.num)).length),
@@ -931,6 +955,19 @@ function pokedex(p, type) {
     },
     open: (it, shown) => openMon(it.ref.num, nums(shown)),
   });
+}
+
+/** The Pokédex screen's list before its filters: `g`'s own dex or the national one, forms as Settings says. */
+function dexSource(g, nationalDex) {
+  const all = (g.id > WHOLE && g.gen) || !nationalDex ? g.dex : d.national;
+  return store.get('forms', 0) === 1 ? all : all.filter(e => !isForm(e.mon));
+}
+
+/** `e` as a Pokédex card: its dex number, its types in `g`, and the caught mark after `stat`. */
+function dexEntry(g, e, nationalDex, have, stat = '') {
+  const m = e.mon;
+  const shown = nationalDex ? national(e.number) : '#' + String(e.number).padStart(3, '0');
+  return monEntry(m, d.typesOf(g, m), shown, have.has(m.num) ? (stat ? stat + '  ·  ' : '') + L.t("Caught") : stat);
 }
 
 /** A tile per generation with its three starters and region; the list behind updates on every tap. */
