@@ -2,7 +2,7 @@
 /**
  * Keeps the whole web app on the phone, so it opens offline. build.sh fills in FILES (path to the first 8 hex digits
  * of its SHA-1) and VERSION (the same of FILES). A file is stored under "path?hash", so a new build downloads only the
- * files that changed and copies the rest from the old cache. One build is kept, about 23 MB of Cache Storage plus the
+ * files that changed and copies the rest from the old cache. One build is kept, about 25 MB of Cache Storage plus the
  * LATER files in use; the old one is deleted when the new one takes over. dexsearch.apk and version are not listed and
  * always come from the network.
  */
@@ -11,10 +11,10 @@ const FILES = /*FILES*/{};
 const CACHE = 'dex-' + VERSION;
 const BASE = new URL('./', location.href).pathname;
 /**
- * Official art, pixel and shiny pictures (about 60 MB): not downloaded on install. The style picked in Settings is
- * fetched whole when the page asks (5 or 17 MB), a shiny picture when it is shown.
+ * Official art, pixel and shiny pictures, of Pokémon and of their looks (about 55 MB): not downloaded on install. The
+ * style picked in Settings is fetched whole when the page asks (18 MB official, 1 MB pixel), a shiny picture when it is shown.
  */
-const LATER = /^assets\/(art|pixel|shiny[^/]*)\//;
+const LATER = /^assets\/(art|pixel|shiny[^/]*|looks-[^/]+)\//;
 
 /**
  * Stores each [path, hash] of `todo` in this build's cache, copied from an older build's when unchanged. A LATER file

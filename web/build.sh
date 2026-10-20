@@ -1,6 +1,6 @@
 #!/bin/sh
-# Builds the iPhone web app into a new directory $1: web/, the assets it reads (about 22 MB) and sw.js with a hash of
-# every file, so an installed copy downloads only what changed. Needs node 20+.
+# Builds the iPhone web app into a new directory $1: web/, the assets it reads (about 80 MB, 25 MB of it cached on
+# install) and sw.js with a hash of every file, so an installed copy downloads only what changed. Needs node 20+.
 set -eu
 out=${1:?usage: web/build.sh <new output directory>}
 case $out in /*) ;; *) out=$PWD/$out ;; esac
@@ -10,9 +10,10 @@ cd "$(dirname "$0")/.."
 node web/check.js assets
 mkdir -p "$out/assets"
 cp web/index.html web/style.css web/dex.js web/app.js web/manifest.webmanifest web/icon.png "$out/"
-# Not read on the web: looks, Smogon sets and type icons.
-cp -r assets/sprites assets/art assets/pixel assets/shiny assets/shiny-art assets/shiny-pixel assets/items assets/learn assets/info assets/names assets/lang "$out/assets/"
-for f in pokemon merged evo moves abilities items natures games types past; do cp "assets/$f.tsv" "$out/assets/"; done
+cp -r assets/sprites assets/art assets/pixel assets/shiny assets/shiny-art assets/shiny-pixel assets/looks assets/looks-art assets/looks-pixel \
+  assets/looks-shiny assets/looks-shiny-art assets/looks-shiny-pixel assets/items assets/learn assets/info assets/names assets/lang \
+  assets/sets assets/types "$out/assets/"
+for f in pokemon merged evo moves abilities items natures games types past looks; do cp "assets/$f.tsv" "$out/assets/"; done
 
 node -e '
 const fs = require("fs");

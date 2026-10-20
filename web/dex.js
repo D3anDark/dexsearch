@@ -129,11 +129,12 @@ class Dex {
     this.eraCache = new Map();
     /** Parsed learn/<game>.tsv, at most two games (a few hundred KB each). */
     this.learnCache = new Map();
+    this.looksByNum = new Map();
   }
 
   static async load(fetchText, lang) {
     const d = new Dex(fetchText);
-    const files = ['pokemon', 'merged', 'evo', 'moves', 'abilities', 'items', 'natures', 'games', 'types', 'past'];
+    const files = ['pokemon', 'merged', 'evo', 'moves', 'abilities', 'items', 'natures', 'games', 'types', 'past', 'looks'];
     const [names, ...texts] = await Promise.all([fetchText(`names/${lang}.tsv`), ...files.map(f => fetchText(f + '.tsv'))]);
     const t = Object.fromEntries(files.map((f, i) => [f, rows(texts[i])]));
     const n = new Map();
@@ -163,6 +164,8 @@ class Dex {
     }
     for (const f of t.natures) d.natures.push({ en: f[0], name: n.get('nature\t' + f[0]) ?? f[0], up: f[1], down: f[2] });
     for (const f of t.games) d.games.push(d.game_(f));
+    // looks.tsv is 12 KB, about 300 rows.
+    for (const f of t.looks) push(d.looksByNum, +f[0], [f[1], f[2]]);
     d.types = t.types.map(f => f[0]);
     d.factors = t.types.map(f => f.slice(1).map(Number));
     const learn = new Map();
@@ -423,6 +426,31 @@ class Dex {
       }
     }
     return ['', ''];
+  }
+
+  /**
+   * Smogon sets for these Pokémon in the game's generation, in file order (OU first), as Dex.kt. One scan of
+   * sets/<file>.tsv (gen 9 is 330 KB); only matching lines are split.
+   */
+  async builds(g, nums) {
+    // Legends: Arceus, Legends: Z-A, Champions and GO have no Smogon format.
+    if ([24, 30, 32, GO].includes(g.id)) return [];
+    const file = g.id === 19 ? 'letsgo' : g.id === 23 ? 'bdsp' : 'gen' + g.gen;
+    const out = [];
+    for (const line of ((await this.fetchText(`sets/${file}.tsv`)) ?? '').split('\n')) {
+      if (!nums.has(+line.slice(0, line.indexOf('\t')))) continue;
+      const f = line.split('\t');
+      out.push({ num: +f[0], format: f[1], name: f[2], level: +f[3], ability: +f[4], item: +f[5], nature: +f[6], tera: +f[7], evs: ints(f[8], ','), ivs: ints(f[9], ','), moves: ints(f[10], ',') });
+    }
+    return out;
+  }
+
+  /**
+   * [file, name] per look of this entry that changes only its picture (Tatsugiri's shapes, female Pikachu), as Dex.kt:
+   * file '' is its own sprite, others looks/<file>.webp. Empty for one look.
+   */
+  looks(num) {
+    return this.looksByNum.get(num) ?? [];
   }
 
   /** Types are AND, generations OR, `minBst` 0 for any; a number ("6", "#006") prefixes the shown dex number. */

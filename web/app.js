@@ -53,18 +53,44 @@ const store = {
       toast(L.t("Could not save on this device."));
     }
   },
+  remove(k) {
+    try {
+      localStorage.removeItem('dex.' + k);
+    } catch (e) {
+      // storage blocked: nothing was saved under it either
+    }
+  },
 };
 
-const game = () => d.game(store.get('game', 25));
+/**
+ * Workspaces keep playthroughs apart, as Ui.space: each has its own caught marks, teams and selected game. "spaces"
+ * holds [id, name] per workspace; workspace 0 uses the keys from before workspaces existed.
+ */
+const spaceId = () => store.get('space', 0);
+const spaceKey = (base, id = spaceId()) => (id === 0 ? base : base + '.' + id);
+const spaces = () => store.get('spaces', null) ?? [[0, L.t("Main")]];
+const spaceName = () => spaces().find(s => s[0] === spaceId())?.[1] ?? '';
+
+const game = () => d.game(store.get(spaceKey('game'), 25));
+
+/** Numbers marked caught in this workspace: about 8 KB for all 1300 entries, read fresh by each screen. */
+const caughtSet = () => new Set(store.get(spaceKey('caught'), []));
+
+function setCaught(num, on) {
+  const s = caughtSet();
+  if (on) s.add(num);
+  else s.delete(num);
+  store.set(spaceKey('caught'), [...s]);
+}
 
 /** About 3 KB for 20 full teams, read fresh on every screen that shows them. */
 function loadTeams() {
-  const teams = Team.parseAll(store.get('teams', ''));
+  const teams = Team.parseAll(store.get(spaceKey('teams'), ''));
   for (const t of teams) for (const x of t.members) x.num = d.known(x.num);
   return teams;
 }
 
-const saveTeams = teams => store.set('teams', Team.formatAll(teams));
+const saveTeams = teams => store.set(spaceKey('teams'), Team.formatAll(teams));
 const newMember = m => Team.member(m.num, m.abilities.length ? m.abilities[0] : m.hidden, 50);
 
 // --- colors, as Ui.kt ------------------------------------------------------------------------
@@ -149,6 +175,8 @@ function icon(path, size) {
 /** Asset folder per artwork style (Settings: HOME, official, pixel), as in Ui.kt. */
 const ART_DIRS = ['sprites', 'art', 'pixel'];
 const SHINY_DIRS = ['shiny', 'shiny-art', 'shiny-pixel'];
+const LOOK_DIRS = ['looks', 'looks-art', 'looks-pixel'];
+const SHINY_LOOK_DIRS = ['looks-shiny', 'looks-shiny-art', 'looks-shiny-pixel'];
 
 /**
  * In the Settings artwork style unless `style` is given. A form without its own picture shows its species', a style
@@ -157,7 +185,17 @@ const SHINY_DIRS = ['shiny', 'shiny-art', 'shiny-pixel'];
 function sprite(num, cls, shiny = false, style = store.get('art', 0)) {
   const dirs = shiny ? SHINY_DIRS : ART_DIRS;
   const s = d.monOrNull(num)?.species ?? num;
-  const tries = [...new Set([style, 0])].flatMap(k => [...new Set([num, s])].map(n => `assets/${dirs[k]}/${n}.webp`));
+  return picture([...new Set([style, 0])].flatMap(k => [...new Set([num, s])].map(n => `assets/${dirs[k]}/${n}.webp`)), cls);
+}
+
+/** Look `file` of looks.tsv in the Settings artwork style, else its HOME render. */
+function look(file, cls, shiny = false) {
+  const dirs = shiny ? SHINY_LOOK_DIRS : LOOK_DIRS;
+  return picture([...new Set([store.get('art', 0), 0])].map(k => `assets/${dirs[k]}/${file}.webp`), cls);
+}
+
+/** The first of `tries` that loads; hidden when none does. */
+function picture(tries, cls) {
   const img = h('img', { class: cls, alt: '', loading: 'lazy', decoding: 'async' });
   let i = 0;
   const load = () => {
@@ -181,8 +219,8 @@ function sparkle() {
 
 /** Asks the service worker to keep the picked artwork style for offline use; the HOME renders always are. */
 function keepArt() {
-  const art = ART_DIRS[store.get('art', 0)];
-  if (art !== 'sprites') navigator.serviceWorker?.ready.then(r => r.active?.postMessage({ art }));
+  const k = store.get('art', 0);
+  if (k) navigator.serviceWorker?.ready.then(r => [ART_DIRS[k], LOOK_DIRS[k]].forEach(art => r.active?.postMessage({ art })));
 }
 
 function itemIcon(id) {
@@ -200,12 +238,40 @@ const panel = (title, cls = 'wide mb12') => h('section', 'panel ' + cls, title ?
 const backButton = () => h('button', { class: 'back', 'aria-label': L.t("Back"), onclick: close }, icon(BACK, 22));
 const head = (title, ...extra) => h('div', 'head', backButton(), h('h1', 'title', title), extra);
 
-function pill(t, tag = 'span') {
-  const c = color(t);
-  return h(tag, { class: 'pill', style: `background:${css(c)};color:${on(c)}` }, d.label(t));
+/** Type label style picked in Settings, as Ui.labels: 0 name, 1 glyph and name, 2 pixel badge, 3 glyph alone. */
+const LABEL_STYLES = [0, 1, 3, 2];
+/** The 18 types with a glyph and a pixel badge in assets/types; Stellar and move categories have neither. */
+const TYPE_ART = new Set(Object.keys(TYPE_COLORS).slice(0, 18));
+
+/** Type `t`'s label into pill `el` in `style`. The glyph is a mask over the text color, so it takes the pill's ink. */
+function typeLabel(el, t, style = store.get('labels', 0)) {
+  const name = d.label(t);
+  if (!style || !TYPE_ART.has(t)) return el.append(name);
+  el.setAttribute('aria-label', name);
+  if (style === 2) {
+    el.classList.add('px');
+    el.style.background = 'none';
+    return el.append(h('img', { class: 'pixel', src: `assets/types/pixel/${t}.png`, alt: '' }));
+  }
+  const url = `url(assets/types/icon/${t}.png)`;
+  el.classList.add('ic');
+  el.classList.toggle('only', style === 3);
+  el.append(h('i', { class: 'glyph', style: `-webkit-mask-image:${url};mask-image:${url}` }));
+  if (style !== 3) el.append(h('span', null, name));
 }
 
-const glass = t => h('button', { class: 'pill glass big', onclick: () => openRef(t) }, d.label(t));
+function pill(t, tag = 'span', style) {
+  const c = color(t);
+  const el = h(tag, { class: 'pill', style: `background:${css(c)};color:${on(c)}` });
+  typeLabel(el, t, style);
+  return el;
+}
+
+function glass(t) {
+  const el = h('button', { class: 'pill glass big', onclick: () => openRef(t) });
+  typeLabel(el, t);
+  return el;
+}
 
 /** `perRow` pills a line, the last line padded with blanks so all share one width. */
 function typePills(types, perRow) {
@@ -556,10 +622,12 @@ function teamsTab(g) {
 
 const teamMonEntry = (g, m) => monEntry(m, d.typesOf(g, m), g.byNum.has(m.num) ? '#' + String(g.byNum.get(m.num).number).padStart(3, '0') : '', '');
 
-/** A Pokémon of `g` in tabs (`first`, then All); `picked` gets a team member, new unless one was tapped. */
+/** A Pokémon of `g` in tabs: `first`, then the caught ones (Box), then All; `picked` gets a team member, new unless one was tapped. */
 function pickMon(g, heading, first, picked) {
   const all = g.dex.map(e => teamMonEntry(g, e.mon));
-  pickSearch(heading, first ? [first[0], L.t("All")] : [], first ? [first[1], all] : [all], ref => picked(ref.evs ? ref : newMember(ref)));
+  const have = caughtSet();
+  const tabs = [...(first ? [first] : []), [L.t("Box"), all.filter(it => have.has(it.ref.num))], [L.t("All"), all]];
+  pickSearch(heading, tabs.map(t => t[0]), tabs.map(t => t[1]), ref => picked(ref.evs ? ref : newMember(ref)));
 }
 
 // --- home ------------------------------------------------------------------------------------
@@ -602,7 +670,21 @@ function home(p) {
     if (waiting) {
       box.append(tonal(h('button', { class: 'update', onclick: update }, ink(h('span', null, L.t("Update available")), c), ink(icon(NEXT, 16), c)), c));
     }
-    const banner = gameCard(g, L.t("Change game"), () => open(games));
+    if (installable()) {
+      const w = color('water');
+      box.append(tonal(h('button', { class: 'update', onclick: () => install(render) },
+        ink(h('span', null, L.t("Install DexSearch on this iPhone")), w), ink(icon(NEXT, 16), w)), w));
+    }
+    const species = g.dex.filter(e => !isForm(e.mon));
+    const have = caughtSet();
+    const n = species.filter(e => have.has(e.mon.num)).length;
+    const progress = h('div', 'progress', h('div', { class: 'track' }, h('i', { style: `width:${(n * 100) / Math.max(species.length, 1)}%` })),
+      h('div', null, L.f("%d of %d caught", n, species.length)));
+    const pill = h('button', { class: 'pill glass tag more', 'aria-label': L.f("Workspace: %s", spaceName()), onclick: e => {
+      e.stopPropagation();
+      workspaces();
+    } }, h('span', null, spaceName()), icon(NEXT, 12));
+    const banner = gameCard(g, L.t("Change game"), () => open(games), progress, pill);
     banner.classList.add('grow');
     banner.onclick = () => open(pokedex);
     box.append(banner, teamCard());
@@ -621,6 +703,60 @@ function home(p) {
         tile(L.t("Type chart"), 'dragon', count(d.typesIn(g).length), () => open(typeChart)),
         tile(L.t("Natures"), 'ground', count(d.natures.length), () => open(natures))));
   }
+
+  /** Tap one to switch to it. New starts one in the current game and opens the game picker; Delete asks first. */
+  function workspaces() {
+    const all = spaces();
+    const k = all.findIndex(s => s[0] === spaceId());
+    const s = sheet(L.t("Workspaces"));
+    all.forEach((w, i) => s.body.append(h('button', { class: i === k ? 'opt on' : 'opt', onclick: () => {
+      if (!s.close()) return;
+      store.set('space', w[0]);
+      p.resume();
+    } }, w[1])));
+    if (all.length > 1) s.button(L.t("Delete"), false, () => confirm(L.f("Delete %s?", all[k][1]),
+      L.t("Its caught marks, teams and selected game are removed from this device. This cannot be undone."), L.t("Delete"), () => {
+        const id = all[k][0];
+        const rest = all.filter(w => w[0] !== id);
+        for (const base of ['caught', 'teams', 'game']) store.remove(spaceKey(base, id));
+        store.set('spaces', rest);
+        store.set('space', rest[0][0]);
+        p.resume();
+      }));
+    s.button(L.t("Rename"), false, () => askName(L.t("Workspace name"), all[k][1], name => {
+      store.set('spaces', all.map(w => (w[0] === all[k][0] ? [w[0], name] : w)));
+      p.resume();
+    }));
+    s.button(L.t("New"), true, () => askName(L.t("New workspace"), '', name => {
+      const id = Math.max(...all.map(w => w[0])) + 1;
+      store.set('spaces', [...all, [id, name]]);
+      store.set(spaceKey('game', id), game().id);
+      store.set('space', id);
+      open(games);
+    }));
+    s.show();
+  }
+}
+
+/**
+ * Safari on an iPhone or iPad, not opened from the home screen icon. iPadOS reports a Mac, told apart by its touch
+ * screen.
+ */
+const installable = () => !navigator.standalone && !store.get('hideInstall', false)
+  && (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+
+/** Safari's steps to put the web app on the home screen; "Do not show again" hides the card and runs `hidden`. */
+function install(hidden) {
+  const s = sheet(L.t("Install DexSearch"));
+  s.body.append(h('ol', 'steps',
+    h('li', null, L.t("Tap Share: the square with an arrow, in Safari’s bottom bar or under ⋯.")),
+    h('li', null, L.t("Tap “Add to Home Screen”. Not in the list? Scroll down or tap More.")),
+    h('li', null, L.t("Tap Add, then open DexSearch from its new icon. It works offline from then on."))));
+  s.button(L.t("Do not show again"), false, () => {
+    store.set('hideInstall', true);
+    hidden();
+  });
+  s.button(L.t("Done"), true).show();
 }
 
 function found(g, kind, o) {
@@ -642,10 +778,10 @@ function number(s, c) {
 }
 
 /**
- * Version-colored card: name, regional dexes, species count, box-art Pokémon and `tag`, a button of its own with
- * `onTag`. A generation's Pokédex takes its first game's colors and its three starters.
+ * Version-colored card: name, regional dexes, species count, `below`, box-art Pokémon and `tag`, a button of its own
+ * with `onTag`, with `beside` next to it. A generation's Pokédex takes its first game's colors and its three starters.
  */
-function gameCard(g, tag, onTag) {
+function gameCard(g, tag, onTag, below, beside) {
   const base = g.id > WHOLE ? d.games.find(x => x.gen === g.gen) ?? g : g;
   const colors = GAME_COLORS[base.id] ?? ['555555'];
   const starter = g.id > WHOLE ? g.dex.find(e => !isForm(e.mon)).mon.num : 0;
@@ -654,7 +790,8 @@ function gameCard(g, tag, onTag) {
   const count = g.dex.filter(e => !isForm(e.mon)).length;
   const label = tag ? h(onTag ? 'button' : 'span', { class: 'pill glass tag', onclick: onTag && (e => { e.stopPropagation(); onTag(); }) }, tag) : null;
   const c = h('div', { class: 'gamecard ball', role: 'button', tabindex: '0' },
-    h('div', { class: 'texts', style: `margin-right:${12 + 56 * mascots.length}px` }, h('h2', null, g.name), h('p', null, dexes + '\n' + L.f("%d Pokémon", count)), label),
+    h('div', { class: 'texts', style: `margin-right:${12 + 56 * mascots.length}px` }, h('h2', null, g.name), h('p', null, dexes + '\n' + L.f("%d Pokémon", count)),
+      below, beside ? h('div', 'tags', label, beside) : label),
     h('div', { class: 'art', 'aria-hidden': 'true' }, mascots.map(n => sprite(n))));
   c.style.setProperty('--g', `linear-gradient(to bottom right, ${css(deep(rgb(colors[0])))}, ${css(deep(rgb(colors.at(-1))))})`);
   return c;
@@ -686,7 +823,7 @@ function games(p) {
     const c = gameCard(g, g === current ? L.t("Selected") : null);
     c.classList.add('wide', 'mb10');
     c.onclick = () => {
-      store.set('game', g.id);
+      store.set(spaceKey('game'), g.id);
       close();
     };
     col.append(c);
@@ -715,6 +852,7 @@ function listScreen(p, s) {
   const none = h('p', 'empty');
   s.setup?.(bar, () => refresh());
   p.el.append(h('div', 'col', head(s.heading), search.el, bar.childElementCount ? bar : null, count, list, none));
+  p.refresh = refresh;
   refresh();
 
   function refresh() {
@@ -735,7 +873,16 @@ function pokedex(p, type) {
   let minBst = 0;
   let sort = SORTS[0];
   let source = [];
+  /** 0 all, 1 caught, 2 not caught, as CAUGHT in PokedexActivity. */
+  let caughtFilter = 0;
+  let have = caughtSet();
+  const CAUGHT = [L.t("All"), L.t("Caught"), L.t("Not caught")];
   const chips = {};
+  // Marks change on the Pokémon page above this one.
+  p.resume = () => {
+    have = caughtSet();
+    p.refresh();
+  };
   listScreen(p, {
     heading: gen ? L.f("Gen %d Pokédex", gen) : L.t("Pokédex"),
     hint: L.t("Search name or number"),
@@ -757,18 +904,26 @@ function pokedex(p, type) {
         sort = SORTS[i];
         refresh();
       }));
+      add('caught', () => pickOne(L.t("Caught"), CAUGHT, caughtFilter, i => {
+        caughtFilter = i;
+        refresh();
+      }));
     },
     items(q) {
       const all = gen || !nationalDex ? g.dex : d.national;
       source = store.get('forms', 0) === 1 ? all : all.filter(e => !isForm(e.mon));
-      return d.pokedex(g, source, q, types, gens, minBst, sort).map(e => {
+      const keep = e => !caughtFilter || have.has(e.mon.num) === (caughtFilter === 1);
+      return d.pokedex(g, source, q, types, gens, minBst, sort).filter(keep).map(e => {
         const m = e.mon;
         const shown = nationalDex ? national(e.number) : '#' + String(e.number).padStart(3, '0');
-        return monEntry(m, d.typesOf(g, m), shown, sort.stat ? L.t(sort.label) + ' ' + sort.stat(m) : '');
+        const stat = sort.stat ? L.t(sort.label) + ' ' + sort.stat(m) : '';
+        return monEntry(m, d.typesOf(g, m), shown, have.has(m.num) ? (stat ? stat + '  ·  ' : '') + L.t("Caught") : stat);
       });
     },
-    count: shown => (gen ? g.dex[0].dex : nationalDex ? L.t("National") : g.name) + '  ·  ' + L.f("%d of %d", shown.length, source.length),
+    count: shown => L.f("%s  ·  %d of %d  ·  caught %d", gen ? g.dex[0].dex : nationalDex ? L.t("National") : g.name, shown.length, source.length,
+      source.filter(e => have.has(e.mon.num)).length),
     labels() {
+      setChip(chips.caught, caughtFilter ? CAUGHT[caughtFilter] : L.t("Caught"), caughtFilter > 0);
       if (chips.dex) setChip(chips.dex, nationalDex ? L.t("National") : L.t("Regional"), nationalDex);
       setChip(chips.type, types.size ? [...types].map(t => d.label(t)).join(' / ') : L.t("Type"), types.size > 0);
       if (chips.gen) setChip(chips.gen, gens.size ? L.f("Gen %s", [...gens].sort((a, b) => a - b).join(',')) : L.t("Gen"), gens.size > 0);
@@ -933,15 +1088,28 @@ function monScreen(p, start, list) {
   let body = null;
   /** Shiny coloring for the picture and form thumbnails; kept while paging through Pokémon. */
   let shiny = false;
-  /** Form thumbnails on the Info tab with their numbers, one family at most; redrawn when `shiny` flips. */
+  /** Form and look thumbnails on the Info tab with a maker per shiny state, one family at most; redrawn when `shiny` flips. */
   let thumbs = [];
+  /** The looks.tsv file shown in the header instead of the Pokémon's own picture, or null. */
+  let worn = null;
+  /** The header picture and the Pokémon it belongs to. */
+  let pic = null;
+  let picNum = 0;
+  /** Format chip picked on the Builds tab, kept while paging through Pokémon. */
+  let format = '';
+  const wearing = file => {
+    worn = file;
+    const x = file ? look(file, 'main', shiny) : sprite(picNum, 'main', shiny);
+    pic?.replaceWith(x);
+    pic = x;
+  };
   const step = (num, k) => {
     const n = own ? d.neighbor(own, num, k) : -1;
     return n < 0 ? d.neighbor(nationalOrder(), num, k) : n;
   };
   show(start);
 
-  function show(num) {
+  function show(num, wear = null) {
     const m = d.mon(num);
     const types = d.typesOf(g, m);
     const prev = step(num, -1);
@@ -949,20 +1117,35 @@ function monScreen(p, start, list) {
     const e = g.byNum.get(num);
     const ink = deep(color(types[0]));
     const top = hero(ink);
-    let pic = sprite(num, 'main', shiny);
+    picNum = num;
+    pic = null;
+    wearing(wear);
     const toggle = h('button', {
       class: 'shiny', style: `--ink:${css(ink)}`, 'aria-label': L.t("Shiny"), title: L.t("Shiny"), 'aria-pressed': String(shiny),
       onclick: () => {
         shiny = !shiny;
         toggle.setAttribute('aria-pressed', String(shiny));
-        pic.replaceWith(pic = sprite(num, 'main', shiny));
-        thumbs = thumbs.map(([img, n]) => {
-          const x = sprite(n, null, shiny);
+        wearing(worn);
+        thumbs = thumbs.map(([img, make]) => {
+          const x = make(shiny);
           img.replaceWith(x);
-          return [x, n];
+          return [x, make];
         });
       },
     }, sparkle());
+    const caught = h('button', {
+      class: 'add mark', style: `--ink:${css(ink)}`,
+      onclick: () => {
+        const on = !caughtSet().has(num);
+        setCaught(num, on);
+        paint(on);
+      },
+    });
+    const paint = on => {
+      caught.textContent = on ? L.t("Caught") : L.t("Mark caught");
+      caught.setAttribute('aria-pressed', String(on));
+    };
+    paint(caughtSet().has(num));
     top.append(
       h('div', 'line', h('h1', null, d.mon(m.species).name),
         h('button', { class: 'nav', hidden: prev <= 0, 'aria-label': prev > 0 ? L.f("Previous: %s", d.mon(prev).name) : null, onclick: () => show(prev) }, icon(BACK, 20)),
@@ -972,8 +1155,8 @@ function monScreen(p, start, list) {
       h('div', 'mt8 typerow', types.map(glass), toggle),
       pic,
       g === d.whole ? null : h('div', 'where', e ? L.f("%s #%d  ·  %s", e.dex, e.number, g.name) : L.f("Not in %s", g.name)),
-      h('button', { class: 'add', onclick: () => addToTeam(m) }, L.t("Add to team")));
-    const tabs = seg([L.t("Info"), L.t("Evolution"), L.t("Moves")], tab, i => {
+      h('div', 'acts', caught, h('button', { class: 'add', onclick: () => addToTeam(m) }, L.t("Add to team"))));
+    const tabs = seg([L.t("Info"), L.t("Evolution"), L.t("Moves"), L.t("Builds")], tab, i => {
       tab = i;
       fillTab(m);
     });
@@ -990,12 +1173,13 @@ function monScreen(p, start, list) {
     thumbs = [];
     if (tab === 0) info(m, t);
     else if (tab === 1) evolution(m);
-    else learnset(m, t);
+    else if (tab === 2) learnset(m, t);
+    else builds(m, t);
   }
 
   async function info(m, t) {
-    const fam = d.family(m);
-    if (fam.length > 1) body.append(forms(fam, m));
+    const looks = forms(m);
+    if (looks) body.append(looks);
     const imperial = store.get('units', 0) === 1;
     const text = h('p', 'body', m.flavor);
     const fact = (v, k) => h('div', null, h('b', null, v), h('span', null, k));
@@ -1043,26 +1227,60 @@ function monScreen(p, start, list) {
     where.replaceWith(w);
   }
 
-  /** Families past 12 (Alcremie, Vivillon) show 8 until asked. */
-  function forms(fam, m) {
+  /**
+   * The family's forms, then the looks of the one that has them (MonActivity.forms): a look of this Pokémon only
+   * changes the header picture, one of another form opens that form wearing it. Past 12 tiles (Alcremie, Vivillon)
+   * shows 8 until asked, unless the shown one is further down.
+   */
+  function forms(m) {
+    const fam = d.family(m);
+    const owner = d.looks(m.num).length ? m : fam[0];
+    const looks = d.looks(owner.num);
+    if (fam.length + Math.max(looks.length - 1, 0) < 2) return null;
     const box = panel(L.t("Forms and looks"));
     const grid = h('div', 'forms');
-    const btn = f => {
-      const img = sprite(f.num, null, shiny);
-      thumbs.push([img, f.num]);
-      return h('button', { class: f === m ? 'on' : null, onclick: () => show(f.num) }, img, f.name);
+    const tiles = [];
+    const tile = (make, name, act) => {
+      const img = make(shiny);
+      thumbs.push([img, make]);
+      const b = h('button', {
+        onclick: () => {
+          act();
+          tiles.forEach(t => t.classList.toggle('on', t === b));
+        },
+      }, img, name);
+      tiles.push(b);
+      return b;
     };
-    const many = fam.length > 12;
-    grid.append(...(many ? fam.slice(0, 8) : fam).map(btn));
+    fam.forEach(f => tile(s => sprite(f.num, null, s), f === owner && looks.length ? looks[0][1] : f.name, () => (f === m ? wearing(null) : show(f.num))));
+    looks.slice(1).forEach(([file, name]) => tile(s => look(file, null, s), name, () => (owner === m ? wearing(file) : show(owner.num, file))));
+    const here = worn ? fam.length + looks.slice(1).findIndex(l => l[0] === worn) : fam.indexOf(m);
+    tiles[here]?.classList.add('on');
+    const many = tiles.length > 12 && here < 8;
+    grid.append(...(many ? tiles.slice(0, 8) : tiles));
     box.append(grid);
     if (many) {
-      const more = chip(L.f("Show all (%d)", fam.length), () => {
-        grid.replaceChildren(...fam.map(btn));
+      const more = chip(L.f("Show all (%d)", tiles.length), () => {
+        grid.replaceChildren(...tiles);
         more.remove();
       }, 'mt10');
       box.append(more);
     }
     return box;
+  }
+
+  async function builds(m, t) {
+    const sets = await d.builds(g, new Set(d.family(m).map(f => f.num)));
+    if (t !== token) return;
+    body.append(h('p', 'note pad mb8', sets.length ? L.f("Smogon sets for %s", g.name) : L.f("No Smogon sets for %s in %s.", m.name, g.name)));
+    if (!sets.length) return;
+    body.append(buildList(g, sets, m.num, format, 'wide', b => h('div', 'two',
+      chip(L.t("Add to team"), () => addToTeam(d.mon(b.num), buildMember(b)), 'on'),
+      chip(L.t("Copy for Showdown"), () => {
+        const one = new Team(b.name, g.id);
+        one.members.push(buildMember(b));
+        copy(one);
+      })), f => { format = f; }));
   }
 
   function evolution(m) {
@@ -1120,14 +1338,15 @@ function how(e) {
   return h('span', null, ink(h('b', null, female ? L.t("Female only") : L.t("Male only")), color(female ? 'fairy' : 'water')), '  ·  ' + e.how);
 }
 
-function addToTeam(m) {
+/** `member` is `m` with a Smogon set applied; without it `m` joins with its first ability at level 50. */
+function addToTeam(m, member = newMember(m)) {
   const teams = loadTeams();
   const labels = teams.map(t => `${t.name}  (${t.members.length}/${Team.SIZE}, ${d.game(t.game).name})`);
   pickOne(L.f("Add %s to", m.name), [...labels, L.t("New team")], -1, i => {
     if (i === teams.length) teams.push(new Team(L.f("Team %d", i + 1), game().id));
     const t = teams[i];
     if (t.members.length >= Team.SIZE) return toast(L.f("%s already has %d Pokémon", t.name, Team.SIZE));
-    t.members.push(newMember(m));
+    t.members.push(member);
     saveTeams(teams);
     open(q => memberScreen(q, i, t.members.length - 1));
   });
@@ -1213,6 +1432,16 @@ function settings(p) {
     store.set('art', i);
     keepArt();
   }));
+  label(look, L.t("Type labels"));
+  const styles = [L.t("Text"), L.t("Icon and name"), L.t("Icon only"), L.t("Pixel art")];
+  const tiles = styles.map((s, k) => h('button', {
+    class: LABEL_STYLES[k] === store.get('labels', 0) ? 'on' : null,
+    onclick: () => {
+      store.set('labels', LABEL_STYLES[k]);
+      tiles.forEach((t, i) => t.classList.toggle('on', i === k));
+    },
+  }, h('div', null, ['fire', 'water'].map(t => pill(t, 'span', LABEL_STYLES[k]))), s));
+  look.append(h('div', 'opts', tiles));
 
   const list = section(L.t("Pokédex"));
   label(list, L.t("Layout"));
@@ -1228,6 +1457,20 @@ function settings(p) {
     units(i);
   }), example);
   units(store.get('units', 0));
+
+  const count = h('span', 'muted');
+  const clear = chip(L.t("Clear"), () => confirm(L.t("Clear caught marks?"),
+    L.f("Removes the caught mark from every game in %s. Pokémon: %d. This cannot be undone.", spaceName(), caughtSet().size), L.t("Clear"), () => {
+      store.remove(spaceKey('caught'));
+      shown();
+    }));
+  const shown = () => {
+    const n = caughtSet().size;
+    count.textContent = n ? L.f("Marked: %d", n) : L.t("None");
+    clear.disabled = !n;
+  };
+  shown();
+  section(L.t("Data")).append(h('div', 'setrow', h('span', 'bold', L.t("Caught Pokémon")), count, clear));
 
   section(L.t("About")).append(h('p', 'note', L.t("Data: PokeAPI and pokemondb.net. Artwork and type icons: PokeAPI sprites. Sets: Smogon University, via pkmn. Pokémon names and images © Nintendo / Game Freak.")));
   p.el.append(col);
@@ -1399,6 +1642,69 @@ function defense(team, g) {
   return box;
 }
 
+/**
+ * A chip per format in `sets` ("OU  2", first seen first) over cards of the picked format's sets, as
+ * MemberActivity.buildList, starting on `start` if the sets have it. Each card gets class `cls` and `actions(set)` at its
+ * foot; `picked` gets a new format. Only one format's cards exist at a time: Arceus has 76 sets in Gen 9.
+ */
+function buildList(g, sets, num, start, cls, actions, picked = () => {}) {
+  const counts = new Map();
+  for (const b of sets) counts.set(b.format, (counts.get(b.format) ?? 0) + 1);
+  const cards = h('div');
+  const chips = [...counts].map(([f, n]) => chip(f + '  ' + n, () => {
+    show(f);
+    picked(f);
+  }));
+  const formats = [...counts.keys()];
+  const show = f => {
+    chips.forEach((c, i) => c.classList.toggle('on', formats[i] === f));
+    cards.replaceChildren(...sets.filter(b => b.format === f).map(b => buildCard(g, b, num, cls, actions(b))));
+  };
+  show(counts.has(start) ? start : formats[0]);
+  return h('div', 'builds', h('div', 'chips', chips), cards);
+}
+
+/**
+ * One set: name, its form when not `num`, level when not 100 and Tera type; then item, ability (opens it), nature with
+ * the stats it raises and lowers, EVs and any IV under 31; then the moves two to a row in their type's tint.
+ */
+function buildCard(g, b, num, cls, actions) {
+  const card = panel(null, 'build ' + cls);
+  const sub = [b.num === num ? '' : d.mon(b.num).name, b.level === 100 ? '' : L.f("Lv %d", b.level)].filter(s => s).join('  ·  ');
+  const tera = b.tera >= 0 && (g.id === 25 || (g.virtual && g.gen >= 9));
+  card.append(h('div', 'btop', h('div', null, h('div', 'bold', b.name), sub ? h('div', 'note', sub) : null),
+    tera ? h('span', 'note', L.t("Tera")) : null, tera ? pill(d.types[b.tera]) : null));
+  const facts = h('div', 'bfacts');
+  const fact = (k, v, ref) => facts.append(h(ref ? 'button' : 'div', { onclick: ref ? () => openRef(ref) : null }, h('span', 'k', k), h(ref ? 'b' : 'span', null, v)));
+  if (b.item) fact(L.t("Item"), d.item(b.item).name);
+  if (b.ability) fact(L.t("Ability"), d.ability(b.ability).name, d.ability(b.ability));
+  if (b.nature >= 0) {
+    const n = d.natures[b.nature];
+    fact(L.t("Nature"), n.up === n.down ? n.name : [n.name, h('b', 'up', '+' + L.t(n.up)), h('b', 'down', '-' + L.t(n.down))]);
+  }
+  const spread = (v, keep) => v.map((n, i) => (keep(n) ? n + ' ' + L.t(STATS[i]) : '')).filter(s => s).join(' / ');
+  const evs = spread(b.evs, n => n > 0);
+  const ivs = spread(b.ivs, n => n < Team.IV_MAX);
+  if (evs) fact(L.t("EVs"), evs);
+  if (ivs) fact(L.t("IVs"), ivs);
+  card.append(facts, h('div', 'bmoves', b.moves.filter(id => id).map(id => {
+    const mv = d.move(g, id);
+    return tonal(h('button', { onclick: () => openRef(mv) }, h('b', null, mv.name), h('span', null, d.label(mv.type))), color(mv.type));
+  })), actions);
+  return card;
+}
+
+/** A new member of `b`'s form with `b` applied. */
+const buildMember = b => loadBuild(b, newMember(d.mon(b.num)));
+
+/** Replaces `x`'s whole set, as MemberActivity.load; an ability the data leaves out (Gen 1-2) stays if the form has it. */
+function loadBuild(b, x) {
+  const f = d.mon(b.num);
+  if (b.ability) x.ability = b.ability;
+  else if (x.ability !== f.hidden && !f.abilities.includes(x.ability)) x.ability = newMember(f).ability;
+  return Object.assign(x, { num: b.num, item: b.item, nature: b.nature, tera: b.tera, level: b.level, evs: [...b.evs], ivs: [...b.ivs], moves: [...b.moves] });
+}
+
 /** One team member: ability, item, nature, Tera type, level, moves and stats; every change saves at once. */
 function memberScreen(p, ti, k) {
   let teams;
@@ -1408,6 +1714,16 @@ function memberScreen(p, ti, k) {
   const save = () => saveTeams(teams);
   /** Set by stats(): redraws totals, nature marks and the EV count after a level, IV or EV change. */
   let refreshStats = () => {};
+  /** Smogon sets of the shown species' family in the team's game, one file scan per species. */
+  let setsFor = 0;
+  let sets = null;
+  const builds = m => {
+    if (setsFor !== m.species) {
+      setsFor = m.species;
+      sets = d.builds(g, new Set(d.family(m).filter(f => g.byNum.has(f.num)).map(f => f.num)));
+    }
+    return sets;
+  };
   p.resume = render;
   render();
 
@@ -1474,6 +1790,11 @@ function memberScreen(p, ti, k) {
       build();
     };
     const setting = (label, value, act) => h('button', { class: 'set', onclick: act }, h('span', null, label), h('span', 'v', value));
+    const smogon = h('div');
+    box.append(smogon);
+    builds(m).then(all => {
+      if (all.length) smogon.replaceWith(setting(L.t("Smogon set"), L.f("Sets: %d", all.length), () => pickBuild(all)));
+    });
     if (g.gen >= 3) {
       const ids = [...new Set([...m.abilities, m.hidden].filter(id => id))];
       box.append(h('div', 'caption', L.t("Ability")), h('div', { class: 'wrap', style: 'margin:6px 0 8px' }, ids.map(id => {
@@ -1487,13 +1808,7 @@ function memberScreen(p, ti, k) {
       if (a) box.append(h('p', 'note mb8', a.shortEffect));
     }
     if (g.gen >= 2) {
-      box.append(setting(L.t("Item"), x.item ? d.item(x.item).name : L.t("None"), () => pickSearch(L.t("Held item"), [], [[
-        entry(0, '', L.t("No item"), '', [], 0),
-        ...itemSections(d.items.filter(i => i.gen <= g.gen), i => entry(0, '', i.name, i.effect, [], i)),
-      ]], ref => {
-        x.item = ref ? ref.id : 0;
-        redo();
-      })));
+      box.append(setting(L.t("Item"), x.item ? d.item(x.item).name : L.t("None"), () => pickItem(m)));
     }
     if (g.gen >= 3) {
       const n = x.nature < 0 ? null : d.natures[x.nature];
@@ -1530,6 +1845,35 @@ function memberScreen(p, ti, k) {
     paint();
     box.append(h('div', 'set', h('span', null, L.t("Level")), quick, level));
     return box;
+  }
+
+  function pickBuild(all) {
+    const s = sheet(L.t("Smogon sets"));
+    s.body.append(buildList(g, all, x.num, '', 'fill', b => chip(L.t("Use this set"), () => {
+      if (!s.close()) return;
+      loadBuild(b, x);
+      save();
+      build();
+    }, 'on')));
+    s.button(L.t("Cancel")).show();
+  }
+
+  /** Held items released by this game's generation: those in this Pokémon's Smogon sets first, most used on top. */
+  async function pickItem(m) {
+    const usable = d.items.filter(i => i.gen <= g.gen);
+    const used = new Map();
+    for (const b of await builds(m)) if (b.item) used.set(b.item, (used.get(b.item) ?? 0) + 1);
+    const top = usable.filter(i => used.has(i.id)).sort((a, b) => used.get(b.id) - used.get(a.id));
+    const make = i => entry(0, '', i.name, i.effect, [], i);
+    pickSearch(L.t("Held item"), [], [[
+      entry(0, '', L.t("No item"), '', [], 0),
+      ...(top.length ? [header(L.t("Smogon sets")), ...top.map(make)] : []),
+      ...itemSections(usable, make),
+    ]], ref => {
+      x.item = ref ? ref.id : 0;
+      save();
+      build();
+    });
   }
 
   function movesPanel(m) {

@@ -307,3 +307,9 @@ Update failed: %s	アップデートに失敗しました：%s
 Back	戻る
 Could not load the data. Check the connection and reload.	データを読み込めませんでした。接続を確認して再読み込みしてください。
 Could not save on this device.	この端末に保存できませんでした。
+Install DexSearch on this iPhone	このiPhoneにDexSearchをインストール
+Install DexSearch	DexSearchのインストール
+Tap Share: the square with an arrow, in Safari’s bottom bar or under ⋯.	共有をタップします。Safariの下のバーか⋯の中にある、矢印付きの四角です。
+Tap “Add to Home Screen”. Not in the list? Scroll down or tap More.	「ホーム画面に追加」をタップします。見つからない場合は下にスクロールするか、「その他」をタップします。
+Tap Add, then open DexSearch from its new icon. It works offline from then on.	「追加」をタップし、新しいアイコンからDexSearchを開きます。以後はオフラインで使えます。
+Do not show again	今後表示しない

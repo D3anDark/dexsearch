@@ -39,16 +39,23 @@ app, on the same `assets/` and translations, which Safari installs on the home s
 into GitHub Pages by the same workflow on every release.
 
 1. In Safari open `https://d3andark.github.io/dexsearch/`.
-2. Tap Share, then "Add to Home Screen", then "Add".
-3. Open DexSearch from the new icon. The first launch downloads about 23 MB; after that it works offline.
+2. Tap Share (the square with an arrow; on iOS 26 it is under ⋯), then "Add to Home Screen", leave "Open as Web App"
+   on where iOS shows it, then "Add".
+3. Open DexSearch from the new icon. The first launch downloads about 25 MB; after that it works offline.
 
-Settings > Pokémon artwork picks 3D, official or pixel art; the picked style downloads in the background (17 or 5 MB),
+Opened in Safari but not installed, the home screen shows "Install DexSearch on this iPhone" with these steps.
+
+Settings > Pokémon artwork picks 3D, official or pixel art; the picked style downloads in the background (18 or 1 MB),
 shiny pictures as they are shown.
 
 When a newer release is on Pages, the home screen shows "Update available"; tap it. Teams are stored in the web app on
 that phone only, and deleting the icon deletes them, so keep a copy with "Copy as text".
 
 Locally: `web/build.sh /tmp/site` (runs `node web/check.js assets` first), then serve that folder over HTTP.
+
+Without an iPhone: the same page opens in Chrome on Android (same code, Blink instead of WebKit) and in GNOME Web
+(`dnf install epiphany`), which is WebKit like Safari. Playwright's `webkit` with `devices['iPhone 13']` runs it
+headless; on Fedora it needs ICU 74 and `libjpeg.so.8` from Ubuntu 24.04, as Playwright builds WebKit for Ubuntu.
 
 ## Data
 
