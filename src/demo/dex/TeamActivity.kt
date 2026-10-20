@@ -91,6 +91,7 @@ class TeamActivity : Activity() {
         if (team.members.isNotEmpty()) {
             root.addView(tips(), Ui.wide(this, 0, 12))
             root.addView(defense(), Ui.wide(this, 0, 12))
+            root.addView(coverage(), Ui.wide(this, 0, 12))
         }
 
         val actions = LinearLayout(this)
@@ -133,23 +134,41 @@ class TeamActivity : Activity() {
 
     /** Every attacking type with how many members it hits super effectively and how many resist it. */
     private fun defense(): View {
-        val p = Ui.panel(this, L.t("Type defenses"))
-        val help = Ui.muted(this, L.t("Members weak to and resisting each attacking type. Red: half the team or more is weak."), 13)
-        help.setPadding(0, 0, 0, Ui.dp(this, 8))
-        p.addView(help)
         val d = team.defense(dex)
+        return typeTable(L.t("Type defenses"), L.t("Members weak to and resisting each attacking type. Red: half the team or more is weak."),
+            L.t("Weak"), L.t("Resist")) { i ->
+            val bad = d[i][0] * 2 >= team.members.size && d[i][0] > d[i][1]
+            listOf(d[i][0].toString() to (if (bad) red else Ui.TEXT), d[i][1].toString() to (if (d[i][1] > 0) green else Ui.MUTED))
+        }
+    }
+
+    /** The other side: every defending type with how many members hit it super effectively and how many it walls. */
+    private fun coverage(): View {
+        val c = team.coverage(dex)
+        // Without a single attack every count is 0, which is not yet a gap.
+        val attacks = team.attacks(dex)
+        return typeTable(L.t("Type coverage"), L.t("Members with an attack that hits each type super effectively, and members whose every attack it resists. Red: nothing hits it."),
+            L.t("Hits"), L.t("Walled")) { i ->
+            listOf(c[i][0].toString() to (if (c[i][0] > 0) green else if (attacks) red else Ui.MUTED), c[i][1].toString() to (if (c[i][1] > 0) red else Ui.MUTED))
+        }
+    }
+
+    private val red get() = (if (Ui.night) 0xFFFF8A80 else 0xFFC62828).toInt()
+    private val green get() = (if (Ui.night) 0xFF7BD88F else 0xFF1E7B3A).toInt()
+
+    /** The game's types in two columns with two numbers each, under `first` and `second`; `cell(i)` gives type `i`'s numbers with their colors. */
+    private fun typeTable(heading: String, help: String, first: String, second: String, cell: (Int) -> List<Pair<String, Int>>): View {
+        val p = Ui.panel(this, heading)
+        val h = Ui.muted(this, help, 13)
+        h.setPadding(0, 0, 0, Ui.dp(this, 8))
+        p.addView(h)
         val types = dex.types(game)
         val half = (types.size + 1) / 2
         val cols = LinearLayout(this)
         for (c in 0 until 2) {
             val col = Ui.vertical(this)
-            col.addView(defenseRow(null, L.t("Weak"), L.t("Resist"), Ui.MUTED, Ui.MUTED))
-            for (i in c * half until minOf(types.size, (c + 1) * half)) {
-                val bad = d[i][0] * 2 >= team.members.size && d[i][0] > d[i][1]
-                col.addView(defenseRow(types[i], d[i][0].toString(), d[i][1].toString(),
-                    if (bad) (if (Ui.night) 0xFFFF8A80 else 0xFFC62828).toInt() else Ui.TEXT,
-                    if (d[i][1] > 0) (if (Ui.night) 0xFF7BD88F else 0xFF1E7B3A).toInt() else Ui.MUTED))
-            }
+            col.addView(typeRow(null, listOf(first to Ui.MUTED, second to Ui.MUTED)))
+            for (i in c * half until minOf(types.size, (c + 1) * half)) col.addView(typeRow(types[i], cell(i)))
             val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             if (c == 0) lp.setMargins(0, 0, Ui.dp(this, 12), 0)
             cols.addView(col, lp)
@@ -158,13 +177,13 @@ class TeamActivity : Activity() {
         return p
     }
 
-    private fun defenseRow(type: String?, weak: String, resist: String, weakColor: Int, resistColor: Int): View {
+    private fun typeRow(type: String?, cells: List<Pair<String, Int>>): View {
         val row = LinearLayout(this)
         row.gravity = Gravity.CENTER_VERTICAL
         row.setPadding(0, Ui.dp(this, 2), 0, Ui.dp(this, 2))
         row.addView(if (type == null) View(this) else Ui.pill(this, type),
             LinearLayout.LayoutParams(Ui.dp(this, 76), ViewGroup.LayoutParams.WRAP_CONTENT))
-        for ((label, color) in listOf(weak to weakColor, resist to resistColor)) {
+        for ((label, color) in cells) {
             val t = Ui.text(this, label, if (type == null) 11 else 14, true)
             t.setTextColor(color)
             t.gravity = Gravity.CENTER

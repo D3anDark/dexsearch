@@ -890,6 +890,11 @@ class Dex private constructor(private val assets: Assets) {
             check(eq.counter.map { svTypes[it] }.containsAll(listOf("flying", "ice")) && "ice" !in eq.stacked.map { svTypes[it] }
                     && (eq.counter + eq.uncovered).none { svTypes[it] == "steel" || svTypes[it] == "fire" } && eq.move >= 0,
                 "Garchomp with Earthquake: nothing counters Flying or Ice; Steel and Fire are covered")
+            val offer = lone.advise(d, 0, 444)
+            check(offer.slot == 1 && offer.trades.size == 1 && !offer.trades[0].stronger
+                    && offer.adds.map { svTypes[it] }.toSet() == setOf("flying", "ice", "bug")
+                    && lone.coverage(d)[svTypes.indexOf("flying")][1] == 1,
+                "Stone Edge offered to Garchomp with Earthquake: free slot, weaker, new Flying, Ice and Bug coverage; Flying walls Earthquake")
             lone.members[0].moves[0] = 0
             lone.members.add(Team.Member(714, 0, 50))
             val twin = lone.overlaps(d)

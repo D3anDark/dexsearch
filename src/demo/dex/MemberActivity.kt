@@ -300,20 +300,98 @@ class MemberActivity : Activity() {
             row.setOnClickListener { pickMove(m, i) }
             p.addView(row)
         }
+        p.addView(Ui.chip(this, L.t("Offered a new move?")) { offered(m) },
+            Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 16, 6, 16, 4))
         return p
     }
 
-    /**
-     * Moves this form learns in the team's game (or the nearest game with data), grouped by method; every other move
-     * sits in a second tab, since ROM hacks such as Unbound teach moves the official learnset lacks. Picking a move
-     * already in another slot swaps the two.
-     */
+    /** Picking a move already in another slot swaps the two. */
     private fun pickMove(m: Dex.Mon, slot: Int) {
+        val (tabs, lists) = moveLists(m, Ui.Item(0, "", L.t("No move"), L.t("Leave this slot empty"), emptyList(), 0), IntArray(0))
+        Ui.pickSearch(this, L.f("Move %d", slot + 1), tabs, lists) { ref ->
+            val id = (ref as? Dex.Move)?.id ?: 0
+            for (j in 0 until Team.MOVES) if (j != slot && id != 0 && x.moves[j] == id) x.moves[j] = x.moves[slot]
+            x.moves[slot] = id
+            render()
+        }
+    }
+
+    /** The game offers `m` a move it does not know yet: which one, then [advise] on taking it. */
+    private fun offered(m: Dex.Mon) {
+        val (tabs, lists) = moveLists(m, null, x.moves)
+        Ui.pickSearch(this, L.t("Offered move"), tabs, lists) { ref -> advise(m, (ref as? Dex.Move ?: return@pickSearch).id) }
+    }
+
+    /**
+     * [Team.advise] in words: take it or skip it and why, then the four slots with what each trade costs, the one to use
+     * ringed. A tap on a slot teaches into it after the usual side-by-side confirm, whatever the advice said.
+     */
+    private fun advise(m: Dex.Mon, id: Int) {
+        val a = team.advise(dex, team.members.indexOf(x), id)
+        val mv = dex.move(game, id)
+        val types = dex.types(game)
+        val names = { list: List<Int> -> list.joinToString(L.t(", ")) { dex.label(types[it]) } }
+        val s = Ui.Sheet(this, L.f("Take %s?", mv.name))
+        val box = Ui.vertical(this)
+        val top = Ui.row(this)
+        Ui.bind(top, Ui.Item.move(mv, ""))
+        top.background = null
+        box.addView(top)
+        val verdict = when {
+            a.slot >= 0 && x.moves[a.slot] == 0 -> L.t("Take it: a free slot.")
+            a.slot >= 0 -> L.f("Take it in place of %s.", dex.move(game, x.moves[a.slot]).name)
+            mv.category == "status" || mv.power == 0 -> L.t("Not rated: a status move is only as good as its effect.")
+            a.trades.none { it.stronger } -> L.t("Skip it: weaker than every attack here.")
+            else -> L.t("Skip it: each attack it beats is the only answer to some type.")
+        }
+        box.addView(Ui.text(this, verdict, 15, true), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 10, 0, 0))
+        val notes = ArrayList<String>()
+        if (a.adds.isNotEmpty()) notes.add(L.f("It hits %s super effectively, which nothing on the team does.", names(a.adds)))
+        val end = team.evolved(dex, game, x)
+        if (end.num != m.num) notes.add(L.f("Counted as evolved: %s.", L.f("%s as %s", m.name, end.name)))
+        if (notes.isNotEmpty()) box.addView(Ui.muted(this, notes.joinToString(" "), 13),
+            Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 4, 0, 0))
+        box.addView(Ui.caption(this, L.t("In place of")), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 12, 0, 8))
+        for (slot in 0 until Team.MOVES) {
+            val old = if (x.moves[slot] == 0) null else dex.move(game, x.moves[slot])
+            val t = a.trades.firstOrNull { it.slot == slot }
+            val sub = when {
+                old == null -> ""
+                t == null -> L.t("Not rated: status or fixed damage")
+                else -> listOfNotNull(if (t.stronger) L.t("The offer hits harder") else L.t("This hits harder"),
+                    if (t.lost.isEmpty()) null else L.f("Loses %s", names(t.lost))).joinToString("  ·  ")
+            }
+            val r = Ui.row(this)
+            Ui.bind(r, Ui.Item(0, "", old?.name ?: L.t("Empty slot"), sub, old?.let { listOf(it.type, it.category) } ?: emptyList(), old ?: ""))
+            r.background = Ui.choice(this, slot == a.slot, 14)
+            r.isSelected = slot == a.slot
+            r.setOnClickListener {
+                if (s.close()) TeamActivity.confirmTeach(this, dex, game, m.name, x, slot, id) {
+                    x.moves[slot] = id
+                    render()
+                }
+            }
+            box.addView(r, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 0, 6))
+        }
+        val scroll = ScrollView(this)
+        scroll.addView(box)
+        s.body.addView(scroll)
+        s.button(L.t("Cancel"))
+        s.show()
+    }
+
+    /**
+     * Moves this form learns in the team's game (or the nearest game with data), grouped by method, after `first`;
+     * every other move sits in a second tab, since ROM hacks such as Unbound teach moves the official learnset lacks.
+     * Moves in `skip` are left out of both. Tabs and their lists, one list and no tabs without a learnset.
+     */
+    private fun moveLists(m: Dex.Mon, first: Ui.Item?, skip: IntArray): Pair<Array<String>, List<List<Ui.Item>>> {
         val items = ArrayList<Ui.Item>()
-        items.add(Ui.Item(0, "", L.t("No move"), L.t("Leave this slot empty"), emptyList(), 0))
+        if (first != null) items.add(first)
         val g = dex.learnGame(game, m)
         val cols = g?.let { dex.learnset(it, m) }
         val seen = LinkedHashSet<Int>()
+        for (id in skip) seen.add(id)
         var otherHeader = L.f("No learnset for %s: all moves", m.name)
         if (g != null && cols != null) {
             for ((c, col) in cols.withIndex()) {
@@ -333,12 +411,7 @@ class MemberActivity : Activity() {
         other.add(Ui.Item.header(otherHeader))
         for (mv in dex.moves(game)) if (seen.add(mv.id)) other.add(Ui.Item.move(mv, ""))
         val tabs = if (cols == null) emptyArray() else arrayOf(L.t("Learnable"), L.t("Not learnable"))
-        Ui.pickSearch(this, L.f("Move %d", slot + 1), tabs, if (cols == null) listOf(items) else listOf(items, other)) { ref ->
-            val id = (ref as? Dex.Move)?.id ?: 0
-            for (j in 0 until Team.MOVES) if (j != slot && id != 0 && x.moves[j] == id) x.moves[j] = x.moves[slot]
-            x.moves[slot] = id
-            render()
-        }
+        return tabs to (if (cols == null) listOf(items) else listOf(items, other))
     }
 
     /** Base, IV and EV per stat with the computed value; EVs are capped at 252 each and 510 in total. */

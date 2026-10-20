@@ -113,15 +113,33 @@ class Team(var name: String, val game: Int) {
         }
     }
 
-    /** Per defending type: members with a damaging move that hits it super effectively (Freeze-Dry style exceptions not counted). */
-    fun offense(d: Dex): IntArray {
+    /**
+     * Per defending type of the team's game, in [Dex.types] order: {members with a damaging move that hits it super
+     * effectively, members with damaging moves that it resists or is immune to, every one}. Freeze-Dry style exceptions
+     * and abilities are not counted.
+     */
+    fun coverage(d: Dex): Array<IntArray> {
         val g = d.game(game)
         val types = d.types(g)
-        return IntArray(types.size) { i ->
+        return Array(types.size) { i ->
             val target = listOf(types[i])
-            members.count { m -> m.moves.any { id -> id != 0 && d.move(g, id).let { it.category != "status" && d.factor(g, it.type, target) > 100 } } }
+            val row = IntArray(2)
+            for (m in members) {
+                // -1: no damaging move at all, so the member is in neither column.
+                var best = -1
+                for (id in m.moves) {
+                    if (id == 0) continue
+                    val mv = d.move(g, id)
+                    if (mv.category != "status") best = maxOf(best, d.factor(g, mv.type, target))
+                }
+                if (best > 100) row[0]++ else if (best in 0..99) row[1]++
+            }
+            row
         }
     }
+
+    /** The first column of [coverage]: members that hit each type super effectively. */
+    fun offense(d: Dex): IntArray = coverage(d).let { c -> IntArray(c.size) { c[it][0] } }
 
     /** True once any member has a damaging move, so an all-zero [offense] means gaps, not an empty moveset. */
     fun attacks(d: Dex): Boolean = members.any { m -> m.moves.any { it != 0 && d.move(it).category != "status" } }
@@ -168,11 +186,7 @@ class Team(var name: String, val game: Int) {
         for ((k, x) in members.withIndex()) {
             val m = evolved(d, g, x)
             val cols = d.learnGame(g, m)?.let { d.learnset(it, m) } ?: continue
-            val stab = d.types(g, m)
-            val score = { mv: Dex.Move ->
-                mv.power * (if (mv.accuracy == 0) 100 else mv.accuracy) * (if (mv.type in stab) 3 else 2) *
-                    m.stats[if (mv.category == "physical") 1 else 3]
-            }
+            val score = { mv: Dex.Move -> score(d, g, m, mv) }
             val learnable = cols.withIndex().flatMap { (c, col) -> if (c == 0) col.filterIndexed { i, _ -> i % 2 == 1 } else col.asList() }
             val mv = learnable.distinct().filter { it !in x.moves }.map { d.move(g, it) }
                 .filter { it.type == type && it.category != "status" && it.power > 0 && !AWKWARD.containsMatchIn(it.shortEffect) }
@@ -192,6 +206,48 @@ class Team(var name: String, val game: Int) {
             top = score(mv)
         }
         return best
+    }
+
+    /**
+     * One attack in a slot of a member offered `move`: whether the offered move is the stronger one by [score], and the
+     * types (index into the game's types) no member would hit super effectively any more if this attack went.
+     */
+    class Trade(val slot: Int, val stronger: Boolean, val lost: List<Int>)
+
+    /**
+     * The answer: `slot` to take the move in, -1 to skip it; `trades` for the slots holding an attack (status and fixed-
+     * damage moves are not rated); `adds`: types nothing on the team hits super effectively yet, that the move does.
+     */
+    class Advice(val slot: Int, val trades: List<Trade>, val adds: List<Int>)
+
+    /**
+     * Whether member `k` should learn `move` when offered it, as the games ask on a level-up with four moves known: into
+     * an empty slot, else in place of the weakest attack it beats without any type losing its super-effective answer.
+     * A status move offered is not rated (-1): its worth is in the effect. The member counts as [evolved], like [teach].
+     */
+    fun advise(d: Dex, k: Int, move: Int): Advice {
+        val g = d.game(game)
+        val x = members[k]
+        val m = evolved(d, g, x)
+        val mv = d.move(g, move)
+        val attack = mv.category != "status" && mv.power > 0
+        val before = offense(d)
+        val trades = ArrayList<Trade>()
+        for (s in 0 until MOVES) {
+            val old = x.moves[s]
+            if (old == 0) continue
+            val o = d.move(g, old)
+            if (o.category == "status" || o.power == 0) continue
+            x.moves[s] = move
+            val after = offense(d)
+            x.moves[s] = old
+            trades.add(Trade(s, attack && score(d, g, m, mv) > score(d, g, m, o), before.indices.filter { before[it] > 0 && after[it] == 0 }))
+        }
+        val adds = if (!attack) emptyList() else before.indices.filter { before[it] == 0 && d.factor(g, mv.type, listOf(d.types(g)[it])) > 100 }
+        val empty = x.moves.indexOf(0)
+        val slot = if (empty >= 0) empty else if (!attack) -1
+            else trades.filter { it.stronger && it.lost.isEmpty() }.minByOrNull { score(d, g, m, d.move(g, x.moves[it.slot])) }?.slot ?: -1
+        return Advice(slot, trades, adds)
     }
 
     /** Members `a` < `b` that double up, and the attacking types (index into the game's types) both are weak to. */
@@ -254,6 +310,11 @@ class Team(var name: String, val game: Int) {
             772..773, 785..809, 888..898, 905..905, 984..995, 1001..1010, 1014..1017, 1020..1025)
 
         fun legend(species: Int) = LEGENDS.any { species in it }
+
+        /** How hard `mv` hits from `m`: power, accuracy (0 never misses), same-type bonus and the base stat for its category. */
+        private fun score(d: Dex, g: Dex.Game, m: Dex.Mon, mv: Dex.Move): Int =
+            mv.power * (if (mv.accuracy == 0) 100 else mv.accuracy) * (if (mv.type in d.types(g, m)) 3 else 2) *
+                m.stats[if (mv.category == "physical") 1 else 3]
 
         private fun reaches(d: Dex, from: Int, to: Int): Boolean = d.evolutions(from).any { it.to == to || reaches(d, it.to, to) }
 

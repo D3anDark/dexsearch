@@ -1728,7 +1728,7 @@ function teamScreen(p, ti) {
       team.members.length ? [tips(team, g, add, replace, () => {
         save();
         render();
-      }), defense(team, g)] : null,
+      }), defense(team, g), coverage(team, g)] : null,
       chipRow(null,
         chip(L.t("Compare"), () => open(q => compare(q, 0, g.id))),
         chip(L.t("Damage calc"), () => open(q => calc(q, ti, -1))),
@@ -1907,18 +1907,34 @@ function half(caption, num, name, pills, note) {
 
 /** Per attacking type: members it hits super effectively and members that resist it, in two columns. */
 function defense(team, g) {
-  const box = panel(L.t("Type defenses"));
-  box.append(h('p', 'note mb8', L.t("Members weak to and resisting each attacking type. Red: half the team or more is weak.")));
   const def = team.defense(d);
+  const n = team.members.length;
+  return typeTable(g, L.t("Type defenses"), L.t("Members weak to and resisting each attacking type. Red: half the team or more is weak."), L.t("Weak"), L.t("Resist"), i => {
+    const [weak, resist] = def[i];
+    return [[weak, weak * 2 >= n && weak > resist ? 'bad' : null], [resist, resist ? 'good' : 'muted']];
+  });
+}
+
+/** The other side: per defending type, members that hit it super effectively and members it walls. */
+function coverage(team, g) {
+  const cov = team.coverage(d);
+  // Without a single attack every count is 0, which is not yet a gap.
+  const attacks = team.attacks(d);
+  return typeTable(g, L.t("Type coverage"), L.t("Members with an attack that hits each type super effectively, and members whose every attack it resists. Red: nothing hits it."), L.t("Hits"), L.t("Walled"), i => {
+    const [hits, walled] = cov[i];
+    return [[hits, hits ? 'good' : attacks ? 'bad' : 'muted'], [walled, walled ? 'bad' : 'muted']];
+  });
+}
+
+/** The game's types in two columns with two numbers each, under `first` and `second`; `cell(i)` gives type i's numbers, each with its color variable or null. */
+function typeTable(g, title, help, first, second, cell) {
+  const box = panel(title);
+  box.append(h('p', 'note mb8', help));
   const types = d.typesIn(g);
   const half = Math.ceil(types.length / 2);
-  const n = team.members.length;
-  const column = c => h('div', null, h('div', 'defrow top', h('span'), h('b', null, L.t("Weak")), h('b', null, L.t("Resist"))),
-    types.slice(c * half, (c + 1) * half).map((t, j) => {
-      const [weak, resist] = def[c * half + j];
-      return h('div', 'defrow', pill(t), h('b', { style: weak * 2 >= n && weak > resist ? 'color:var(--bad)' : null }, weak),
-        h('b', { style: `color:var(--${resist ? 'good' : 'muted'})` }, resist));
-    }));
+  const column = c => h('div', null, h('div', 'defrow top', h('span'), h('b', null, first), h('b', null, second)),
+    types.slice(c * half, (c + 1) * half).map((t, j) => h('div', 'defrow', pill(t),
+      cell(c * half + j).map(([n, color]) => h('b', { style: color ? `color:var(--${color})` : null }, n)))));
   box.append(h('div', 'defs', column(0), column(1)));
   return box;
 }
@@ -2189,15 +2205,85 @@ function memberScreen(p, ti, k) {
     const box = panel(L.t("Moves"), 'flush wide mb12');
     x.moves.forEach((id, slot) => box.append(row(id ? moveEntry(d.move(g, id), '') : entry(0, '', L.t("Empty slot"), L.t("Tap to choose a move"), [], ''),
       () => pickMove(m, slot))));
+    box.append(h('div', { class: 'chips measure', style: 'margin-top:6px' }, chip(L.t("Offered a new move?"), () => offered(m))));
     return box;
   }
 
+  /** Picking a move already in another slot swaps the two. */
   async function pickMove(m, slot) {
+    const none = entry(0, '', L.t("No move"), L.t("Leave this slot empty"), [], 0);
+    const { tabs, lists } = await moveLists(m, none, []);
+    pickSearch(L.f("Move %d", slot + 1), tabs, lists, ref => {
+      const id = ref ? ref.id : 0;
+      const j = id ? x.moves.indexOf(id) : -1;
+      if (j >= 0 && j !== slot) x.moves[j] = x.moves[slot];
+      x.moves[slot] = id;
+      save();
+      build();
+    });
+  }
+
+  /** The game offers `m` a move it does not know yet: which one, then advise() on taking it. */
+  async function offered(m) {
+    const { tabs, lists } = await moveLists(m, null, x.moves);
+    pickSearch(L.t("Offered move"), tabs, lists, ref => {
+      if (ref) advise(m, ref.id);
+    });
+  }
+
+  /**
+   * team.advise in words: take it or skip it and why, then the four slots with what each trade costs, the one to use
+   * ringed. A tap on a slot teaches into it after the usual side-by-side confirm, whatever the advice said.
+   */
+  function advise(m, id) {
+    const a = team.advise(d, team.members.indexOf(x), id);
+    const mv = d.move(g, id);
+    const types = d.typesIn(g);
+    const names = list => list.map(i => d.label(types[i])).join(L.t(", "));
+    const s = sheet(L.f("Take %s?", mv.name));
+    const verdict = a.slot >= 0 ? (x.moves[a.slot] ? L.f("Take it in place of %s.", d.move(g, x.moves[a.slot]).name) : L.t("Take it: a free slot."))
+      : mv.category === 'status' || !mv.power ? L.t("Not rated: a status move is only as good as its effect.")
+        : a.trades.some(t => t.stronger) ? L.t("Skip it: each attack it beats is the only answer to some type.") : L.t("Skip it: weaker than every attack here.");
+    const notes = [];
+    if (a.adds.length) notes.push(L.f("It hits %s super effectively, which nothing on the team does.", names(a.adds)));
+    const end = team.evolved(d, g, x);
+    if (end.num !== m.num) notes.push(L.f("Counted as evolved: %s.", L.f("%s as %s", m.name, end.name)));
+    const box = h('div', 'choices');
+    x.moves.forEach((cur, slot) => {
+      const old = cur ? d.move(g, cur) : null;
+      const t = a.trades.find(t => t.slot === slot);
+      const sub = !old ? '' : !t ? L.t("Not rated: status or fixed damage")
+        : [t.stronger ? L.t("The offer hits harder") : L.t("This hits harder"), t.lost.length ? L.f("Loses %s", names(t.lost)) : ''].filter(p => p).join('  ·  ');
+      // A null ref would make row() a header, so an empty slot carries '' like the Moves panel.
+      const r = row(entry(0, '', old ? old.name : L.t("Empty slot"), sub, old ? [old.type, old.category] : [], old ?? ''), () => {
+        if (!s.close()) return;
+        confirmTeach(g, m.name, x, slot, id, () => {
+          x.moves[slot] = id;
+          save();
+          build();
+        });
+      });
+      r.classList.toggle('on', slot === a.slot);
+      box.append(r);
+    });
+    const top = row(moveEntry(mv, ''));
+    top.style.cursor = 'default';
+    s.body.append(top, h('div', { class: 'bold', style: 'font-size:15px;margin-top:10px' }, verdict));
+    if (notes.length) s.body.append(h('p', 'note mt8', notes.join(' ')));
+    s.body.append(h('div', 'caption mt12 mb8', L.t("In place of")), box);
+    s.button(L.t("Cancel")).show();
+  }
+
+  /**
+   * Moves this form learns in the team's game (or the nearest game with data), grouped by method, after `first`; every
+   * other move in a second tab, since ROM hacks such as Unbound teach moves the official learnset lacks. Moves in `skip`
+   * are left out of both. {tabs, lists}: one list and no tabs without a learnset.
+   */
+  async function moveLists(m, first, skip) {
     const lg = d.learnGame(g, m);
     const cols = lg ? await d.learnset(lg, m) : null;
-    const none = entry(0, '', L.t("No move"), L.t("Leave this slot empty"), [], 0);
-    const learn = [none];
-    const seen = new Set();
+    const learn = first ? [first] : [];
+    const seen = new Set(skip);
     if (cols) {
       cols.forEach((c, k) => {
         const rows = [];
@@ -2213,17 +2299,7 @@ function memberScreen(p, ti, k) {
     }
     const rest = d.movesIn(g).filter(mv => !seen.has(mv.id)).map(mv => moveEntry(mv, ''));
     const other = header(cols ? L.f("Not learnable by %s in %s. For ROM hacks such as Unbound.", m.name, lg.name) : L.f("No learnset for %s: all moves", m.name));
-    const done = ref => {
-      const id = ref ? ref.id : 0;
-      const j = id ? x.moves.indexOf(id) : -1;
-      if (j >= 0 && j !== slot) x.moves[j] = x.moves[slot];
-      x.moves[slot] = id;
-      save();
-      build();
-    };
-    const heading = L.f("Move %d", slot + 1);
-    if (cols) pickSearch(heading, [L.t("Learnable"), L.t("Not learnable")], [learn, [other, ...rest]], done);
-    else pickSearch(heading, [], [[none, other, ...rest]], done);
+    return cols ? { tabs: [L.t("Learnable"), L.t("Not learnable")], lists: [learn, [other, ...rest]] } : { tabs: [], lists: [[...learn, other, ...rest]] };
   }
 
   function stats(m) {

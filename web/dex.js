@@ -673,8 +673,7 @@ class Team {
       const lg = d.learnGame(g, m);
       const cols = lg ? await d.learnset(lg, m) : null;
       if (!cols) continue;
-      const stab = d.typesOf(g, m);
-      const score = mv => mv.power * (mv.accuracy || 100) * (stab.includes(mv.type) ? 3 : 2) * m.stats[mv.category === 'physical' ? 1 : 3];
+      const score = mv => Team.score(d, g, m, mv);
       const ids = new Set(cols.flatMap((c, i) => i === 0 ? c.filter((_, j) => j % 2 === 1) : c));
       let mv = null;
       for (const id of ids) {
@@ -716,13 +715,64 @@ class Team {
     });
   }
 
-  offense(d) {
+  /** Per defending type: [members with a damaging move that hits it super effectively, members whose every damaging move it resists]; see Team.coverage. */
+  coverage(d) {
     const g = d.game(this.game);
-    return d.typesIn(g).map(t => this.members.filter(m => m.moves.some(id => {
-      if (!id) return false;
-      const mv = d.move(g, id);
-      return mv.category !== 'status' && d.factor(g, mv.type, [t]) > 100;
-    })).length);
+    return d.typesIn(g).map(t => {
+      const row = [0, 0];
+      for (const m of this.members) {
+        // -1: no damaging move at all, so the member is in neither column.
+        let best = -1;
+        for (const id of m.moves) {
+          if (!id) continue;
+          const mv = d.move(g, id);
+          if (mv.category !== 'status') best = Math.max(best, d.factor(g, mv.type, [t]));
+        }
+        if (best > 100) row[0]++;
+        else if (best >= 0 && best < 100) row[1]++;
+      }
+      return row;
+    });
+  }
+
+  offense(d) {
+    return this.coverage(d).map(r => r[0]);
+  }
+
+  /** Whether member `k` should learn `move` when offered it: {slot (-1: skip), trades: [{slot, stronger, lost}], adds}; see Team.advise. */
+  advise(d, k, move) {
+    const g = d.game(this.game);
+    const x = this.members[k];
+    const m = this.evolved(d, g, x);
+    const mv = d.move(g, move);
+    const attack = mv.category !== 'status' && mv.power > 0;
+    const before = this.offense(d);
+    const trades = [];
+    for (let s = 0; s < Team.MOVES; s++) {
+      const old = x.moves[s];
+      if (!old) continue;
+      const o = d.move(g, old);
+      if (o.category === 'status' || o.power === 0) continue;
+      x.moves[s] = move;
+      const after = this.offense(d);
+      x.moves[s] = old;
+      trades.push({ slot: s, stronger: attack && Team.score(d, g, m, mv) > Team.score(d, g, m, o), lost: before.map((n, i) => (n > 0 && after[i] === 0 ? i : -1)).filter(i => i >= 0) });
+    }
+    const types = d.typesIn(g);
+    const adds = attack ? before.map((n, i) => (n === 0 && d.factor(g, mv.type, [types[i]]) > 100 ? i : -1)).filter(i => i >= 0) : [];
+    const empty = x.moves.indexOf(0);
+    let slot = -1;
+    if (empty >= 0) slot = empty;
+    else if (attack) {
+      const fit = trades.filter(t => t.stronger && !t.lost.length);
+      if (fit.length) slot = fit.reduce((a, b) => (Team.score(d, g, m, d.move(g, x.moves[b.slot])) < Team.score(d, g, m, d.move(g, x.moves[a.slot])) ? b : a)).slot;
+    }
+    return { slot, trades, adds };
+  }
+
+  /** How hard `mv` hits from `m`: power, accuracy (0 never misses), same-type bonus and the base stat for its category. */
+  static score(d, g, m, mv) {
+    return mv.power * (mv.accuracy || 100) * (d.typesOf(g, m).includes(mv.type) ? 3 : 2) * m.stats[mv.category === 'physical' ? 1 : 3];
   }
 
   attacks(d) {

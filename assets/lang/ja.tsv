@@ -346,3 +346,21 @@ As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effecti
 %d natures	せいかく%d種
 Evolution stage	進化段階
 Choose	選ぶ
+Type coverage	攻撃相性
+Members with an attack that hits each type super effectively, and members whose every attack it resists. Red: nothing hits it.	各タイプに効果ばつぐんの技を持つメンバーと、攻撃技をすべて半減されるメンバー。赤：だれにも有効打がない。
+Hits	有効
+Walled	半減
+Offered a new move?	新しい技を覚える？
+Offered move	提案された技
+Take %s?	%sを覚える？
+Take it: a free slot.	覚える：空きがある。
+Take it in place of %s.	%sと入れ替えて覚える。
+Not rated: a status move is only as good as its effect.	評価なし：変化技の価値は効果しだい。
+Skip it: weaker than every attack here.	見送る：ここのどの攻撃技より弱い。
+Skip it: each attack it beats is the only answer to some type.	見送る：上回る技はどれも、あるタイプへの唯一の有効打。
+It hits %s super effectively, which nothing on the team does.	%sに効果ばつぐんで、チームのだれにもない有効打。
+In place of	入れ替え先
+Not rated: status or fixed damage	評価なし：変化技か固定ダメージ
+The offer hits harder	提案の技が強い
+This hits harder	こちらが強い
+Loses %s	%sへの有効打を失う

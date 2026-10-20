@@ -115,6 +115,9 @@ const lang = async code => {
   lone.members[0].moves[0] = 89;
   const eq = lone.gaps(d);
   check(['flying', 'ice'].every(t => eq.counter.map(i => svTypes[i]).includes(t)) && eq.move >= 0, 'Garchomp with Earthquake');
+  const offer = lone.advise(d, 0, 444);
+  check(offer.slot === 1 && offer.trades.length === 1 && !offer.trades[0].stronger && offer.adds.map(i => svTypes[i]).sort().join() === 'bug,flying,ice'
+    && lone.coverage(d)[svTypes.indexOf('flying')][1] === 1, 'Stone Edge offered to Garchomp with Earthquake');
   lone.members[0].moves[0] = 0;
   lone.members.push(Team.member(714, 0, 50));
   const twin = lone.overlaps(d);

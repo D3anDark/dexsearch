@@ -346,3 +346,21 @@ As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effecti
 %d natures	%d natur
 Evolution stage	Etap ewolucji
 Choose	Wybierz
+Type coverage	Pokrycie typów
+Members with an attack that hits each type super effectively, and members whose every attack it resists. Red: nothing hits it.	Członkowie z atakiem trafiającym dany typ bardzo efektywnie i ci, których każdy atak ten typ odpiera. Czerwone: nic go nie trafia.
+Hits	Trafia
+Walled	Odpiera
+Offered a new move?	Gra proponuje nowy ruch?
+Offered move	Proponowany ruch
+Take %s?	Wziąć %s?
+Take it: a free slot.	Weź: jest wolne miejsce.
+Take it in place of %s.	Weź w miejsce %s.
+Not rated: a status move is only as good as its effect.	Bez oceny: ruch statusowy jest wart tyle, co jego efekt.
+Skip it: weaker than every attack here.	Pomiń: słabszy od każdego ataku tutaj.
+Skip it: each attack it beats is the only answer to some type.	Pomiń: każdy atak, który przebija, jako jedyny odpowiada na jakiś typ.
+It hits %s super effectively, which nothing on the team does.	Trafia %s bardzo efektywnie, czego nie robi nikt w drużynie.
+In place of	W miejsce
+Not rated: status or fixed damage	Bez oceny: status lub stałe obrażenia
+The offer hits harder	Propozycja bije mocniej
+This hits harder	Ten bije mocniej
+Loses %s	Traci %s

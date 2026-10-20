@@ -346,3 +346,21 @@ As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effecti
 %d natures	%d naturalezas
 Evolution stage	Fase evolutiva
 Choose	Elegir
+Type coverage	Cobertura de tipos
+Members with an attack that hits each type super effectively, and members whose every attack it resists. Red: nothing hits it.	Miembros con un ataque supereficaz contra cada tipo y miembros cuyos ataques ese tipo resiste todos. Rojo: nada lo golpea.
+Hits	Golpea
+Walled	Resiste
+Offered a new move?	¿Te ofrecen un movimiento nuevo?
+Offered move	Movimiento ofrecido
+Take %s?	¿Tomar %s?
+Take it: a free slot.	Tómalo: hay un hueco libre.
+Take it in place of %s.	Tómalo en lugar de %s.
+Not rated: a status move is only as good as its effect.	Sin valorar: un movimiento de estado vale lo que vale su efecto.
+Skip it: weaker than every attack here.	Déjalo: más débil que todos los ataques de aquí.
+Skip it: each attack it beats is the only answer to some type.	Déjalo: cada ataque que supera es la única respuesta a algún tipo.
+It hits %s super effectively, which nothing on the team does.	Golpea %s de forma supereficaz, cosa que nadie del equipo hace.
+In place of	En lugar de
+Not rated: status or fixed damage	Sin valorar: estado o daño fijo
+The offer hits harder	La oferta golpea más fuerte
+This hits harder	Este golpea más fuerte
+Loses %s	Pierde %s
