@@ -70,6 +70,8 @@ class MemberActivity : Activity() {
         val k = team.members.indexOf(x)
         Ui.addChip(actions, Ui.chip(this, L.t("Swap")) {
             TeamActivity.pick(this, dex, team, k, L.f("Swap %s", m.name)) { new ->
+                // Off the team but still caught, as in the games' PC; an evolution (setForm) is not a swap.
+                Ui.setCaught(this, x.num, true)
                 x = TeamsActivity.member(new).also { it.level = x.level }
                 team.members[k] = x
                 render()
@@ -398,6 +400,7 @@ class MemberActivity : Activity() {
     private fun remove(m: Dex.Mon) {
         Ui.confirm(this, L.f("Remove %s?", m.name), L.f("Its moves, item and stats are removed from %s.", team.name), L.t("Remove")) {
             team.members.remove(x)
+            Ui.setCaught(this, x.num, true)
             TeamsActivity.save(this, teams)
             removed = true
             finish()

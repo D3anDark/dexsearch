@@ -59,8 +59,24 @@ class Team(var name: String, val game: Int) {
     }
 
     /**
+     * What member `x` counts as in the type checks below: the Pokémon it ends up as while each stage has one evolution
+     * in `g`, as a team built during a playthrough will (Alolan Vulpix: Alolan Ninetales, part Fairy). It stays as it is
+     * at a branch (Eevee, Kirlia) and when holding an Eviolite, which only helps a Pokémon that has not evolved.
+     */
+    fun evolved(d: Dex, g: Dex.Game, x: Member): Dex.Mon {
+        var m = d.mon(x.num)
+        if (x.item == EVIOLITE) return m
+        while (true) {
+            val next = d.evolutions(m.num).map { it.to }.distinct().filter { g.byNum.containsKey(it) }
+            if (next.size != 1) return m
+            m = d.mon(next[0])
+        }
+    }
+
+    /**
      * Per attacking type of the team's game, in [Dex.types] order: {members it hits super effectively, members that
-     * resist or are immune}. ponytail: types only; Levitate, Flash Fire, other abilities and Tera are not counted.
+     * resist or are immune}, each member as [evolved]. ponytail: types only; Levitate, Flash Fire, other abilities and
+     * Tera are not counted.
      */
     fun defense(d: Dex): Array<IntArray> {
         val g = d.game(game)
@@ -68,7 +84,7 @@ class Team(var name: String, val game: Int) {
         return Array(types.size) { i ->
             val row = IntArray(2)
             for (m in members) {
-                val f = d.factor(g, types[i], d.types(g, d.mon(m.num)))
+                val f = d.factor(g, types[i], d.types(g, evolved(d, g, m)))
                 if (f > 100) row[0]++ else if (f < 100) row[1]++
             }
             row
@@ -116,10 +132,10 @@ class Team(var name: String, val game: Int) {
     /** Members `a` < `b` that double up, and the attacking types (index into the game's types) both are weak to. */
     class Overlap(val a: Int, val b: Int, val weak: List<Int>)
 
-    /** Pairs sharing a type and a weakness (Garchomp and Noibat), or two or more weaknesses. */
+    /** Pairs, as [evolved], sharing a type and a weakness (Garchomp and Noibat), or two or more weaknesses. */
     fun overlaps(d: Dex): List<Overlap> {
         val g = d.game(game)
-        val types = members.map { d.types(g, d.mon(it.num)) }
+        val types = members.map { d.types(g, evolved(d, g, it)) }
         val out = ArrayList<Overlap>()
         for (a in members.indices) for (b in a + 1 until members.size) overlap(d, g, types[a], types[b])?.let { out.add(Overlap(a, b, it)) }
         return out
@@ -127,7 +143,7 @@ class Team(var name: String, val game: Int) {
 
     /**
      * Final-stage Pokémon of the game for slot `skip` (-1: a new one), best first. Against each of the other members'
-     * [gaps]: +1 if it resists, -1 if weak, +1 if one of its types hits it super effectively; ties by base stat total.
+     * [gaps], members as [evolved]: +1 if it resists, -1 if weak, +1 if one of its types hits it super effectively; ties by base stat total.
      * Anything that would overlap a member is left out, and so are [LEGENDS]: on a team built while playing, the top
      * of a BST tie is otherwise Zamazenta and Victini. ponytail: types only, top 30; forms outside evolution (Megas,
      * Rotom's appliances) are left out.
@@ -138,8 +154,10 @@ class Team(var name: String, val game: Int) {
         for ((i, m) in members.withIndex()) if (i != skip) rest.members.add(m)
         val gp = rest.gaps(d)
         val need = (gp.counter + gp.stacked + gp.uncovered).map { d.types(g)[it] }
-        val have = rest.members.map { d.types(g, d.mon(it.num)) }
-        val species = rest.members.mapTo(HashSet()) { d.mon(it.num).species }
+        val ends = rest.members.map { evolved(d, g, it) }
+        val have = ends.map { d.types(g, it) }
+        // Gabite in the team rules out Garchomp; suggestions are final stages, so Gabite itself never comes up.
+        val species = ends.mapTo(HashSet()) { it.species }
         return g.dex.asSequence().map { it.mon }
             .filter { m -> d.evolutions(m.num).isEmpty() && (!m.form() || d.evo(m.num) != null) && m.species !in species && !legend(m.species) }
             .map { m -> m to d.types(g, m) }
@@ -162,6 +180,7 @@ class Team(var name: String, val game: Int) {
         const val IV_MAX = 31
         private const val FIELDS = 6 + 6 + 6 + MOVES
         private const val SHEDINJA = 292
+        private const val EVIOLITE = 581
         /** Legendary, mythical, Ultra Beast and Paradox species, Articuno to Pecharunt; the data has no flag for them. */
         private val LEGENDS = listOf(144..146, 150..151, 243..245, 249..251, 377..386, 480..494, 638..649, 716..721,
             772..773, 785..809, 888..898, 905..905, 984..995, 1001..1010, 1014..1017, 1020..1025)

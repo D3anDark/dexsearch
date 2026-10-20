@@ -900,6 +900,13 @@ class Dex private constructor(private val assets: Assets) {
             check(swap.size == 30 && swap.none { d.evolutions(it.num).isNotEmpty() || Team.legend(it.species) } && pairs.all { it.overlaps(d).isEmpty() }
                     && listOf("ice", "dragon", "fairy").all { d.factor(sv, it, d.types(sv, swap[0])) < 100 },
                 "Noibat's swap: final stages, no legendaries, none overlapping Garchomp, the first resisting all its weaknesses: ${swap.take(5).map { it.name }}")
+            val fox = Team("", WHOLE)
+            fox.members.add(Team.Member(10103, 0, 37))
+            fox.members.add(Team.Member(448, 0, 49))
+            val kept = Team.Member(10103, 0, 37).apply { item = 581 }
+            check(fox.evolved(d, d.whole, fox.members[0]).num == 10104 && fox.overlaps(d).isEmpty()
+                    && fox.evolved(d, d.whole, Team.Member(133, 0, 20)).num == 133 && fox.evolved(d, d.whole, kept).num == 10103,
+                "Alolan Vulpix counts as Alolan Ninetales, so no overlap with Lucario; Eevee and an Eviolite holder stay")
             check(Team.damage(75, 65, 123, 163, true, 400).contentEquals(intArrayOf(168, 196))
                     && Team.damage(50, 40, 10, 400, false, 50)[0] == 1 && Team.damage(50, 90, 100, 100, true, 0)[1] == 0,
                 "damage: Glaceon's Ice Fang on Garchomp 168-196 (Bulbapedia), at least 1, 0 if immune")

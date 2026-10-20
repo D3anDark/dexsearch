@@ -554,6 +554,7 @@ class Team {
   static EV_STAT = 252;
   static EV_TOTAL = 510;
   static IV_MAX = 31;
+  static EVIOLITE = 581;
   static LEGENDS = [[144, 146], [150, 151], [243, 245], [249, 251], [377, 386], [480, 494], [638, 649], [716, 721],
     [772, 773], [785, 809], [888, 898], [905, 905], [984, 995], [1001, 1010], [1014, 1017], [1020, 1025]];
 
@@ -630,13 +631,24 @@ class Team {
     return b.trim();
   }
 
-  /** Per attacking type: [members it hits super effectively, members that resist or are immune]. Types only. */
+  /** What member `x` counts as in the type checks: its last stage while each has one evolution in `g`; see Team.evolved. */
+  evolved(d, g, x) {
+    let m = d.mon(x.num);
+    if (x.item === Team.EVIOLITE) return m;
+    for (;;) {
+      const next = [...new Set(d.evolutions(m.num).map(e => e.to))].filter(n => g.byNum.has(n));
+      if (next.length !== 1) return m;
+      m = d.mon(next[0]);
+    }
+  }
+
+  /** Per attacking type: [members it hits super effectively, members that resist or are immune], each as evolved. Types only. */
   defense(d) {
     const g = d.game(this.game);
     return d.typesIn(g).map(t => {
       const row = [0, 0];
       for (const m of this.members) {
-        const f = d.factor(g, t, d.typesOf(g, d.mon(m.num)));
+        const f = d.factor(g, t, d.typesOf(g, this.evolved(d, g, m)));
         if (f > 100) row[0]++;
         else if (f < 100) row[1]++;
       }
@@ -685,7 +697,7 @@ class Team {
 
   overlaps(d) {
     const g = d.game(this.game);
-    const types = this.members.map(m => d.typesOf(g, d.mon(m.num)));
+    const types = this.members.map(m => d.typesOf(g, this.evolved(d, g, m)));
     const out = [];
     for (let a = 0; a < types.length; a++) for (let b = a + 1; b < types.length; b++) {
       const weak = Team.overlap(d, g, types[a], types[b]);
@@ -702,8 +714,10 @@ class Team {
     const gp = rest.gaps(d);
     const all = d.typesIn(g);
     const need = [...gp.counter, ...gp.stacked, ...gp.uncovered].map(i => all[i]);
-    const have = rest.members.map(m => d.typesOf(g, d.mon(m.num)));
-    const species = new Set(rest.members.map(m => d.mon(m.num).species));
+    const ends = rest.members.map(m => this.evolved(d, g, m));
+    const have = ends.map(m => d.typesOf(g, m));
+    // Gabite in the team rules out Garchomp; suggestions are final stages, so Gabite itself never comes up.
+    const species = new Set(ends.map(m => m.species));
     const out = [];
     for (const { mon: m } of g.dex) {
       if (d.evolutions(m.num).length || (isForm(m) && !d.evo(m.num)) || species.has(m.species) || Team.legend(m.species)) continue;

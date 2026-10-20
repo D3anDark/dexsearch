@@ -122,6 +122,13 @@ const lang = async code => {
   const swap = lone.suggest(d, 1);
   check(swap.length === 30 && swap.every(m => !d.evolutions(m.num).length && !Team.legend(m.species))
     && ['ice', 'dragon', 'fairy'].every(t => d.factor(sv, t, d.typesOf(sv, swap[0])) < 100), 'Noibat swap suggestions');
+  const fox = new Team('', WHOLE);
+  fox.members.push(Team.member(10103, 0, 37), Team.member(448, 0, 49));
+  const eevee = Team.member(133, 0, 20);
+  const kept = Team.member(10103, 0, 37);
+  kept.item = Team.EVIOLITE;
+  check(fox.evolved(d, d.whole, fox.members[0]).num === 10104 && !fox.overlaps(d).length && fox.evolved(d, d.whole, eevee).num === 133
+    && fox.evolved(d, d.whole, kept).num === 10103, 'Alolan Vulpix counts as Alolan Ninetales, so no overlap with Lucario; Eevee and an Eviolite stay');
   check(Team.damage(75, 65, 123, 163, true, 400).join() === '168,196' && Team.damage(50, 40, 10, 400, false, 50)[0] === 1
     && Team.damage(50, 90, 100, 100, true, 0)[1] === 0, 'damage');
 

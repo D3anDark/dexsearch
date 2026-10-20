@@ -117,10 +117,11 @@ class TeamActivity : Activity() {
         }
     }
 
-    /** Swaps slot `k` for another Pokémon, which starts a new set at the old one's level. */
+    /** Swaps slot `k` for another Pokémon, which starts a new set at the old one's level; the old one goes to the Box. */
     private fun replace(k: Int) {
         val old = team.members[k]
         pick(this, dex, team, k, L.f("Swap %s", dex.mon(old.num).name)) { m ->
+            Ui.setCaught(this, old.num, true)
             team.members[k] = TeamsActivity.member(m).also { it.level = old.level }
             TeamsActivity.save(this, teams)
             onResume()
@@ -192,14 +193,20 @@ class TeamActivity : Activity() {
             names((g.counter + g.uncovered).filter { dex.factor(game, types[g.move], listOf(types[it])) > 100 })))
         if (!team.attacks(dex)) tip(p, L.t("No attacks yet"), L.t("Give your Pokémon damaging moves to see what nothing counters."), emptyList())
         else if (p.childCount == 1) tip(p, L.t("No gaps"), L.t("Every type is resisted or hit super effectively, and none hits half the team."), emptyList())
-        // The lower base stat total of a pair is the one to swap: Noibat beside Garchomp.
+        val ends = team.members.map { team.evolved(dex, game, it) }
+        // The lower base stat total once evolved is the one to swap: Noibat beside Garchomp, but Gible beside Noivern.
         for (o in team.overlaps(dex)) {
             val a = dex.mon(team.members[o.a].num)
             val b = dex.mon(team.members[o.b].num)
-            val k = if (b.bst <= a.bst) o.b else o.a
+            val k = if (ends[o.b].bst <= ends[o.a].bst) o.b else o.a
             tip(p, L.f("%s and %s overlap", a.name, b.name), L.t("They share these weaknesses, so one adds little. Swap it for a Pokémon that covers them."),
                 o.weak, L.f("Swap %s", dex.mon(team.members[k].num).name)) { replace(k) }
         }
+        // Only evolutions that change types change the tips; Gabite into Garchomp goes unsaid.
+        val changed = team.members.withIndex().filter { (i, x) -> dex.types(game, ends[i]) != dex.types(game, dex.mon(x.num)) }
+            .map { (i, x) -> L.f("%s as %s", dex.mon(x.num).name, ends[i].name) }
+        if (changed.isNotEmpty()) p.addView(Ui.muted(this, L.f("Counted as evolved: %s.", changed.joinToString(L.t(", "))), 13),
+            Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 12, 0, 0))
         return p
     }
 

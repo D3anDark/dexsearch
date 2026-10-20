@@ -1630,7 +1630,9 @@ function teamScreen(p, ti) {
       save();
       open(q => memberScreen(q, ti, team.members.length - 1));
     });
+    // The old one goes to the Box, as in the games' PC.
     const replace = k => pick(k, L.f("Swap %s", d.mon(team.members[k].num).name), x => {
+      setCaught(team.members[k].num, true);
       x.level = team.members[k].level;
       team.members[k] = x;
       save();
@@ -1725,14 +1727,19 @@ function tips(team, g, add, replace) {
   }
   if (!team.attacks(d)) tip(L.t("No attacks yet"), L.t("Give your Pokémon damaging moves to see what nothing counters."), []);
   else if (!count) tip(L.t("No gaps"), L.t("Every type is resisted or hit super effectively, and none hits half the team."), []);
-  // The lower base stat total of a pair is the one to swap: Noibat beside Garchomp.
+  const ends = team.members.map(x => team.evolved(d, g, x));
+  // The lower base stat total once evolved is the one to swap: Noibat beside Garchomp, but Gible beside Noivern.
   for (const o of team.overlaps(d)) {
     const a = d.mon(team.members[o.a].num);
     const b = d.mon(team.members[o.b].num);
-    const k = b.bst <= a.bst ? o.b : o.a;
+    const k = ends[o.b].bst <= ends[o.a].bst ? o.b : o.a;
     tip(L.f("%s and %s overlap", a.name, b.name), L.t("They share these weaknesses, so one adds little. Swap it for a Pokémon that covers them."),
       o.weak, L.f("Swap %s", d.mon(team.members[k].num).name), () => replace(k));
   }
+  // Only evolutions that change types change the tips; Gabite into Garchomp goes unsaid.
+  const changed = team.members.map((x, i) => [d.mon(x.num), ends[i]])
+    .filter(([m, e]) => d.typesOf(g, e).join() !== d.typesOf(g, m).join()).map(([m, e]) => L.f("%s as %s", m.name, e.name));
+  if (changed.length) box.append(h('p', { class: 'note', style: 'margin-top:12px' }, L.f("Counted as evolved: %s.", changed.join(L.t(", ")))));
   return box;
 }
 
@@ -1865,6 +1872,8 @@ function memberScreen(p, ti, k) {
     const evo = stages(m);
     if (evo) top.append(evo);
     const swap = () => pickMon(g, L.f("Swap %s", m.name), [L.t("Suggested"), team.suggest(d, k).map(o => teamMonEntry(g, o))], nx => {
+      // Off the team but still caught, as in the games' PC; an evolution (setForm) is not a swap.
+      setCaught(x.num, true);
       nx.level = x.level;
       team.members[k] = x = nx;
       save();
@@ -1872,6 +1881,7 @@ function memberScreen(p, ti, k) {
     });
     const remove = () => confirm(L.f("Remove %s?", m.name), L.f("Its moves, item and stats are removed from %s.", team.name), L.t("Remove"), () => {
       team.members.splice(k, 1);
+      setCaught(x.num, true);
       save();
       close();
     });
