@@ -3,9 +3,14 @@ package demo.dex
 import android.app.Activity
 import android.graphics.Paint
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.StyleSpan
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -37,6 +42,25 @@ class TypeChartActivity : Activity() {
         headPx = minOf(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 10f, resources.displayMetrics),
             100f * (cell - gap - Ui.dp(this, 4)) / widest)
 
+        // The cells are too small to read a row at a glance; a tapped row is ringed and spelled out under the chart.
+        val legend = Ui.muted(this, "", 13)
+        legend.visibility = View.GONE
+        legend.setPadding(0, Ui.dp(this, 12), 0, 0)
+        var lit: LinearLayout? = null
+        val marks = listOf(200 to "2", 50 to "½", 0 to "0")
+        val spell = { attack: String, row: LinearLayout ->
+            lit?.let { ring(it, false) }
+            lit = row
+            ring(row, true)
+            val by = { f: Int -> types.filter { dex.factor(game, attack, listOf(it)) == f }.joinToString(L.t(", ")) { Ui.label(it) } }
+            val head = L.f("%s attacks", Ui.label(attack)) + ": "
+            val s = SpannableString(head + marks.map { (f, mark) -> mark to by(f) }.filter { it.second.isNotEmpty() }
+                .joinToString("  ·  ") { it.first + " " + it.second })
+            s.setSpan(StyleSpan(Typeface.BOLD), 0, head.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            legend.text = s
+            legend.visibility = View.VISIBLE
+        }
+
         val grid = Ui.vertical(this)
         // Rows not baseline-aligned: the headers' smaller text dropped them below their cells and cut their corners.
         val top = LinearLayout(this)
@@ -57,6 +81,7 @@ class TypeChartActivity : Activity() {
                     0 -> 0xFF303030.toInt()
                     else -> Ui.FILL
                 }, 4)
+                c.setOnClickListener { spell(attack, row) }
                 row.addView(c, size(cell))
             }
             grid.addView(row)
@@ -64,7 +89,7 @@ class TypeChartActivity : Activity() {
 
         val root = Ui.vertical(this)
         root.addView(Ui.title(this, L.t("Type chart")))
-        val help = Ui.muted(this, L.f("As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effective, 0 no effect. Tap a type to see its Pokémon.", game.name), 14)
+        val help = Ui.muted(this, L.f("As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effective, 0 no effect. Tap a row to read it in words, a type to see its Pokémon.", game.name), 14)
         help.setPadding(Ui.dp(this, 16), 0, Ui.dp(this, 16), Ui.dp(this, 12))
         root.addView(help)
         val panel = Ui.panel(this, null)
@@ -72,10 +97,16 @@ class TypeChartActivity : Activity() {
         val h = HorizontalScrollView(this)
         h.addView(grid)
         panel.addView(h)
+        panel.addView(legend)
         root.addView(panel, Ui.wide(this, 0, 16))
         val v = ScrollView(this)
         v.addView(root)
         Ui.show(this, v)
+    }
+
+    /** A 2 dp ring in the text color on every cell of `row` but its header. */
+    private fun ring(row: LinearLayout, on: Boolean) {
+        for (i in 1 until row.childCount) (row.getChildAt(i).background as GradientDrawable).setStroke(if (on) Ui.dp(this, 2) else 0, Ui.TEXT)
     }
 
     private fun size(cell: Int): LinearLayout.LayoutParams {

@@ -63,8 +63,6 @@ Nothing found	Nic nie znaleziono
 Pokémon of this type	Pokémon tego typu
 Remove from team	Usuń z drużyny
 Set	Zestaw
-Smogon set	Zestaw Smogon
-Sets: %d	Zestawy: %d
 %s (hidden)	%s (ukryta)
 Ability	Zdolność
 Item	Przedmiot
@@ -97,7 +95,6 @@ Total	Suma
 Stat	Wartość
 %d of %d EVs left. At most %d per stat.	Zostało EV: %d z %d. Najwyżej %d na statystykę.
 Remove %s?	Usunąć %s?
-Its moves, item and stats are removed from %s.	Ruchy, przedmiot i statystyki zostaną usunięte z drużyny %s.
 Remove	Usuń
 Tera	Tera
 EVs	EV
@@ -244,7 +241,6 @@ Teams	Drużyny
 Up to six Pokémon per team, with moves, items and stats for one game. Saved on this device.	Do sześciu Pokémon w drużynie, z ruchami, przedmiotami i statystykami dla jednej gry. Zapisane na tym urządzeniu.
 %d of %d	%d z %d
 New team for %s	Nowa drużyna do %s
-As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effective, 0 no effect. Tap a type to see its Pokémon.	Jak w %s. Wiersze atakują, kolumny bronią. 2 to super skuteczny, ½ mało skuteczny, 0 bez efektu. Dotknij typu, aby zobaczyć jego Pokémon.
 Pow %s  ·  Acc %s  ·  PP %d	Moc %s  ·  Cel. %s  ·  PP %d
 Done	Gotowe
 Search	Szukaj
@@ -263,7 +259,6 @@ Workspace: %s	Obszar roboczy: %s
 New	Nowy
 New workspace	Nowy obszar roboczy
 Workspace name	Nazwa obszaru roboczego
-Its caught marks, teams and selected game are removed from this device. This cannot be undone.	Jego oznaczenia złapanych, drużyny i wybrana gra zostaną usunięte z tego urządzenia. Tego nie można cofnąć.
 Removes the caught mark from every game in %s. Pokémon: %d. This cannot be undone.	Usuwa oznaczenie złapania we wszystkich grach obszaru %s. Pokémon: %d. Tego nie można cofnąć.
 Previous: %s	Poprzedni: %s
 Next: %s	Następny: %s
@@ -276,7 +271,6 @@ Show all (%d)	Pokaż wszystkie (%d)
 Attacker	Atakujący
 BST %d+	BST %d+
 Box	Box
-Choose a Pokémon	Wybierz Pokémona
 Choose a move	Wybierz ruch
 Choose both Pokémon and a move.	Wybierz obu Pokémonów i ruch.
 Compare	Porównaj
@@ -337,7 +331,18 @@ Teach %s to %s?	Czy %2$s ma nauczyć się %1$s?
 Forgets	Zapomina
 Learns	Uczy się
 Swap %s for %s?	Zamienić %s na %s?
-%s goes to the Box. Its moves, item and stats are not kept.	%s trafia do Boxa. Ruchy, przedmiot i statystyki nie zostaną zachowane.
 %s can learn %s in place of %s.	%s może nauczyć się %s zamiast %s.
 %s can learn %s.	%s może nauczyć się %s.
 Teach %s	Naucz: %s
+To the Box	Do Boxu
+Forget	Zapomnij
+From the Box	Z Boxu
+The Box keeps its moves, item and stats for later.	Box zachowa jego ruchy, przedmiot i statystyki na później.
+Each workspace is a separate playthrough with its own caught marks, teams, Box and game.	Każdy obszar roboczy to osobne przejście gry z własnymi oznaczeniami złapanych, drużynami, Boxem i grą.
+Its caught marks, teams, Box and selected game are removed from this device. This cannot be undone.	Jego oznaczenia złapanych, drużyny, Box i wybrana gra zostaną usunięte z tego urządzenia. Tego nie można cofnąć.
+As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effective, 0 no effect. Tap a row to read it in words, a type to see its Pokémon.	Jak w %s. Wiersze atakują, kolumny bronią. 2 to super skuteczny, ½ mało skuteczny, 0 bez efektu. Dotknij wiersza, aby przeczytać go słowami, a typu, aby zobaczyć jego Pokémon.
+%s attacks	%s atakuje
+%d types	%d typów
+%d natures	%d natur
+Evolution stage	Etap ewolucji
+Choose	Wybierz

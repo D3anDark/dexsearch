@@ -132,7 +132,7 @@ class CompareActivity : Activity() {
         h.background = Ui.pressable(this, face(m, 18), 18)
         h.setPadding(Ui.dp(this, 10), Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 12))
         h.addView(image(m, 40), LinearLayout.LayoutParams(Ui.dp(this, 96), Ui.dp(this, 96)))
-        val name = Ui.text(this, m?.name ?: L.t("Choose a Pokémon"), 16, true)
+        val name = Ui.text(this, m?.name ?: L.t("Choose"), 16, true)
         if (m == null) name.setTextColor(Ui.MUTED)
         name.gravity = Gravity.CENTER
         h.addView(name)
@@ -170,7 +170,7 @@ class CompareActivity : Activity() {
             s.background = face(m, 14, Ui.FILL)
             s.setPadding(Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 6))
             s.addView(image(m, 22), LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)))
-            val name = Ui.text(this, m?.name ?: L.t("Choose a Pokémon"), 14, true)
+            val name = Ui.text(this, m?.name ?: L.t("Choose"), 14, true)
             name.maxLines = 2
             if (m == null) name.setTextColor(Ui.MUTED)
             s.addView(name, Ui.margins(0, ViewGroup.LayoutParams.WRAP_CONTENT, this, 8, 0, 0, 0).apply { weight = 1f })

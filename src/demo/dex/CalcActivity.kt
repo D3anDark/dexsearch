@@ -107,7 +107,7 @@ class CalcActivity : Activity() {
         val img = ImageView(this)
         if (x != null) img.setImageDrawable(Ui.sprite(this, x.num, 2))
         h.addView(img, LinearLayout.LayoutParams(Ui.dp(this, 80), Ui.dp(this, 80)))
-        val name = Ui.text(this, if (x == null) L.t("Choose a Pokémon") else dex.mon(x.num).name, 16, true)
+        val name = Ui.text(this, if (x == null) L.t("Choose") else dex.mon(x.num).name, 16, true)
         name.gravity = Gravity.CENTER
         h.addView(name)
         if (x != null) {

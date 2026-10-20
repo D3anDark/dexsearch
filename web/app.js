@@ -94,6 +94,34 @@ function loadTeams() {
 const saveTeams = teams => store.set(spaceKey('teams'), Team.formatAll(teams));
 const newMember = m => Team.member(m.num, m.abilities.length ? m.abilities[0] : m.hidden, 50);
 
+/**
+ * The Box, as Ui.box: sets taken off a team and kept for later, one per species, stored as one team line. At most
+ * BOX_SIZE sets (about 20 KB); past that the oldest goes.
+ */
+const BOX_SIZE = 200;
+const loadBox = () => Team.parseAll(store.get(spaceKey('box'), ''))[0]?.members.map(x => { x.num = d.known(x.num); return x; }) ?? [];
+const saveBox = all => store.set(spaceKey('box'), Team.formatAll([Object.assign(new Team('Box', 0), { members: all.slice(-BOX_SIZE) })]));
+const boxed = num => loadBox().find(x => x.num === num);
+/** Replaces an older set of the same species; the Pokémon counts as caught, as in the games' PC. */
+function toBox(x) {
+  saveBox([...loadBox().filter(o => o.num !== x.num), x]);
+  setCaught(x.num, true);
+}
+/** Takes the species' set out of the Box, or null when it holds none. */
+function fromBox(num) {
+  const all = loadBox();
+  const i = all.findIndex(x => x.num === num);
+  if (i < 0) return null;
+  const [x] = all.splice(i, 1);
+  saveBox(all);
+  return x;
+}
+/** A member's set in a line: its item, then its moves or that it has none yet. */
+function setLine(x) {
+  const moves = x.moves.filter(id => id).map(id => d.move(id).name);
+  return (x.item ? d.item(x.item).name + '  ·  ' : '') + (moves.length ? moves.join(L.t(", ")) : L.t("No moves yet"));
+}
+
 // --- colors, as Ui.kt ------------------------------------------------------------------------
 
 const rgb = s => [0, 2, 4].map(i => parseInt(s.slice(i, i + 2), 16));
@@ -234,6 +262,7 @@ const chip = (label, act, cls) => h('button', { class: cls ? 'chip ' + cls : 'ch
 const setChip = (c, label, active) => {
   c.textContent = label;
   c.classList.toggle('on', active);
+  c.setAttribute('aria-pressed', String(active));
   if (c.parentElement?.classList.contains('chips')) refit(c.parentElement);
 };
 
@@ -651,6 +680,7 @@ function pickSearch(heading, tabs, lists, picked, top) {
     }
     list.scrollTop = 0;
     fill(list, items, it => row(it, () => { if (s.close()) picked(it.ref); }), list);
+    if (!items.length) list.append(h('p', 'empty', L.t("Nothing found")));
   };
   const box = searchBox(L.t("Search"), filter);
   box.el.classList.add('mb8');
@@ -674,14 +704,20 @@ function teamsTab(g) {
 const teamMonEntry = (g, m) => monEntry(m, d.typesOf(g, m), g.byNum.has(m.num) ? '#' + String(g.byNum.get(m.num).number).padStart(3, '0') : '', '');
 
 /**
- * A Pokémon of `g` in tabs: `first`, then the caught ones (Box), then all but d.alike forms, which a member's Form row
- * reaches; `picked` gets a team member, new unless one was tapped. `top` goes above the tabs.
+ * A Pokémon of `g` in tabs: `first`, then the Box (the caught ones, and the sets kept there with their level and
+ * moves), then all but d.alike forms, which a member's Form row reaches; `picked` gets a team member: the kept set
+ * when one was tapped, else a new one. `top` goes above the tabs.
  */
 function pickMon(g, heading, first, picked, top) {
   const every = g.dex.map(e => teamMonEntry(g, e.mon));
   const have = caughtSet();
-  const tabs = [...(first ? [first] : []), [L.t("Box"), every.filter(it => have.has(it.ref.num))],
-    [L.t("All"), every.filter(it => !d.alike(g, it.ref))]];
+  const kept = new Map(loadBox().map(x => [x.num, x]));
+  const box = every.flatMap(it => {
+    const x = kept.get(it.ref.num);
+    if (!x) return have.has(it.ref.num) ? [it] : [];
+    return [entry(x.num, L.f("Lv %d", x.level), it.ref.name, setLine(x), d.typesOf(g, it.ref), x)];
+  });
+  const tabs = [...(first ? [first] : []), [L.t("Box"), box], [L.t("All"), every.filter(it => !d.alike(g, it.ref))]];
   pickSearch(heading, tabs.map(t => t[0]), tabs.map(t => t[1]), ref => picked(ref.evs ? ref : newMember(ref)), top);
 }
 
@@ -739,10 +775,10 @@ function home(p) {
     const n = species.filter(e => have.has(e.mon.num)).length;
     const progress = h('div', 'progress', h('div', { class: 'track' }, h('i', { style: `width:${(n * 100) / Math.max(species.length, 1)}%` })),
       h('div', null, L.f("%d of %d caught", n, species.length)));
-    const pill = h('button', { class: 'pill glass tag more', 'aria-label': L.f("Workspace: %s", spaceName()), onclick: e => {
+    const pill = h('button', { class: 'pill glass tag more', onclick: e => {
       e.stopPropagation();
       workspaces();
-    } }, h('span', null, spaceName()), icon(NEXT, 12));
+    } }, h('span', null, L.f("Workspace: %s", spaceName())), icon(NEXT, 12));
     const banner = gameCard(g, L.t("Change game"), () => open(games), progress, pill);
     banner.classList.add('grow');
     banner.onclick = () => open(pokedex);
@@ -758,8 +794,8 @@ function home(p) {
         tile(L.t("Abilities"), 'psychic', count(d.abilities.length), () => open(abilities))),
       h('div', 'tiles grow',
         tile(L.t("Items"), 'electric', count(d.items.length), () => open(items)),
-        tile(L.t("Type chart"), 'dragon', count(d.typesIn(g).length), () => open(typeChart)),
-        tile(L.t("Natures"), 'ground', count(d.natures.length), () => open(natures))))));
+        tile(L.t("Type chart"), 'dragon', words(L.f("%d types", d.typesIn(g).length)), () => open(typeChart)),
+        tile(L.t("Natures"), 'ground', words(L.f("%d natures", d.natures.length)), () => open(natures))))));
     // Last: the check answers after the home is drawn, and above the cards it pushed them under a finger on its way.
     if (waiting) {
       // A tap in its first half second was aimed at a tile it just squeezed, not at installing.
@@ -791,16 +827,17 @@ function home(p) {
     const all = spaces();
     const k = all.findIndex(s => s[0] === spaceId());
     const s = sheet(L.t("Workspaces"));
+    s.body.append(h('p', 'note mb12', L.t("Each workspace is a separate playthrough with its own caught marks, teams, Box and game.")));
     all.forEach((w, i) => s.body.append(h('button', { class: i === k ? 'opt on' : 'opt', onclick: () => {
       if (!s.close()) return;
       store.set('space', w[0]);
       p.resume();
     } }, w[1])));
     if (all.length > 1) s.button(L.t("Delete"), false, () => confirm(L.f("Delete %s?", all[k][1]),
-      L.t("Its caught marks, teams and selected game are removed from this device. This cannot be undone."), L.t("Delete"), () => {
+      L.t("Its caught marks, teams, Box and selected game are removed from this device. This cannot be undone."), L.t("Delete"), () => {
         const id = all[k][0];
         const rest = all.filter(w => w[0] !== id);
-        for (const base of ['caught', 'teams', 'game']) store.remove(spaceKey(base, id));
+        for (const base of ['caught', 'teams', 'box', 'game']) store.remove(spaceKey(base, id));
         store.set('spaces', rest);
         store.set('space', rest[0][0]);
         p.resume();
@@ -1474,15 +1511,31 @@ function typeChart(p) {
     const c = color(t);
     return h('th', null, h('button', { style: `${size};font-size:${font}px;background:${css(c)};color:${on(c)};border-radius:4px;text-align:center`, 'aria-label': d.label(t), onclick: () => openRef(t) }, short(t)));
   };
-  const table = h('table', null, h('tr', null, h('th'), types.map(th)), types.map(a => h('tr', null, th(a), types.map(t => {
-    const mark = marks[d.factor(g, a, [t])];
-    return h('td', { style: `${size};color:#fff;background:${mark ? mark[1] : 'var(--fill)'}` }, mark ? mark[0] : '');
-  }))));
+  // The cells are too small to read every row at a glance; a tapped row is spelled out under the chart.
+  const legend = h('p', { class: 'muted', style: 'padding-top:12px', hidden: true });
+  let lit = null;
+  const spell = (a, tr) => {
+    lit?.classList.remove('on');
+    lit = tr;
+    tr.classList.add('on');
+    const by = f => types.filter(t => d.factor(g, a, [t]) === f).map(t => d.label(t)).join(L.t(", "));
+    legend.replaceChildren(h('b', null, L.f("%s attacks", d.label(a)) + ': '),
+      Object.entries(marks).map(([f, mark]) => [mark[0], by(+f)]).filter(x => x[1]).map(x => x.join(' ')).join('  ·  '));
+    legend.hidden = false;
+  };
+  const table = h('table', null, h('tr', null, h('th'), types.map(th)), types.map(a => {
+    const tr = h('tr', null, th(a));
+    tr.append(...types.map(t => {
+      const mark = marks[d.factor(g, a, [t])];
+      return h('td', { style: `${size};color:#fff;background:${mark ? mark[1] : 'var(--fill)'}`, onclick: () => spell(a, tr) }, mark ? mark[0] : '');
+    }));
+    return tr;
+  }));
   const box = panel(null, 'wide mb16');
   box.style.padding = '12px';
-  box.append(h('div', 'grid', table));
+  box.append(h('div', 'grid', table), legend);
   p.el.append(h('div', 'col', head(L.t("Type chart")),
-    h('p', { class: 'muted pad mb12' }, L.f("As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effective, 0 no effect. Tap a type to see its Pokémon.", g.name)), box));
+    h('p', { class: 'muted pad mb12' }, L.f("As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effective, 0 no effect. Tap a row to read it in words, a type to see its Pokémon.", g.name)), box));
 }
 
 /** The 25 natures as the games' 5 x 5 chart; with `picked`, cells are buttons and `current` is highlighted. */
@@ -1523,10 +1576,21 @@ function settings(p) {
 
   const look = section(L.t("Appearance"));
   label(look, L.t("Language"));
-  look.append(seg([L.t("System"), 'English', 'Polski', 'Español', '日本語'], L.LANGS.indexOf(store.get('lang', '')) + 1, i => {
+  const langs = seg([L.t("System"), 'English', 'Polski', 'Español', '日本語'], L.LANGS.indexOf(store.get('lang', '')) + 1, i => {
+    const was = store.get('lang', '');
     store.set('lang', i ? L.LANGS[i - 1] : '');
-    if (wanted() !== L.lang) restart().catch(() => toast(L.t("Could not load the data. Check the connection and reload.")));
-  }));
+    if (wanted() === L.lang) return;
+    restart().catch(() => {
+      // The table did not load: back to the language in use, in the setting and in the control.
+      store.set('lang', was);
+      langs.querySelectorAll('button').forEach((b, k) => {
+        b.classList.toggle('on', k === L.LANGS.indexOf(was) + 1);
+        b.setAttribute('aria-pressed', String(k === L.LANGS.indexOf(was) + 1));
+      });
+      toast(L.t("Could not load the data. Check the connection and reload."));
+    });
+  });
+  look.append(langs);
   label(look, L.t("Theme"));
   look.append(seg([L.t("System"), L.t("Light"), L.t("Dark")], store.get('theme', 0), i => {
     store.set('theme', i);
@@ -1625,16 +1689,14 @@ function teamScreen(p, ti) {
     const g = d.game(team.game);
     const save = () => saveTeams(teams);
     const pick = (skip, heading, picked) => pickMon(g, heading, [L.t("Suggested"), team.suggest(d, skip).map(m => teamMonEntry(g, m))], picked);
+    // A species the Box holds a set of joins as that set, whichever tab it was tapped in.
     const add = () => pick(-1, L.t("Add Pokémon"), x => {
-      team.members.push(x);
+      team.members.push(fromBox(x.num) ?? x);
       save();
       open(q => memberScreen(q, ti, team.members.length - 1));
     });
-    // The old one goes to the Box, as in the games' PC.
-    const replace = k => pick(k, L.f("Swap %s", d.mon(team.members[k].num).name), x => confirmSwap(g, d.mon(team.members[k].num), d.mon(x.num), () => {
-      setCaught(team.members[k].num, true);
-      x.level = team.members[k].level;
-      team.members[k] = x;
+    const replace = k => pick(k, L.f("Swap %s", d.mon(team.members[k].num).name), x => confirmSwap(g, team.members[k], x, nx => {
+      team.members[k] = nx;
       save();
       render();
     }));
@@ -1647,10 +1709,7 @@ function teamScreen(p, ti) {
     const slots = h('div', { class: 'panel wide', style: 'padding:6px 0' });
     team.members.forEach((x, k) => {
       const m = d.mon(x.num);
-      const moves = x.moves.filter(id => id).map(id => d.move(id).name);
-      const held = x.item ? d.item(x.item).name + '  ·  ' : '';
-      const r = row(entry(m.num, L.f("Lv %d", x.level), m.name, held + (moves.length ? moves.join(L.t(", ")) : L.t("No moves yet")), d.typesOf(g, m), m),
-        () => open(q => memberScreen(q, ti, k)));
+      const r = row(entry(m.num, L.f("Lv %d", x.level), m.name, setLine(x), d.typesOf(g, m), m), () => open(q => memberScreen(q, ti, k)));
       onHold(r, () => replace(k));
       slots.append(r);
     });
@@ -1809,13 +1868,35 @@ function confirmTeach(g, mon, x, slot, id, yes) {
   s.button(L.t("Cancel")).button(L.f("Teach %s", nw.name), true, yes).show();
 }
 
-/** Asks before `nw` takes `old`'s slot: both with their base stats side by side, and what goes with the old one. */
+/**
+ * Asks before `nw` takes `old`'s slot: both with their base stats side by side, then whether the old set goes to the
+ * Box or is forgotten and, when the Box holds a set of the new species, whether that set comes in or a new one does.
+ * `yes` gets the member for the slot.
+ */
 function confirmSwap(g, old, nw, yes) {
-  const s = sheet(L.f("Swap %s for %s?", old.name, nw.name));
-  s.body.append(h('div', 'pair mb12', half(null, old.num, old.name, d.typesOf(g, old), ''), half(null, nw.num, nw.name, d.typesOf(g, nw), '')),
-    ...STATS.map((st, i) => sides(L.t(st), old.stats[i], nw.stats[i], true)), sides(L.t("Total"), old.bst, nw.bst, false),
-    h('p', 'note mt8', L.f("%s goes to the Box. Its moves, item and stats are not kept.", old.name)));
-  s.button(L.t("Cancel")).button(L.t("Swap"), true, yes).show();
+  const om = d.mon(old.num);
+  const nm = d.mon(nw.num);
+  const kept = boxed(nw.num);
+  let keep = 0;
+  let take = 0;
+  const s = sheet(L.f("Swap %s for %s?", om.name, nm.name));
+  s.body.append(h('div', 'pair mb12', half(null, om.num, om.name, d.typesOf(g, om), ''), half(null, nm.num, nm.name, d.typesOf(g, nm), '')),
+    ...STATS.map((st, i) => sides(L.t(st), om.stats[i], nm.stats[i], true)), sides(L.t("Total"), om.bst, nm.bst, false),
+    h('div', 'caption mt12 mb8', om.name), seg([L.t("To the Box"), L.t("Forget")], 0, i => { keep = i; }),
+    h('p', 'note mt8', L.t("The Box keeps its moves, item and stats for later.")));
+  if (kept) {
+    s.body.append(h('div', 'caption mt12 mb8', nm.name), seg([L.t("From the Box"), L.t("New")], 0, i => { take = i; }),
+      h('p', 'note mt8', L.f("Lv %d", kept.level) + '  ·  ' + setLine(kept)));
+  }
+  s.button(L.t("Cancel")).button(L.t("Swap"), true, () => {
+    let nx = kept && take === 0 ? fromBox(nw.num) : null;
+    if (!nx) {
+      nx = newMember(nm);
+      nx.level = old.level;
+    }
+    if (keep === 0) toBox(old);
+    yes(nx);
+  }).show();
 }
 
 /** One side of a confirm: `caption` or the sprite of `num`, the name, pills two to a line as in Compare, and `note`. */
@@ -1951,21 +2032,25 @@ function memberScreen(p, ti, k) {
       h('div', null, h('h1', null, m.name), h('div', { style: 'font-size:14px;color:rgba(255,255,255,.8)' }, team.name + '  ·  ' + g.name), h('div', 'mt10', types.map(glass))),
       art));
     const evo = stages(m);
-    if (evo) top.append(evo);
-    const swap = () => pickMon(g, L.f("Swap %s", m.name), [L.t("Suggested"), team.suggest(d, k).map(o => teamMonEntry(g, o))], nx => confirmSwap(g, m, d.mon(nx.num), () => {
-      // Off the team but still caught, as in the games' PC; an evolution (setForm) is not a swap.
-      setCaught(x.num, true);
-      nx.level = x.level;
-      team.members[k] = x = nx;
+    if (evo) top.append(...evo);
+    // An evolution (setForm) is not a swap: the set stays.
+    const swap = () => pickMon(g, L.f("Swap %s", m.name), [L.t("Suggested"), team.suggest(d, k).map(o => teamMonEntry(g, o))], nx => confirmSwap(g, x, nx, nn => {
+      team.members[k] = x = nn;
       save();
       build();
     }));
-    const remove = () => confirm(L.f("Remove %s?", m.name), L.f("Its moves, item and stats are removed from %s.", team.name), L.t("Remove"), () => {
-      team.members.splice(k, 1);
-      setCaught(x.num, true);
-      save();
-      close();
-    });
+    const remove = () => {
+      let keep = 0;
+      const s = sheet(L.f("Remove %s?", m.name));
+      s.body.append(seg([L.t("To the Box"), L.t("Forget")], 0, i => { keep = i; }),
+        h('p', 'note mt8', L.t("The Box keeps its moves, item and stats for later.")));
+      s.button(L.t("Cancel")).button(L.t("Remove"), true, () => {
+        if (keep === 0) toBox(x);
+        team.members.splice(k, 1);
+        save();
+        close();
+      }).show();
+    };
     const y = p.el.scrollTop;
     p.el.replaceChildren(h('div', 'col', top,
       chipRow('mt12', chip(L.t("Swap"), swap), chip(L.t("Compare"), () => open(q => compare(q, m.num, g.id))), chip(L.t("Damage calc"), () => open(q => calc(q, ti, k)))),
@@ -1982,7 +2067,7 @@ function memberScreen(p, ti, k) {
     build();
   }
 
-  /** In the hero, as MemberActivity: the stage before on the left, the stages after on the right. */
+  /** In the hero, as MemberActivity: a caption, then the stage before on the left and the stages after on the right. */
   function stages(m) {
     const evo = d.evo(m.num);
     const from = evo && g.byNum.has(evo.from) ? d.mon(evo.from) : null;
@@ -1991,12 +2076,12 @@ function memberScreen(p, ti, k) {
     const stage = (label, aria, back, act) => h('button', { class: 'add stage', 'aria-label': aria, onclick: act },
       back ? icon(BACK, 14) : null, h('span', null, label), back ? null : icon(NEXT, 14));
     const gap = () => h('div', 'add');
-    return h('div', 'acts',
+    return [h('div', { class: 'where', style: 'margin-top:14px;opacity:.85' }, L.t("Evolution stage")), h('div', { class: 'acts', style: 'margin-top:6px' },
       from ? stage(from.name, L.f("Devolve to %s", from.name), true, () => setForm(from)) : gap(),
       into.length === 1 ? stage(into[0].name, L.f("Evolve into %s", into[0].name), false, () => setForm(into[0]))
         // Eevee's eight would not fit a line; they go in a list.
         : into.length ? stage(L.t("Evolve"), L.t("Evolve"), false, () => pickOne(L.t("Evolve"), into.map(f => f.name), -1, i => setForm(into[i])))
-        : gap());
+        : gap())];
   }
 
   function set(m) {
@@ -2018,7 +2103,7 @@ function memberScreen(p, ti, k) {
     const smogon = h('div');
     box.append(smogon);
     builds(m).then(all => {
-      if (all.length) smogon.replaceWith(setting(L.t("Smogon set"), L.f("Sets: %d", all.length), () => pickBuild(all)));
+      if (all.length) smogon.replaceWith(setting(L.t("Smogon sets"), String(all.length), () => pickBuild(all)));
     });
     if (g.gen >= 3) {
       const ids = [...new Set([...m.abilities, m.hidden].filter(id => id))];
@@ -2206,8 +2291,8 @@ function compare(p, first, gameId) {
     }, other ? slots(i === 1 ? [other, null] : [null, other]) : null);
   };
   const slot = m => h('div', m ? 'slot' : 'slot empty', m ? sprite(m.num) : h('div', { class: 'plus', 'aria-hidden': 'true' }, '+'),
-    h('div', 'nm', m ? m.name : L.t("Choose a Pokémon")));
-  const slots = both => h('div', 'slots mb12', slot(both[0]), h('span', 'muted', L.t("vs")), slot(both[1]));
+    h('div', 'nm', m ? m.name : L.t("Choose")));
+  const slots = both => h('div', 'vs slots mb12', slot(both[0]), h('span', 'muted', L.t("vs")), slot(both[1]));
   render();
   pick(picked[0] ? 1 : 0);
 
@@ -2215,7 +2300,7 @@ function compare(p, first, gameId) {
     const [a, b] = picked.map(n => (n ? d.mon(n) : null));
     const headCard = (m, i) => h('button', { class: m ? 'headcard' : 'headcard empty', onclick: () => pick(i) },
       m ? sprite(m.num) : h('div', { class: 'plus', 'aria-hidden': 'true' }, '+'),
-      h('div', 'nm', m ? m.name : L.t("Choose a Pokémon")),
+      h('div', 'nm', m ? m.name : L.t("Choose")),
       m ? typePills(d.typesOf(g, m), 2) : null);
     col.replaceChildren(head(L.t("Compare")), h('p', 'sub', g.name), h('div', 'pair wide mb12', headCard(a, 0), headCard(b, 1)));
     if (!a || !b) return;
@@ -2300,7 +2385,7 @@ function calc(p, ti, k) {
       return h('div', { class: 'headcard', role: 'button', tabindex: '0', onclick: () => pick(i) },
         h('div', 'caption', i ? L.t("Defender") : L.t("Attacker")),
         m ? sprite(m.num) : null, h('div', { style: m ? null : 'height:80px' }),
-        h('div', 'nm', m ? m.name : L.t("Choose a Pokémon")),
+        h('div', 'nm', m ? m.name : L.t("Choose")),
         x ? h('div', 'lvl', h('span', 'muted', L.t("Level")), level) : null);
     });
     for (const img of heads.map(c => c.querySelector('img')).filter(i => i)) img.style.cssText = 'width:80px;height:80px';
@@ -2416,6 +2501,8 @@ function update() {
     throw e;
   }
   document.getElementById('boot').remove();
+  // A fetch that no screen caught (a late Smogon set, artwork, a language table) says so instead of failing in silence.
+  window.onunhandledrejection = () => toast(L.t("Could not load the data. Check the connection and reload."));
   history.replaceState({ depth: 0 }, '');
   mount(home);
 

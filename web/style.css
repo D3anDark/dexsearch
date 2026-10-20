@@ -9,7 +9,9 @@
   --up: #C62828;
   --down: #1F4FB5;
   --accent: #D8300C;
-  --accent-text: #D8300C;
+  /* Accent as text: 5.0:1 on --fill, 5.6:1 on --surface. --accent itself (3.9:1 on --fill) stays for filled chips. */
+  --accent-text: #BA2909;
+  --ring: #D8300C;
   --good: #1E7B3A;
   --bad: #C62828;
   --tone: 16%;
@@ -20,14 +22,14 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #111215; --surface: #1C1E23; --fill: #2A2D34; --raised: #3B3F48; --text: #F1F2F4; --muted: #9BA1AB;
-    --up: #FF8A80; --down: #82B1FF; --accent-text: #FF8A65; --good: #7BD88F; --bad: #FF8A80; --tone: 22%;
+    --up: #FF8A80; --down: #82B1FF; --accent-text: #FF8A65; --ring: #FF8A65; --good: #7BD88F; --bad: #FF8A80; --tone: 22%;
     --press: rgba(255, 255, 255, .2); --hover: rgba(255, 255, 255, .07); color-scheme: dark;
   }
   :root:not([data-theme="light"]) .ink { color: var(--ink-n); }
 }
 :root[data-theme="dark"] {
   --bg: #111215; --surface: #1C1E23; --fill: #2A2D34; --raised: #3B3F48; --text: #F1F2F4; --muted: #9BA1AB;
-  --up: #FF8A80; --down: #82B1FF; --accent-text: #FF8A65; --good: #7BD88F; --bad: #FF8A80; --tone: 22%;
+  --up: #FF8A80; --down: #82B1FF; --accent-text: #FF8A65; --ring: #FF8A65; --good: #7BD88F; --bad: #FF8A80; --tone: 22%;
   --press: rgba(255, 255, 255, .2); --hover: rgba(255, 255, 255, .07); color-scheme: dark;
 }
 :root[data-theme="dark"] .ink { color: var(--ink-n); }
@@ -41,7 +43,9 @@ body {
   -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; overflow: hidden;
 }
 button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; text-align: inherit; }
-button:focus-visible, [tabindex]:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:focus-visible, [tabindex]:focus-visible, input:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* The search box and sheet fields hide the input's own ring and show it on their rounded frame instead. */
+.search:has(input:focus-visible), .sheet .field:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 p, h1, h2, h3 { margin: 0; }
 img { -webkit-touch-callout: none; -webkit-user-drag: none; user-select: none; }
 .tap, .row, .card, .tile, .chip, .slot { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
@@ -137,7 +141,7 @@ img { -webkit-touch-callout: none; -webkit-user-drag: none; user-select: none; }
 .row .art.item img { image-rendering: pixelated; }
 .row .box {
   flex: none; width: 58px; height: 36px; display: grid; place-items: center; background: var(--fill); border-radius: 10px;
-  font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden;
+  font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px;
 }
 /* A list where some rows carry a badge box keeps every title on one edge: the rows without one get an empty box. */
 .rows:has(> .row > .box) > .row:not(:has(> .art, > .box))::before { content: ''; flex: none; width: 58px; }
@@ -151,9 +155,10 @@ img { -webkit-touch-callout: none; -webkit-user-drag: none; user-select: none; }
 
 .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 4px 16px 16px; }
 .card { position: relative; height: 118px; border-radius: 18px; color: #fff; padding: 10px 0 10px 12px; overflow: hidden; cursor: pointer; }
-/* The number floats ahead of the name, so a long name stops 8px short of it at any number width. */
-.card .name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 0 4px; }
-.card .num { float: right; margin: 1px 12px 0 8px; font-size: 13px; font-weight: 700; }
+/* The number floats ahead of the name, so a long name stops 8px short of it at any number width.
+   Both are positioned to paint over the picture, which is absolute and later in the card. */
+.card .name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 0 4px; position: relative; z-index: 1; }
+.card .num { float: right; margin: 1px 12px 0 8px; font-size: 13px; font-weight: 700; position: relative; z-index: 1; }
 .card img { position: absolute; right: 6px; bottom: 6px; width: 84px; height: 84px; object-fit: contain; }
 .card .glass { margin: 2px 0; }
 .card .types { display: flex; flex-direction: column; align-items: flex-start; }
@@ -224,14 +229,14 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .sheet > .in { padding: 0 16px; overflow-y: auto; min-height: 0; flex: 0 1 auto; }
 .sheet > .btns { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 12px 20px 20px 16px; }
 .opt { display: block; width: 100%; font-size: 16px; padding: 13px 16px; margin-bottom: 6px; background: var(--fill); border-radius: 14px; }
-.opt.on { font-weight: 700; box-shadow: inset 0 0 0 2px var(--accent); }
+.opt.on { font-weight: 700; box-shadow: inset 0 0 0 2px var(--ring); }
 .pick .pills .pill { box-shadow: 0 0 0 3px var(--surface); padding: 8px 0; }
 .pick .pills .pill.on { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--text); }
 .sheet .field { width: 100%; font: inherit; font-size: 16px; color: var(--text); background: var(--fill); border: 0; border-radius: 14px; padding: 12px 14px; outline: 0; }
 .sheet .list { height: min(520px, 60vh); overflow-y: auto; margin: 0 -16px; }
 .gens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .gens button { padding: 10px 4px; border-radius: 16px; background: var(--fill); text-align: center; }
-.gens button.on { box-shadow: inset 0 0 0 2px var(--accent); }
+.gens button.on { box-shadow: inset 0 0 0 2px var(--ring); }
 .gens img { width: 28px; height: 28px; }
 
 /* Home: fills the screen; the game card and tiles share the spare height. */
@@ -240,7 +245,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .grow { flex: 1 1 0; min-height: 80px; max-height: 140px; }
 .gamecard.grow { max-height: 320px; }
 /* Never shorter than its text and chips: Safari's toolbars and the install card leave less height than the home screen icon. */
-.gamecard { flex: 1 0 auto; position: relative; display: flex; align-items: center; border-radius: 18px; color: #fff; overflow: hidden; cursor: pointer; }
+.gamecard { flex: 1 0 auto; position: relative; display: flex; align-items: flex-start; border-radius: 18px; color: #fff; overflow: hidden; cursor: pointer; }
 .gamecard .texts { padding: 14px 16px; min-width: 0; margin-right: calc(12px + 56px * var(--n)); }
 .gamecard h2 { font-size: 19px; font-weight: 700; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .gamecard p { font-size: 13px; padding-top: 4px; white-space: pre-line; }
@@ -293,21 +298,22 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .headcard.empty .nm { color: var(--muted); }
 .headcard .plus { width: 96px; height: 96px; border-radius: 50%; background: var(--fill); color: var(--muted); font-size: 40px; display: grid; place-items: center; }
 .headcard .pills { width: 100%; margin-top: 6px; }
-/* Above the second list: the side already picked and the one being picked, in their places. */
-.slots { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-.slot { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; background: var(--fill); border-radius: 14px; padding: 6px 10px 6px 6px; }
-.slot img, .slot .plus { width: 40px; height: 40px; flex: none; object-fit: contain; }
-.slot .plus { border-radius: 50%; background: var(--fill); color: var(--muted); font-size: 22px; display: grid; place-items: center; }
-.slot .nm { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
-.slot.empty { background: var(--surface); outline: 2px dashed var(--muted); outline-offset: -2px; }
-.slot.empty .nm { color: var(--muted); }
+/* Above the second list: the side already picked and the one being picked, in their places. .vs keeps these off the
+   round team slots in the teams list. */
+.vs.slots { align-items: center; gap: 8px; padding-top: 0; font-size: 13px; }
+.vs .slot { flex: 1 1 0; min-width: 0; height: auto; display: flex; align-items: center; gap: 8px; border-radius: 14px; padding: 6px 10px 6px 6px; }
+.vs .slot img, .vs .slot .plus { width: 40px; height: 40px; flex: none; object-fit: contain; }
+.vs .slot .plus { border-radius: 50%; background: var(--fill); color: var(--muted); font-size: 22px; display: grid; place-items: center; }
+.vs .slot .nm { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.vs .slot.empty { background: var(--surface); outline: 2px dashed var(--muted); outline-offset: -2px; }
+.vs .slot.empty .nm { color: var(--muted); }
 /* One side of a teach or swap confirm, above the values compared. */
 .half { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
 .half img { width: 72px; height: 72px; object-fit: contain; }
 .half .nm { font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
 .half .pills { width: 100%; margin-top: 2px; }
 .choices .row { background: var(--fill); border-radius: 14px; margin-bottom: 6px; }
-.choices .row.on { box-shadow: inset 0 0 0 2px var(--accent); }
+.choices .row.on { box-shadow: inset 0 0 0 2px var(--ring); }
 .verdict { display: flex; align-items: center; gap: 10px; padding-bottom: 8px; }
 .verdict img { width: 56px; height: 56px; object-fit: contain; flex: none; }
 .verdict .h { font-size: 17px; font-weight: 700; text-wrap: balance; }
@@ -330,6 +336,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .grid { overflow-x: auto; }
 .grid table { border-collapse: separate; border-spacing: 1px; }
 .grid td, .grid th { padding: 0; text-align: center; font-size: 12px; font-weight: 700; border-radius: 4px; }
+.grid tr.on td { box-shadow: inset 0 0 0 2px var(--text); }
 .natures { display: grid; grid-template-columns: 34px repeat(5, 1fr); gap: 3px; }
 .natures > * { display: grid; place-items: center; font-size: 12px; font-weight: 700; text-align: center; border-radius: 10px; }
 .natures .h { height: 28px; }
@@ -371,7 +378,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .pill.px img { display: block; height: 20px; width: auto; margin: 0 auto; }
 .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .opts > button { padding: 12px 8px; border-radius: 14px; background: var(--fill); font-size: 13px; font-weight: 700; text-align: center; }
-.opts > button.on { box-shadow: inset 0 0 0 2px var(--accent); }
+.opts > button.on { box-shadow: inset 0 0 0 2px var(--ring); }
 .opts > button > div { display: flex; justify-content: center; align-items: center; gap: 6px; height: 24px; margin-bottom: 8px; }
 .opts .pill:not(.ic):not(.px) { width: 56px; }
 .opts .pill.ic { padding: 3px 8px; }
@@ -383,7 +390,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .gamecard .tags { display: flex; flex-wrap: wrap; gap: 0 8px; margin-top: 3px; }
 .gamecard .tags .tag { margin-top: 0; }
 .gamecard .more { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
-.gamecard .more span { overflow: hidden; text-overflow: ellipsis; }
+.gamecard .more span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .progress { font-size: 12px; }
 .progress .track { height: 6px; margin: 8px 0 4px; border-radius: 999px; background: rgba(255, 255, 255, .25); overflow: hidden; }
 .progress .track i { display: block; height: 100%; border-radius: 999px; background: #fff; }

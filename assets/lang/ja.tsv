@@ -63,8 +63,6 @@ Nothing found	見つかりません
 Pokémon of this type	このタイプのポケモン
 Remove from team	パーティから外す
 Set	型
-Smogon set	Smogonの型
-Sets: %d	型: %d
 %s (hidden)	%s (かくれとくせい)
 Ability	とくせい
 Item	もちもの
@@ -97,7 +95,6 @@ Total	合計
 Stat	実数値
 %d of %d EVs left. At most %d per stat.	努力値 残り%d / %d。1つの能力に最大%d。
 Remove %s?	%sを外しますか？
-Its moves, item and stats are removed from %s.	わざ、もちもの、能力の設定が%sから削除されます。
 Remove	外す
 Tera	テラス
 EVs	努力値
@@ -244,7 +241,6 @@ Teams	パーティ
 Up to six Pokémon per team, with moves, items and stats for one game. Saved on this device.	1つのゲーム用に、わざ・もちもの・能力を設定したポケモンを最大6匹までのパーティにできます。この端末に保存されます。
 %d of %d	%d / %d
 New team for %s	%sの新しいパーティ
-As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effective, 0 no effect. Tap a type to see its Pokémon.	%sの相性。行が攻撃、列が防御。2はこうかばつぐん、½はいまひとつ、0は効果なし。タイプをタップするとそのポケモンを表示。
 Pow %s  ·  Acc %s  ·  PP %d	威力 %s  ·  命中 %s  ·  PP %d
 Done	完了
 Search	検索
@@ -263,7 +259,6 @@ Workspace: %s	ワークスペース: %s
 New	新規
 New workspace	新しいワークスペース
 Workspace name	ワークスペース名
-Its caught marks, teams and selected game are removed from this device. This cannot be undone.	捕獲済みの記録、チーム、選んだゲームがこの端末から削除されます。元に戻せません。
 Removes the caught mark from every game in %s. Pokémon: %d. This cannot be undone.	%sのすべてのゲームで捕獲済みの記録を消します。ポケモン: %d匹。元に戻せません。
 Previous: %s	前: %s
 Next: %s	次: %s
@@ -276,7 +271,6 @@ Show all (%d)	すべて表示 (%d)
 Attacker	攻撃側
 BST %d+	合計%d以上
 Box	ボックス
-Choose a Pokémon	ポケモンを選択
 Choose a move	わざを選択
 Choose both Pokémon and a move.	ポケモン2匹とわざを選んでください。
 Compare	比較
@@ -337,7 +331,18 @@ Teach %s to %s?	%2$sに%1$sを覚えさせますか？
 Forgets	忘れる
 Learns	覚える
 Swap %s for %s?	%sを%sと入れ替えますか？
-%s goes to the Box. Its moves, item and stats are not kept.	%sはボックスに送られます。わざ、もちもの、能力の設定は残りません。
 %s can learn %s in place of %s.	%1$sは%3$sの代わりに%2$sを覚えられます。
 %s can learn %s.	%sは%sを覚えられます。
 Teach %s	%sを覚えさせる
+To the Box	ボックスへ
+Forget	忘れる
+From the Box	ボックスから
+The Box keeps its moves, item and stats for later.	ボックスには技、持ち物、ステータスが後のために残ります。
+Each workspace is a separate playthrough with its own caught marks, teams, Box and game.	ワークスペースはそれぞれ別のプレイで、捕獲済みの記録、チーム、ボックス、ゲームを持ちます。
+Its caught marks, teams, Box and selected game are removed from this device. This cannot be undone.	捕獲済みの記録、チーム、ボックス、選んだゲームがこの端末から削除されます。元に戻せません。
+As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effective, 0 no effect. Tap a row to read it in words, a type to see its Pokémon.	%sの相性。行が攻撃、列が防御。2はこうかばつぐん、½はいまひとつ、0は効果なし。行をタップすると言葉で表示、タイプをタップするとそのポケモンを表示。
+%s attacks	%sの攻撃
+%d types	%dタイプ
+%d natures	せいかく%d種
+Evolution stage	進化段階
+Choose	選ぶ

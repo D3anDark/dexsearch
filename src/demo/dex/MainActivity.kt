@@ -81,10 +81,9 @@ class MainActivity : Activity() {
 
     /** The workspace switch, in the game card: a workspace is what that card shows, its game and caught marks. */
     private fun spacePill(): TextView {
-        val pill = Ui.glassPill(this, Ui.spaceName(this))
+        val pill = Ui.glassPill(this, L.f("Workspace: %s", Ui.spaceName(this)))
         Ui.glassButton(pill) { workspaces() }
         pill.ellipsize = TextUtils.TruncateAt.END
-        pill.contentDescription = L.f("Workspace: %s", pill.text)
         val more = Ui.Chevron(Ui.WHITE, false)
         more.setBounds(0, 0, Ui.dp(this, 10), Ui.dp(this, 10))
         pill.setCompoundDrawablesRelative(null, null, more, null)
@@ -117,8 +116,8 @@ class MainActivity : Activity() {
                 Intent(this, MovesActivity::class.java).putExtra("tm", true)),
             tile(names[2], sp, count(dex.abilities.size), "psychic", Intent(this, AbilitiesActivity::class.java)))
         tiles(tile(names[3], sp, count(dex.items.size), "electric", Intent(this, ItemsActivity::class.java)),
-            tile(names[4], sp, count(dex.types(game).size), "dragon", Intent(this, TypeChartActivity::class.java)),
-            tile(names[5], sp, count(dex.natures.size), "ground", Intent(this, NaturesActivity::class.java)))
+            tile(names[4], sp, words(L.f("%d types", dex.types(game).size)), "dragon", Intent(this, TypeChartActivity::class.java)),
+            tile(names[5], sp, words(L.f("%d natures", dex.natures.size)), "ground", Intent(this, NaturesActivity::class.java)))
         // Last: the check answers after the home is drawn, and above the cards it pushed them under a finger on its way.
         if (newer > 0) content.addView(update(), Ui.wide(this, 0, 0))
         searchChanged()
@@ -133,6 +132,9 @@ class MainActivity : Activity() {
             switch(spaces[i].first)
             refresh()
         }
+        val note = Ui.muted(this, L.t("Each workspace is a separate playthrough with its own caught marks, teams, Box and game."), 14)
+        note.setPadding(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0)
+        s.body.addView(note, 0, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 0, 12))
         if (spaces.size > 1) s.button(L.t("Delete")) { delete(spaces, k) }
         s.button(L.t("Rename")) {
             Ui.askName(this, L.t("Workspace name"), spaces[k].second) { name ->
@@ -154,10 +156,10 @@ class MainActivity : Activity() {
     private fun delete(spaces: List<Pair<Int, String>>, k: Int) {
         val id = spaces[k].first
         Ui.confirm(this, L.f("Delete %s?", spaces[k].second),
-            L.t("Its caught marks, teams and selected game are removed from this device. This cannot be undone."), L.t("Delete")) {
+            L.t("Its caught marks, teams, Box and selected game are removed from this device. This cannot be undone."), L.t("Delete")) {
             val rest = spaces.filter { it.first != id }
             val e = Ui.prefs(this).edit()
-            for (base in arrayOf("caught", "teams", "game")) e.remove(Ui.key(this, base, id))
+            for (base in arrayOf("caught", "teams", "box", "game")) e.remove(Ui.key(this, base, id))
             e.putInt("space", rest[0].first).apply()
             Ui.saveSpaces(this, rest)
             refresh()

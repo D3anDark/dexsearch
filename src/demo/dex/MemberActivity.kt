@@ -70,10 +70,8 @@ class MemberActivity : Activity() {
         val k = team.members.indexOf(x)
         Ui.addChip(actions, Ui.chip(this, L.t("Swap")) {
             TeamActivity.pick(this, dex, team, k, L.f("Swap %s", m.name)) { new ->
-                TeamActivity.confirmSwap(this, dex, game, m, new) {
-                    // Off the team but still caught, as in the games' PC; an evolution (setForm) is not a swap.
-                    Ui.setCaught(this, x.num, true)
-                    x = TeamsActivity.member(new).also { it.level = x.level }
+                TeamActivity.confirmSwap(this, dex, game, x, new) { nx ->
+                    x = nx
                     team.members[k] = x
                     render()
                 }
@@ -89,7 +87,7 @@ class MemberActivity : Activity() {
         root.addView(stats(m), Ui.wide(this, 12, 12))
 
         val remove = Ui.chip(this, L.t("Remove from team")) { remove(m) }
-        remove.setTextColor(if (Ui.night) 0xFFFF8A65.toInt() else Ui.ACCENT)
+        remove.setTextColor(Ui.ACCENT_TEXT)
         val last = LinearLayout(this)
         Ui.addChip(last, remove)
         root.addView(Ui.chipBar(this, last))
@@ -126,6 +124,9 @@ class MemberActivity : Activity() {
         val from = dex.evo(m.num)?.from?.takeIf { game.byNum.containsKey(it) }?.let { dex.mon(it) }
         val into = dex.evolutions(m.num).map { it.to }.distinct().filter { game.byNum.containsKey(it) }.map { dex.mon(it) }
         if (from != null || into.isNotEmpty()) {
+            val where = Ui.white(this, L.t("Evolution stage"), 12, false)
+            where.alpha = 0.85f
+            h.addView(where, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 14, 0, 0))
             val evo = LinearLayout(this)
             val half = { v: View, start: Boolean ->
                 evo.addView(v, Ui.margins(0, ViewGroup.LayoutParams.WRAP_CONTENT, this, if (start) 0 else 5, 0, if (start) 5 else 0, 0)
@@ -140,7 +141,7 @@ class MemberActivity : Activity() {
                     Ui.pickOne(this, L.t("Evolve"), into.map { it.name }, -1) { i -> setForm(into[i]) }
                 }
             }, false)
-            h.addView(evo, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 14, 0, 0))
+            h.addView(evo, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 6, 0, 0))
         }
         return h
     }
@@ -184,7 +185,7 @@ class MemberActivity : Activity() {
             TeamActivity.pickEvolution(this, dex, team, x) { render() }
         })
         val sets = builds(m)
-        if (sets.isNotEmpty()) p.addView(Ui.setting(this, L.t("Smogon set"), L.f("Sets: %d", sets.size)) { pickBuild(sets) })
+        if (sets.isNotEmpty()) p.addView(Ui.setting(this, L.t("Smogon sets"), sets.size.toString()) { pickBuild(sets) })
         if (game.gen >= 3) {
             val ids = m.abilities.toMutableList()
             if (m.hidden != 0 && m.hidden !in ids) ids.add(m.hidden)
@@ -404,14 +405,22 @@ class MemberActivity : Activity() {
         left.text = L.f("%d of %d EVs left. At most %d per stat.", Team.EV_TOTAL - x.evs.sum(), Team.EV_TOTAL, Team.EV_STAT)
     }
 
+    /** Off the team, and either into the Box with its set or forgotten; an evolution (setForm) is not a removal. */
     private fun remove(m: Dex.Mon) {
-        Ui.confirm(this, L.f("Remove %s?", m.name), L.f("Its moves, item and stats are removed from %s.", team.name), L.t("Remove")) {
+        var keep = 0
+        val s = Ui.Sheet(this, L.f("Remove %s?", m.name))
+        s.body.addView(TeamActivity.choice(this, arrayOf(L.t("To the Box"), L.t("Forget"))) { keep = it })
+        s.body.addView(Ui.muted(this, L.t("The Box keeps its moves, item and stats for later."), 13),
+            Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 6, 0, 0))
+        s.button(L.t("Cancel"))
+        s.button(L.t("Remove"), main = true) {
+            if (keep == 0) Ui.toBox(this, x)
             team.members.remove(x)
-            Ui.setCaught(this, x.num, true)
             TeamsActivity.save(this, teams)
             removed = true
             finish()
         }
+        s.show()
     }
 
     companion object {

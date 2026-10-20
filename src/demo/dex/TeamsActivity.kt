@@ -101,11 +101,24 @@ class TeamsActivity : Activity() {
         fun pick(a: Activity, dex: Dex, game: Dex.Game, heading: String, first: Pair<String, List<Ui.Item>>?, top: View? = null,
                  picked: (Team.Member) -> Unit) {
             val caught = Ui.caught(a)
+            // A species with a set in the Box shows that set (level, item, moves) and passes it on.
+            val kept = Ui.box(a).associateBy { it.num }
             val every = game.dex.map { monItem(dex, game, it.mon) }
+            val box = every.filter { val m = it.ref as Dex.Mon; m.num.toString() in caught || m.num in kept }.map { it ->
+                val m = it.ref as Dex.Mon
+                val x = kept[m.num] ?: return@map it
+                Ui.Item(m.num, L.f("Lv %d", x.level), m.name, setLine(dex, x), dex.types(game, m), x)
+            }
             val tabs = listOfNotNull(first?.first, L.t("Box"), L.t("All"))
-            val lists = listOfNotNull(first?.second, every.filter { (it.ref as Dex.Mon).num.toString() in caught },
-                every.filter { !dex.alike(game, it.ref as Dex.Mon) })
+            val lists = listOfNotNull(first?.second, box, every.filter { !dex.alike(game, it.ref as Dex.Mon) })
             Ui.pickSearch(a, heading, tabs.toTypedArray(), lists, top) { ref -> picked(ref as? Team.Member ?: member(ref as Dex.Mon)) }
+        }
+
+        /** Held item and moves of `x` on one line, as under a team's rows. */
+        fun setLine(dex: Dex, x: Team.Member): String {
+            val moves = x.moves.filter { it != 0 }.map { dex.move(it).name }
+            return (if (x.item == 0) "" else dex.item(x.item).name + "  ·  ") +
+                if (moves.isEmpty()) L.t("No moves yet") else moves.joinToString(L.t(", "))
         }
 
         fun monItem(dex: Dex, game: Dex.Game, m: Dex.Mon) =

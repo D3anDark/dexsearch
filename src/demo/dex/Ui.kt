@@ -99,6 +99,43 @@ object Ui {
     }
 
     /**
+     * The Box holds sets taken off a team (moves, item, EVs), one per species, newest last, so a swap back finds
+     * them. One per workspace, stored as a team line; at most [BOX_SIZE] sets, about 20 KB of text.
+     */
+    fun box(c: Context): MutableList<Team.Member> {
+        val all = Team.parseAll(prefs(c).getString(key(c, "box"), "")!!).firstOrNull()?.members ?: ArrayList()
+        val dex = dex(c)
+        for (x in all) x.num = dex.known(x.num)
+        return all
+    }
+
+    private const val BOX_SIZE = 200
+
+    fun saveBox(c: Context, all: List<Team.Member>) {
+        val t = Team("Box", 0)
+        t.members.addAll(all.takeLast(BOX_SIZE))
+        prefs(c).edit().putString(key(c, "box"), Team.formatAll(listOf(t))).apply()
+    }
+
+    fun boxed(c: Context, num: Int): Team.Member? = box(c).firstOrNull { it.num == num }
+
+    /** Stores `x` in place of an older set of its species; the species counts as caught, as in the games' PC. */
+    fun toBox(c: Context, x: Team.Member) {
+        saveBox(c, box(c).filter { it.num != x.num } + x)
+        setCaught(c, x.num, true)
+    }
+
+    /** Takes the set of `num` out of the Box; null when there is none. */
+    fun fromBox(c: Context, num: Int): Team.Member? {
+        val all = box(c)
+        val i = all.indexOfFirst { it.num == num }
+        if (i < 0) return null
+        val x = all.removeAt(i)
+        saveBox(c, all)
+        return x
+    }
+
+    /**
      * Workspaces keep playthroughs apart (a core game and a fan game played alongside): each has its own caught marks,
      * teams and selected game. "spaces" holds an "id\tname" line per workspace; workspace 0 uses the keys from before
      * workspaces existed, so an update keeps everything in it.
@@ -151,6 +188,8 @@ object Ui {
     var DOWN = 0
     /** The better side of a comparison; UP is red, which reads as worse. */
     var GOOD = 0
+    /** The accent as text on SURFACE and FILL: 5.0:1 in day mode, where ACCENT itself is 4.1:1 on FILL. */
+    var ACCENT_TEXT = 0
     var night = false
     /** Type label style picked in Settings: [LABEL_TEXT], [LABEL_ICON], [LABEL_GLYPH] or [LABEL_PIXEL]. */
     var labels = LABEL_TEXT
@@ -189,6 +228,7 @@ object Ui {
         UP = (if (night) 0xFFFF8A80 else 0xFFC62828).toInt()
         DOWN = (if (night) 0xFF82B1FF else 0xFF1F4FB5).toInt()
         GOOD = (if (night) 0xFF7BD88F else 0xFF1E7B3A).toInt()
+        ACCENT_TEXT = (if (night) 0xFFFF8A65 else 0xFFBA2909).toInt()
     }
 
     private val COLORS = mapOf(
@@ -530,6 +570,7 @@ object Ui {
         val pill = pressable(t.context, rounded(t.context, if (on) ACCENT else FILL, 999), 999)
         inset(t, InsetDrawable(pill, 0, dp(t.context, 5), 0, dp(t.context, 5)))
         t.setTextColor(if (on) WHITE else TEXT)
+        t.isSelected = on
     }
 
     /** `d` as the background of `v`, keeping `v`'s padding: an [InsetDrawable] would replace it with its insets. */
@@ -610,6 +651,7 @@ object Ui {
         for ((i, s) in segs.withIndex()) {
             inset(s, if (i == active) InsetDrawable(rounded(s.context, RAISED, 11), dp(s.context, 4)) else null)
             s.setTextColor(if (i == active) TEXT else MUTED)
+            s.isSelected = i == active
         }
     }
 
@@ -1268,7 +1310,15 @@ object Ui {
         }
         content.addView(box, wide(a, 0, 8))
         val tall = minOf(dp(a, 520), a.resources.displayMetrics.heightPixels * 3 / 5)
-        content.addView(lv, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, tall))
+        // The frame keeps the height while the list hides behind "Nothing found", so the sheet does not jump.
+        val frame = FrameLayout(a)
+        frame.addView(lv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        val empty = muted(a, L.t("Nothing found"), 15)
+        empty.setPadding(0, dp(a, 24), 0, 0)
+        empty.visibility = View.GONE
+        frame.addView(empty, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL))
+        lv.emptyView = empty
+        content.addView(frame, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, tall))
         d.button(L.t("Cancel"))
         d.show()
         lv.setOnItemClickListener { _, _, i, _ -> if (d.close()) picked(adapter.getItem(i).ref) }
@@ -1289,7 +1339,7 @@ object Ui {
         val row = settingRow(c, label)
         val v = text(c, value, 15, true)
         v.gravity = Gravity.END
-        v.setTextColor(if (night) 0xFFFF8A65.toInt() else ACCENT)
+        v.setTextColor(ACCENT_TEXT)
         row.addView(v, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2f))
         row.background = pressable(c, rounded(c, SURFACE, 10), 10)
         row.setOnClickListener(l)
