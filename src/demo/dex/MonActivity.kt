@@ -772,7 +772,7 @@ class MonActivity : Activity() {
         private const val COLS = 4
         private const val FOLD = 8
         private val TABS = arrayOf(L.k("Info"), L.k("Evolution"), L.k("Moves"), L.k("Builds"))
-        /** Attacking types under "Weak x4" down to "Immune", `perRow` pills a row; empty groups are left out. */
+        /** Attacking types under "Weak ×4" down to "Immune", `perRow` pills a row; empty groups are left out. */
         fun defenses(a: Activity, dex: Dex, game: Dex.Game, m: Dex.Mon, perRow: Int): LinearLayout {
             val col = Ui.vertical(a)
             for ((i, f) in DEFENSE.withIndex()) {
@@ -806,6 +806,6 @@ class MonActivity : Activity() {
         }
 
         private val DEFENSE = intArrayOf(400, 200, 50, 25, 0)
-        private val DEFENSE_LABEL = arrayOf(L.k("Weak x4"), L.k("Weak x2"), L.k("Resists x1/2"), L.k("Resists x1/4"), L.k("Immune"))
+        private val DEFENSE_LABEL = arrayOf(L.k("Weak ×4"), L.k("Weak ×2"), L.k("Resists ×½"), L.k("Resists ×¼"), L.k("Immune"))
     }
 }

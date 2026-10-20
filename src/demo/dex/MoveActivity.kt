@@ -19,6 +19,8 @@ class MoveActivity : Activity() {
         hero.setPadding(hero.paddingLeft, Ui.dp(this, 20), hero.paddingRight, hero.paddingBottom)
         hero.addView(Ui.white(this, m.name, 30, true))
         val pills = LinearLayout(this)
+        // Baseline-aligned, the category pill sat lower than the taller type pill and lost its bottom edge.
+        pills.isBaselineAligned = false
         val type = Ui.typeGlass(this, m.type)
         type.setOnClickListener { Ui.open(this, m.type) }
         pills.addView(type, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 6, 0))

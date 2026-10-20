@@ -85,19 +85,24 @@ img { -webkit-touch-callout: none; -webkit-user-drag: none; user-select: none; }
 .panel.flush { padding: 14px 0 8px; }
 .panel.flush > h2 { padding: 0 16px 4px; }
 
+/* 44px to tap: transparent borders above and below, the background drawn inside them. */
 .chip {
   flex: none; font-size: 14px; font-weight: 700; padding: 8px 14px; border-radius: 999px; white-space: nowrap;
-  background: var(--fill); color: var(--text);
+  border-block: 5px solid transparent; background: var(--fill) padding-box; color: var(--text);
 }
-.chip.on { background: var(--accent); color: #fff; }
+.chip.on { background: var(--accent) padding-box; color: #fff; }
 .chip.danger { color: var(--accent-text); }
-.chips { display: flex; gap: 8px; overflow-x: auto; padding: 0 16px 8px; scrollbar-width: none; }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 0 16px 3px; scrollbar-width: none; }
 .chips::-webkit-scrollbar { display: none; }
-.wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.wrap { display: flex; flex-wrap: wrap; gap: 0 8px; }
 
-.seg { display: flex; background: var(--fill); border-radius: 14px; padding: 4px; }
-.seg button { flex: 1; font-size: 14px; font-weight: 700; padding: 9px 4px; color: var(--muted); text-align: center; border-radius: 11px; min-width: 0; }
-.seg button.on { background: var(--raised); color: var(--text); }
+/* Each segment reaches the control's edge to be tapped and draws its highlight 4px inside (radius 15 - 4 = 11). */
+.seg { display: flex; background: var(--fill); border-radius: 14px; }
+.seg button {
+  flex: 1; font-size: 14px; font-weight: 700; padding: 9px 4px; color: var(--muted); text-align: center; min-width: 0;
+  border: 4px solid transparent; border-radius: 15px; background-clip: padding-box;
+}
+.seg button.on { background: var(--raised) padding-box; color: var(--text); }
 
 .search { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: 14px; padding: 0 6px 0 14px; }
 .search.filled { background: var(--fill); }
@@ -132,6 +137,8 @@ img { -webkit-touch-callout: none; -webkit-user-drag: none; user-select: none; }
   flex: none; width: 58px; height: 36px; display: grid; place-items: center; background: var(--fill); border-radius: 10px;
   font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden;
 }
+/* A list where some rows carry a badge box keeps every title on one edge: the rows without one get an empty box. */
+.rows:has(> .row > .box) > .row:not(:has(> .art, > .box))::before { content: ''; flex: none; width: 58px; }
 .row .texts { flex: 1; min-width: 0; }
 .row .t { font-size: 16px; font-weight: 700; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .row .s { color: var(--muted); font-size: 13px; }
@@ -142,8 +149,9 @@ img { -webkit-touch-callout: none; -webkit-user-drag: none; user-select: none; }
 
 .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 4px 16px 16px; }
 .card { position: relative; height: 118px; border-radius: 18px; color: #fff; padding: 10px 0 10px 12px; overflow: hidden; cursor: pointer; }
-.card .name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 48px 4px 0; }
-.card .num { position: absolute; top: 11px; right: 12px; font-size: 13px; font-weight: 700; }
+/* The number floats ahead of the name, so a long name stops 8px short of it at any number width. */
+.card .name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 0 4px; }
+.card .num { float: right; margin: 1px 12px 0 8px; font-size: 13px; font-weight: 700; }
 .card img { position: absolute; right: 6px; bottom: 6px; width: 84px; height: 84px; object-fit: contain; }
 .card .glass { margin: 2px 0; }
 .card .types { display: flex; flex-direction: column; align-items: flex-start; }
@@ -181,7 +189,7 @@ img.pixel { image-rendering: pixelated; }
 .set { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 4px; width: 100%; border-radius: 10px; background: var(--surface); }
 .set > span:first-child { flex: 1; font-size: 15px; }
 .set .v { flex: 2; font-size: 15px; font-weight: 700; color: var(--accent-text); text-align: end; }
-.num {
+input.num {
   width: 60px; font: inherit; font-size: 16px; text-align: center; color: var(--text); background: var(--fill); border: 0;
   border-radius: 10px; padding: 6px; -moz-appearance: textfield; appearance: textfield;
 }
@@ -233,9 +241,13 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .gamecard h2 { font-size: 19px; font-weight: 700; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .gamecard p { font-size: 13px; padding-top: 4px; white-space: pre-line; }
 .gamecard .tag { margin-top: 10px; padding: 7px 14px; }
+/* A button's 7px of tap area above and below come out of the space around it, so the card keeps its look. */
+.gamecard button.tag { margin-top: 3px; border-block: 7px solid transparent; background-clip: padding-box; }
+.gamecard .texts:has(button.tag) { padding-bottom: 7px; }
 .gamecard .art { position: absolute; right: 8px; bottom: 6px; display: flex; }
 .gamecard .art img { width: 64px; height: 64px; object-fit: contain; }
 .tonal { background: color-mix(in srgb, var(--c) var(--tone), var(--surface)); border-radius: 18px; }
+.pill.tonal { color: var(--text); border-radius: 999px; }
 .teamcard { padding: 12px 10px 12px 16px; cursor: pointer; }
 .teamcard .top { display: flex; align-items: center; gap: 8px; }
 .teamcard .top > div:first-child { flex: 1; min-width: 0; }
@@ -270,13 +282,17 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .headcard { display: flex; flex-direction: column; align-items: center; background: var(--surface); border-radius: 18px; padding: 12px 10px; text-align: center; cursor: pointer; }
 .headcard img { width: 96px; height: 96px; object-fit: contain; }
 .headcard .nm { font-size: 16px; font-weight: 700; }
+/* An empty side is a slot to fill: dashed outline, a plus for the sprite. */
+.headcard.empty { outline: 2px dashed var(--muted); outline-offset: -2px; }
+.headcard.empty .nm { color: var(--muted); }
+.headcard .plus { width: 96px; height: 96px; border-radius: 50%; background: var(--fill); color: var(--muted); font-size: 40px; display: grid; place-items: center; }
 .headcard .pills { width: 100%; margin-top: 6px; }
 .lvl { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .sides { display: flex; align-items: center; padding: 5px 0; }
 .sides.bars { padding: 4px 0; }
 .sides .v { width: 40px; font-size: 15px; }
 .sides .v:last-child { text-align: end; }
-.sides .v.best { font-weight: 700; color: var(--up); }
+.sides .v.best { font-weight: 700; color: var(--good); }
 .sides .mid { width: 80px; color: var(--muted); font-size: 14px; text-align: center; flex: none; }
 .sides .mid .pill { width: 72px; }
 .sides .side { flex: 1; height: 8px; margin: 0 8px; display: flex; }
@@ -339,7 +355,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .chip:disabled { opacity: .4; }
 
 /* Workspace pill and caught progress on the home game card. */
-.gamecard .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.gamecard .tags { display: flex; flex-wrap: wrap; gap: 0 8px; margin-top: 3px; }
 .gamecard .tags .tag { margin-top: 0; }
 .gamecard .more { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
 .gamecard .more span { overflow: hidden; text-overflow: ellipsis; }

@@ -123,10 +123,11 @@ class GamesActivity : Activity() {
             if (below != null) texts.addView(below)
             if (tag != null) {
                 val pill = Ui.glassPill(a, tag)
+                // A button's 7 dp of tap area above and below come out of the space around it, so the card keeps its look.
+                val edge = if (onTag != null) 7 else 0
                 if (onTag != null) {
-                    pill.background = Ui.pressable(a, pill.background, 999)
-                    pill.setPadding(Ui.dp(a, 14), Ui.dp(a, 7), Ui.dp(a, 14), Ui.dp(a, 7))
-                    pill.setOnClickListener(onTag)
+                    Ui.glassButton(pill, onTag)
+                    texts.setPadding(texts.paddingLeft, texts.paddingTop, texts.paddingRight, Ui.dp(a, 14 - edge))
                 }
                 // Side by side, or stacked when the column beside the mascots is too narrow for both (360 dp, long names).
                 val pills = object : LinearLayout(a) {
@@ -138,13 +139,13 @@ class GamesActivity : Activity() {
                     }
                 }
                 val gap = GradientDrawable()
-                gap.setSize(Ui.dp(a, 8), Ui.dp(a, 8))
+                gap.setSize(Ui.dp(a, 8), if (edge > 0) 0 else Ui.dp(a, 8))
                 pills.dividerDrawable = gap
                 pills.showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE
                 pills.addView(pill)
                 if (beside != null) pills.addView(beside)
                 texts.addView(pills, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT, a, 0, 10, 0, 0))
+                    ViewGroup.LayoutParams.WRAP_CONTENT, a, 0, 10 - edge, 0, 0))
             }
             val textLp = FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL)

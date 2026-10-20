@@ -21,6 +21,7 @@ const TYPE_COLORS = {
   rock: 'B6A136', ghost: '735797', dragon: '6F35FC', dark: '705746', steel: 'B7B7CE', fairy: 'D685AD',
   physical: 'C92112', special: '4F5870', status: '8C888C',
 };
+const CATEGORIES = new Set(['physical', 'special', 'status']);
 /** Version colors by game id, two for paired releases; see GamesActivity. */
 const GAME_COLORS = {
   1: ['DA3B2F', '2E64C8'], 2: ['E0A800'], 3: ['C9A227', '8C96A3'], 4: ['3FA7C9'], 5: ['C0182E', '1F4FB5'], 6: ['1E9E5A'],
@@ -130,7 +131,7 @@ function lighten(c) {
 
 const on = c => (lum(c) > 0.2 ? '#15171A' : '#fff');
 const tier = v => (v < 50 ? '#F34444' : v < 80 ? '#FF7F0F' : v < 100 ? '#FFC107' : v < 120 ? '#A0E515' : '#23CD5E');
-const effect = f => ({ 0: 'x0', 25: 'x1/4', 50: 'x1/2', 100: 'x1', 200: 'x2', 400: 'x4' })[f] ?? 'x' + f / 100;
+const effect = f => ({ 0: '×0', 25: '×¼', 50: '×½', 100: '×1', 200: '×2', 400: '×4' })[f] ?? '×' + f / 100;
 const national = n => '#' + String(n).padStart(4, '0');
 
 /** Text in `c`, dark enough by day and light enough by night. */
@@ -262,6 +263,8 @@ function typeLabel(el, t, style = store.get('labels', 0)) {
 
 function pill(t, tag = 'span', style) {
   const c = color(t);
+  // A move's category beside its type gets a wash: the type is the mark to read first.
+  if (CATEGORIES.has(t)) return tonal(h(tag, 'pill', d.label(t)), c);
   const el = h(tag, { class: 'pill', style: `background:${css(c)};color:${on(c)}` });
   typeLabel(el, t, style);
   return el;
@@ -401,7 +404,7 @@ function row(it, tap) {
 
 function card(it, tap) {
   const el = h('button', { class: 'card ball', onclick: tap },
-    h('div', 'name', it.title), h('span', 'num', it.badge),
+    h('span', 'num', it.badge), h('div', 'name', it.title),
     h('div', 'types', it.pills.map(t => h('span', 'pill glass', d.label(t)))),
     it.sub ? h('div', 's', it.sub) : null, sprite(it.sprite));
   el.style.setProperty('--g', solid(deep(color(it.pills[0]))));
@@ -679,9 +682,6 @@ function home(p) {
     const g = game();
     const c = color('grass');
     box.replaceChildren();
-    if (waiting) {
-      box.append(tonal(h('button', { class: 'update', onclick: update }, ink(h('span', null, L.t("Update available")), c), ink(icon(NEXT, 16), c)), c));
-    }
     if (installable()) {
       const w = color('water');
       box.append(tonal(h('button', { class: 'update', onclick: () => install(render) },
@@ -713,6 +713,13 @@ function home(p) {
         tile(L.t("Items"), 'electric', count(d.items.length), () => open(items)),
         tile(L.t("Type chart"), 'dragon', count(d.typesIn(g).length), () => open(typeChart)),
         tile(L.t("Natures"), 'ground', count(d.natures.length), () => open(natures))))));
+    // Last: the check answers after the home is drawn, and above the cards it pushed them under a finger on its way.
+    if (waiting) {
+      // A tap in its first half second was aimed at a tile it just squeezed, not at installing.
+      const shown = performance.now();
+      box.append(tonal(h('button', { class: 'update', onclick: () => { if (performance.now() - shown > 500) update(); } },
+        ink(h('span', null, L.t("Update available")), c), ink(icon(NEXT, 16), c)), c));
+    }
     listDex();
   }
 
@@ -1239,7 +1246,7 @@ function monScreen(p, start, list) {
     stats.append(h('div', 'stat', h('span', 'k', L.t("Total")), h('span', 'n', m.bst)), chip(L.t("Compare"), () => open(q => compare(q, m.num, g.id)), 'mt10'));
 
     const defense = panel(L.t("Type defenses"));
-    const labels = [L.t("Weak x4"), L.t("Weak x2"), L.t("Resists x1/2"), L.t("Resists x1/4"), L.t("Immune")];
+    const labels = [L.t("Weak ×4"), L.t("Weak ×2"), L.t("Resists ×½"), L.t("Resists ×¼"), L.t("Immune")];
     [400, 200, 50, 25, 0].forEach((f, i) => {
       const hit = d.typesIn(g).filter(a => d.factor(g, a, types) === f);
       if (hit.length) defense.append(h('div', { class: 'caption', style: 'padding:6px 2px' }, labels[i]), typePills(hit, 4));
@@ -2007,7 +2014,8 @@ function compare(p, first, gameId) {
   const picked = [first, 0];
   const col = h('div', 'col');
   p.el.append(col);
-  const pick = i => pickMon(g, L.t("Compare"), teamsTab(g), x => {
+  // With the other side picked the title names it: the second list looked the same as the first, as if the first pick had not counted.
+  const pick = i => pickMon(g, picked[1 - i] ? L.f("Compare with %s", d.mon(picked[1 - i]).name) : L.t("Compare"), teamsTab(g), x => {
     picked[i] = x.num;
     render();
     if (i === 0 && !picked[1]) pick(1);
@@ -2017,8 +2025,8 @@ function compare(p, first, gameId) {
 
   function render() {
     const [a, b] = picked.map(n => (n ? d.mon(n) : null));
-    const headCard = (m, i) => h('button', { class: 'headcard', onclick: () => pick(i) },
-      m ? sprite(m.num) : h('div', { style: 'width:96px;height:96px' }),
+    const headCard = (m, i) => h('button', { class: m ? 'headcard' : 'headcard empty', onclick: () => pick(i) },
+      m ? sprite(m.num) : h('div', { class: 'plus', 'aria-hidden': 'true' }, '+'),
       h('div', 'nm', m ? m.name : L.t("Choose a Pokémon")),
       m ? typePills(d.typesOf(g, m), 2) : null);
     col.replaceChildren(head(L.t("Compare")), h('p', 'sub', g.name), h('div', 'pair wide mb12', headCard(a, 0), headCard(b, 1)));
@@ -2134,7 +2142,7 @@ function calc(p, ti, k) {
       fact(L.t(STATS[guard]) + '  ·  ' + mb.name, sb[guard]),
       fact(L.t("Power"), mv.power),
       fact(L.t("Effectiveness"), effect(factor)),
-      fact(L.t("Same type"), stab ? 'x1.5' : 'x1'));
+      fact(L.t("Same type"), stab ? '×1.5' : '×1'));
   }
 }
 

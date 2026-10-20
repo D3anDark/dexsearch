@@ -33,10 +33,15 @@ class CompareActivity : Activity() {
         pick(if (nums[0] == 0) 0 else 1)
     }
 
-    /** Picks side `i`; picking the first while the second is empty goes straight on to it. */
+    /**
+     * Picks side `i`; picking the first while the second is empty goes straight on to it. With the other side picked
+     * the title names it: the second list looked the same as the first, as if the first pick had not counted.
+     */
     private fun pick(i: Int) {
         val teams = TeamsActivity.members(this, dex, game)
-        TeamsActivity.pick(this, dex, game, L.t("Compare"), if (teams.isEmpty()) null else L.t("Teams") to teams) { x ->
+        val other = dex.monOrNull(nums[1 - i])
+        val heading = if (other == null) L.t("Compare") else L.f("Compare with %s", other.name)
+        TeamsActivity.pick(this, dex, game, heading, if (teams.isEmpty()) null else L.t("Teams") to teams) { x ->
             nums[i] = x.num
             render()
             if (i == 0 && nums[1] == 0) pick(1)
@@ -81,16 +86,23 @@ class CompareActivity : Activity() {
         scroll.addView(root)
     }
 
-    /** Sprite, name and types; tap to pick another. */
+    /** Sprite, name and types; tap to pick another. An empty side is a slot to fill: dashed outline, a plus for the sprite. */
     private fun head(i: Int, m: Dex.Mon?): View {
         val h = Ui.vertical(this)
         h.gravity = Gravity.CENTER_HORIZONTAL
-        h.background = Ui.pressable(this, Ui.rounded(this, Ui.SURFACE, 18), 18)
+        val face = Ui.rounded(this, Ui.SURFACE, 18)
+        if (m == null) face.setStroke(Ui.dp(this, 2), Ui.MUTED, Ui.dp(this, 6).toFloat(), Ui.dp(this, 4).toFloat())
+        h.background = Ui.pressable(this, face, 18)
         h.setPadding(Ui.dp(this, 10), Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 12))
-        val img = ImageView(this)
-        if (m != null) img.setImageDrawable(Ui.sprite(this, m.num, 2))
+        val img = if (m != null) ImageView(this).apply { setImageDrawable(Ui.sprite(this@CompareActivity, m.num, 2)) }
+            else Ui.text(this, "+", 40, false).apply {
+                setTextColor(Ui.MUTED)
+                gravity = Gravity.CENTER
+                background = Ui.rounded(this@CompareActivity, Ui.FILL, 48)
+            }
         h.addView(img, LinearLayout.LayoutParams(Ui.dp(this, 96), Ui.dp(this, 96)))
         val name = Ui.text(this, m?.name ?: L.t("Choose a Pokémon"), 16, true)
+        if (m == null) name.setTextColor(Ui.MUTED)
         name.gravity = Gravity.CENTER
         h.addView(name)
         if (m != null) h.addView(Ui.typePills(this, dex.types(game, m), 2),
@@ -107,7 +119,7 @@ class CompareActivity : Activity() {
 
     /**
      * `shownA` at the start edge and `shownB` at the end edge with `middle` between them; base-stat `bars` grow out from
-     * the middle. The higher of `a` and `b` is bold in the natures' "raised" color.
+     * the middle. The higher of `a` and `b` is bold in [Ui.GOOD].
      */
     private fun sides(middle: View, a: Int, b: Int, shownA: String, shownB: String, bars: Boolean): View {
         val row = LinearLayout(this)
@@ -117,7 +129,7 @@ class CompareActivity : Activity() {
         for ((k, v) in listOf(a, b).withIndex()) {
             val better = v > (if (k == 0) b else a)
             val t = Ui.text(this, if (k == 0) shownA else shownB, 15, better)
-            if (better) t.setTextColor(Ui.UP)
+            if (better) t.setTextColor(Ui.GOOD)
             t.gravity = if (k == 0) Gravity.START else Gravity.END
             val space = if (bars) MonActivity.bar(this, v, if (k == 0) Gravity.END else Gravity.START) else View(this)
             val spaceLp = Ui.margins(0, if (bars) Ui.dp(this, 8) else 0, this, 8, 0, 8, 0).apply { weight = 1f }

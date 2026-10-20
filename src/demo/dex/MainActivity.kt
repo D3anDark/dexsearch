@@ -5,6 +5,7 @@ import android.content.Intent
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.os.Bundle
+import android.os.SystemClock
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextUtils
@@ -81,15 +82,13 @@ class MainActivity : Activity() {
     /** The workspace switch, in the game card: a workspace is what that card shows, its game and caught marks. */
     private fun spacePill(): TextView {
         val pill = Ui.glassPill(this, Ui.spaceName(this))
-        pill.background = Ui.pressable(this, pill.background, 999)
-        pill.setPadding(Ui.dp(this, 14), Ui.dp(this, 7), Ui.dp(this, 14), Ui.dp(this, 7))
+        Ui.glassButton(pill) { workspaces() }
         pill.ellipsize = TextUtils.TruncateAt.END
         pill.contentDescription = L.f("Workspace: %s", pill.text)
         val more = Ui.Chevron(Ui.WHITE, false)
         more.setBounds(0, 0, Ui.dp(this, 10), Ui.dp(this, 10))
         pill.setCompoundDrawablesRelative(null, null, more, null)
         pill.compoundDrawablePadding = Ui.dp(this, 6)
-        pill.setOnClickListener { workspaces() }
         return pill
     }
 
@@ -102,7 +101,6 @@ class MainActivity : Activity() {
     private fun refresh() {
         game = Ui.game(this)
         content.removeAllViews()
-        if (newer > 0) content.addView(update(), Ui.wide(this, 0, 10))
         val banner = GamesActivity.card(this, game, L.t("Change game"), caught(), spacePill()) {
             startActivity(Intent(this, GamesActivity::class.java))
         }
@@ -121,6 +119,8 @@ class MainActivity : Activity() {
         tiles(tile(names[3], sp, count(dex.items.size), "electric", Intent(this, ItemsActivity::class.java)),
             tile(names[4], sp, count(dex.types(game).size), "dragon", Intent(this, TypeChartActivity::class.java)),
             tile(names[5], sp, count(dex.natures.size), "ground", Intent(this, NaturesActivity::class.java)))
+        // Last: the check answers after the home is drawn, and above the cards it pushed them under a finger on its way.
+        if (newer > 0) content.addView(update(), Ui.wide(this, 0, 0))
         searchChanged()
     }
 
@@ -231,7 +231,9 @@ class MainActivity : Activity() {
         val more = Ui.Chevron(Ui.ink(color), false)
         more.setBounds(0, 0, Ui.dp(this, 10), Ui.dp(this, 10))
         t.setCompoundDrawablesRelative(null, null, more, null)
-        t.setOnClickListener { Update.install(this, newer) }
+        // A tap in its first half second was aimed at a tile it just squeezed, not at installing.
+        val shown = SystemClock.uptimeMillis()
+        t.setOnClickListener { if (SystemClock.uptimeMillis() - shown > 500) Update.install(this, newer) }
         return t
     }
 

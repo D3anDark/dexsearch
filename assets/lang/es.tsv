@@ -143,10 +143,10 @@ No %s moves for %s. Showing %s.	No hay movimientos de %s para %s. Se muestra %s.
 Info	Info
 Evolution	Evolución
 Builds	Sets
-Weak x4	Débil x4
-Weak x2	Débil x2
-Resists x1/2	Resiste x1/2
-Resists x1/4	Resiste x1/4
+Weak ×4	Débil ×4
+Weak ×2	Débil ×2
+Resists ×½	Resiste ×½
+Resists ×¼	Resiste ×¼
 Immune	Inmune
 Priority	Prioridad
 %s in %s	%s en %s
@@ -277,6 +277,7 @@ Choose a Pokémon	Elige un Pokémon
 Choose a move	Elige un movimiento
 Choose both Pokémon and a move.	Elige los dos Pokémon y un movimiento.
 Compare	Comparar
+Compare with %s	Comparar con %s
 Damage	Daño
 Damage calc	Calculadora de daño
 Defender	Defensor

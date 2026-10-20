@@ -143,10 +143,10 @@ No %s moves for %s. Showing %s.	%2$s: brak ruchów w %1$s. Pokazano %3$s.
 Info	Info
 Evolution	Ewolucja
 Builds	Zestawy
-Weak x4	Słaby x4
-Weak x2	Słaby x2
-Resists x1/2	Odporny x1/2
-Resists x1/4	Odporny x1/4
+Weak ×4	Słaby ×4
+Weak ×2	Słaby ×2
+Resists ×½	Odporny ×½
+Resists ×¼	Odporny ×¼
 Immune	Niewrażliwy
 Priority	Priorytet
 %s in %s	%s w %s
@@ -277,6 +277,7 @@ Choose a Pokémon	Wybierz Pokémona
 Choose a move	Wybierz ruch
 Choose both Pokémon and a move.	Wybierz obu Pokémonów i ruch.
 Compare	Porównaj
+Compare with %s	Porównaj z: %s
 Damage	Obrażenia
 Damage calc	Kalkulator obrażeń
 Defender	Broniący

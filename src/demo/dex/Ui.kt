@@ -150,6 +150,8 @@ object Ui {
     /** Stat a nature raises (red) or lowers (blue), as in the games' summary screen. */
     var UP = 0
     var DOWN = 0
+    /** The better side of a comparison; UP is red, which reads as worse. */
+    var GOOD = 0
     var night = false
     /** Type label style picked in Settings: [LABEL_TEXT], [LABEL_ICON], [LABEL_GLYPH] or [LABEL_PIXEL]. */
     var labels = LABEL_TEXT
@@ -187,6 +189,7 @@ object Ui {
         MUTED = (if (night) 0xFF9BA1AB else 0xFF5B616B).toInt()
         UP = (if (night) 0xFFFF8A80 else 0xFFC62828).toInt()
         DOWN = (if (night) 0xFF82B1FF else 0xFF1F4FB5).toInt()
+        GOOD = (if (night) 0xFF7BD88F else 0xFF1E7B3A).toInt()
     }
 
     private val COLORS = mapOf(
@@ -516,14 +519,27 @@ object Ui {
         t.gravity = Gravity.CENTER
         t.setPadding(dp(c, 14), dp(c, 8), dp(c, 14), dp(c, 8))
         t.setSingleLine()
+        // 44 dp to tap, the pill drawn 34 dp tall inside it.
+        t.minHeight = dp(c, 44)
         t.setOnClickListener(l)
         chipActive(t, false)
         return t
     }
 
     fun chipActive(t: TextView, on: Boolean) {
-        t.background = pressable(t.context, rounded(t.context, if (on) ACCENT else FILL, 999), 999)
+        val pill = pressable(t.context, rounded(t.context, if (on) ACCENT else FILL, 999), 999)
+        inset(t, InsetDrawable(pill, 0, dp(t.context, 5), 0, dp(t.context, 5)))
         t.setTextColor(if (on) WHITE else TEXT)
+    }
+
+    /** `d` as the background of `v`, keeping `v`'s padding: an [InsetDrawable] would replace it with its insets. */
+    fun inset(v: View, d: Drawable?) {
+        val l = v.paddingLeft
+        val t = v.paddingTop
+        val r = v.paddingRight
+        val b = v.paddingBottom
+        v.background = d
+        v.setPadding(l, t, r, b)
     }
 
     /** Horizontally scrolling row for chips; add them with [addChip]. */
@@ -544,7 +560,8 @@ object Ui {
     fun segments(c: Context, into: LinearLayout, labels: Array<String>, picked: (Int) -> Unit): Array<TextView> {
         into.removeAllViews()
         into.background = rounded(c, FILL, 14)
-        into.setPadding(dp(c, 4), dp(c, 4), dp(c, 4), dp(c, 4))
+        // No padding: each segment reaches the control's edge, 45 dp to tap, and draws its highlight 4 dp inside.
+        into.setPadding(0, 0, 0, 0)
         return Array(labels.size) { k ->
             val t = text(c, labels[k], 14, true)
             t.gravity = Gravity.CENTER
@@ -552,7 +569,7 @@ object Ui {
             // whose horizontal scrolling turns autosize off.
             t.maxLines = 1
             t.setAutoSizeTextTypeUniformWithConfiguration(9, 14, 1, TypedValue.COMPLEX_UNIT_SP)
-            t.setPadding(dp(c, 4), dp(c, 9), dp(c, 4), dp(c, 9))
+            t.setPadding(dp(c, 8), dp(c, 13), dp(c, 8), dp(c, 13))
             t.setOnClickListener { picked(k) }
             into.addView(t, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             t
@@ -561,7 +578,7 @@ object Ui {
 
     fun segmentActive(segs: Array<TextView>, active: Int) {
         for ((i, s) in segs.withIndex()) {
-            s.background = if (i == active) rounded(s.context, RAISED, 11) else null
+            inset(s, if (i == active) InsetDrawable(rounded(s.context, RAISED, 11), dp(s.context, 4)) else null)
             s.setTextColor(if (i == active) TEXT else MUTED)
         }
     }
@@ -634,12 +651,14 @@ object Ui {
     fun pill(c: Context, key: String, style: Int = labels): TextView {
         val t = text(c, label(key), 12, true)
         val color = color(key)
-        t.background = rounded(c, color, 999)
-        t.setTextColor(on(color))
+        // A move's category beside its type gets a wash: the type is the mark to read first.
+        val category = key in CATEGORIES
+        t.background = rounded(c, if (category) tonal(color) else color, 999)
+        t.setTextColor(if (category) TEXT else on(color))
         t.gravity = Gravity.CENTER
         t.setSingleLine()
         t.setPadding(dp(c, 8), dp(c, 3), dp(c, 8), dp(c, 3))
-        if (key !in CATEGORIES) typeLabel(t, key, on(color), style)
+        if (!category) typeLabel(t, key, on(color), style)
         return t
     }
 
@@ -695,6 +714,15 @@ object Ui {
         t.setSingleLine()
         t.setPadding(dp(c, 10), dp(c, 3), dp(c, 10), dp(c, 3))
         return t
+    }
+
+    /** A [glassPill] made a button: 44 dp to tap, the 30 dp pill drawn in the middle. */
+    fun glassButton(t: TextView, l: View.OnClickListener) {
+        val c = t.context
+        t.setPadding(dp(c, 14), dp(c, 7), dp(c, 14), dp(c, 7))
+        t.minHeight = dp(c, 44)
+        inset(t, InsetDrawable(pressable(c, t.background, 999), 0, dp(c, 7), 0, dp(c, 7)))
+        t.setOnClickListener(l)
     }
 
     /** Type pills that open that type's Pokédex, `perRow` to a line sharing its width, so narrow screens fit. */
@@ -818,7 +846,8 @@ object Ui {
         return row
     }
 
-    fun bind(row: View, item: Item) {
+    /** `boxed`: some row in the list has a badge box, so one without keeps its space and the titles line up. */
+    fun bind(row: View, item: Item, boxed: Boolean = false) {
         val c = row.context
         val v = row.tag as Array<*>
         val img = v[0] as ImageView
@@ -838,7 +867,12 @@ object Ui {
         }
         val box = v[1] as TextView
         box.text = item.badge
-        box.visibility = if (!hasSprite && item.badge.isNotEmpty()) View.VISIBLE else View.GONE
+        box.visibility = when {
+            hasSprite -> View.GONE
+            item.badge.isNotEmpty() -> View.VISIBLE
+            boxed -> View.INVISIBLE
+            else -> View.GONE
+        }
         val cap = v[2] as TextView
         cap.text = item.badge
         cap.visibility = if (hasSprite && item.badge.isNotEmpty()) View.VISIBLE else View.GONE
@@ -875,7 +909,10 @@ object Ui {
         val name = white(c, "", 16, true)
         name.setSingleLine()
         name.ellipsize = TextUtils.TruncateAt.END
-        left.addView(name, margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, c, 0, 0, 48, 4))
+        // Stops 8 dp short of the widest number at the user's text size and weight; a fixed 48 dp ran into "#0740".
+        val nameLp = margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, c, 0, 0, 0, 4)
+        nameLp.marginEnd = num.paint.measureText("#0000").toInt() + dp(c, 20)
+        left.addView(name, nameLp)
         val pills = vertical(c)
         left.addView(pills)
         val sub = white(c, "", 11, true)
@@ -905,9 +942,11 @@ object Ui {
     /** @param cards Pokédex grid cards instead of rows; every item must then be a Pokémon. */
     class Adapter(private val cards: Boolean = false) : BaseAdapter() {
         private var items: List<Item> = emptyList()
+        private var boxed = false
 
         fun set(list: List<Item>) {
             items = list
+            boxed = list.any { it.sprite == 0 && it.ref !is Dex.Item && it.badge.isNotEmpty() }
             notifyDataSetChanged()
         }
 
@@ -931,7 +970,7 @@ object Ui {
                 return t
             }
             val v = view ?: if (cards) card(c) else row(c)
-            if (cards) bindCard(v, item) else bind(v, item)
+            if (cards) bindCard(v, item) else bind(v, item, boxed)
             return v
         }
     }

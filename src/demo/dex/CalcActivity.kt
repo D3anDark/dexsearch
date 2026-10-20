@@ -166,7 +166,7 @@ class CalcActivity : Activity() {
         fact(L.t(Dex.STATS[if (special) 4 else 2]) + "  ·  " + dex.mon(d.num).name, guard.toString())
         fact(L.t("Power"), mv.power.toString())
         fact(L.t("Effectiveness"), effect(factor))
-        fact(L.t("Same type"), if (stab) "x1.5" else "x1")
+        fact(L.t("Same type"), if (stab) "×1.5" else "×1")
     }
 
     private fun fact(label: String, value: String) {
@@ -194,10 +194,10 @@ class CalcActivity : Activity() {
 
     companion object {
         private val SIDES = arrayOf(L.k("Attacker"), L.k("Defender"))
-        private val EFFECT = mapOf(0 to "x0", 25 to "x1/4", 50 to "x1/2", 100 to "x1", 200 to "x2", 400 to "x4")
+        private val EFFECT = mapOf(0 to "×0", 25 to "×¼", 50 to "×½", 100 to "×1", 200 to "×2", 400 to "×4")
 
-        /** A type multiplier in hundredths as shown: "x1/2", "x2". */
-        fun effect(factor: Int): String = EFFECT[factor] ?: "x${factor / 100.0}"
+        /** A type multiplier in hundredths as shown: "×½", "×2". */
+        fun effect(factor: Int): String = EFFECT[factor] ?: "×${factor / 100.0}"
 
         /** `team` -1 for none; `member` of that team (-1 for none) attacks. */
         fun open(a: Activity, team: Int, member: Int) {

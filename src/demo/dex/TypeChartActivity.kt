@@ -38,12 +38,15 @@ class TypeChartActivity : Activity() {
             100f * (cell - gap - Ui.dp(this, 4)) / widest)
 
         val grid = Ui.vertical(this)
+        // Rows not baseline-aligned: the headers' smaller text dropped them below their cells and cut their corners.
         val top = LinearLayout(this)
+        top.isBaselineAligned = false
         top.addView(cell(""), size(cell))
         for (t in types) top.addView(header(t), size(cell))
         grid.addView(top)
         for (attack in types) {
             val row = LinearLayout(this)
+            row.isBaselineAligned = false
             row.addView(header(attack), size(cell))
             for (defend in types) {
                 val f = dex.factor(game, attack, listOf(defend))

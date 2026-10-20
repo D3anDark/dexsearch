@@ -143,10 +143,10 @@ No %s moves for %s. Showing %s.	%2$sの%1$sのわざデータはありません�
 Info	情報
 Evolution	進化
 Builds	型
-Weak x4	弱点 ×4
-Weak x2	弱点 ×2
-Resists x1/2	耐性 ×1/2
-Resists x1/4	耐性 ×1/4
+Weak ×4	弱点 ×4
+Weak ×2	弱点 ×2
+Resists ×½	耐性 ×½
+Resists ×¼	耐性 ×¼
 Immune	無効
 Priority	優先度
 %s in %s	%2$sの%1$s
@@ -277,6 +277,7 @@ Choose a Pokémon	ポケモンを選択
 Choose a move	わざを選択
 Choose both Pokémon and a move.	ポケモン2匹とわざを選んでください。
 Compare	比較
+Compare with %s	%sと比較
 Damage	ダメージ
 Damage calc	ダメージ計算
 Defender	防御側
