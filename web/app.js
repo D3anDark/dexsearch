@@ -789,7 +789,7 @@ function gameCard(g, tag, onTag, below, beside) {
   const count = g.dex.filter(e => !isForm(e.mon)).length;
   const label = tag ? h(onTag ? 'button' : 'span', { class: 'pill glass tag', onclick: onTag && (e => { e.stopPropagation(); onTag(); }) }, tag) : null;
   const c = h('div', { class: 'gamecard ball', role: 'button', tabindex: '0' },
-    h('div', { class: 'texts', style: `margin-right:${12 + 56 * mascots.length}px` }, h('h2', null, g.name), h('p', null, dexes + '\n' + L.f("%d Pokémon", count)),
+    h('div', { class: 'texts', style: `--n:${mascots.length}` }, h('h2', null, g.name), h('p', null, dexes + '\n' + L.f("%d Pokémon", count)),
       below, beside ? h('div', 'tags', label, beside) : label),
     h('div', { class: 'art', 'aria-hidden': 'true' }, mascots.map(n => sprite(n))));
   c.style.setProperty('--g', `linear-gradient(to bottom right, ${css(deep(rgb(colors[0])))}, ${css(deep(rgb(colors.at(-1))))})`);

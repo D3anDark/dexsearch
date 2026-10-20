@@ -224,11 +224,13 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 
 /* Home: fills the screen; the game card and tiles share the spare height. */
 .homebox { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 0 16px 4px; }
-.grow { flex: 1 1 0; min-height: 80px; }
+/* They stop growing at about a tall phone's size; a tablet or a tall window leaves the rest of the height empty. */
+.grow { flex: 1 1 0; min-height: 80px; max-height: 140px; }
+.gamecard.grow { max-height: 320px; }
 /* Never shorter than its text and chips: Safari's toolbars and the install card leave less height than the home screen icon. */
 .gamecard { flex: 1 0 auto; position: relative; display: flex; align-items: center; border-radius: 18px; color: #fff; overflow: hidden; cursor: pointer; }
-.gamecard .texts { padding: 14px 16px; min-width: 0; }
-.gamecard h2 { font-size: 19px; font-weight: 700; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gamecard .texts { padding: 14px 16px; min-width: 0; margin-right: calc(12px + 56px * var(--n)); }
+.gamecard h2 { font-size: 19px; font-weight: 700; text-wrap: balance; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .gamecard p { font-size: 13px; padding-top: 4px; white-space: pre-line; }
 .gamecard .tag { margin-top: 10px; padding: 7px 14px; }
 .gamecard .art { position: absolute; right: 8px; bottom: 6px; display: flex; }
@@ -245,7 +247,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .tiles { display: flex; gap: 12px; }
 .tile { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 10px 12px; text-align: start; }
 .tile b { font-size: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.tile span { font-size: 14px; }
+.tile > span { font-size: 14px; }
 .big { font-size: 1.6em; font-weight: 700; }
 .update { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 12px 14px 12px 16px; font-size: 15px; font-weight: 700; }
 
@@ -388,7 +390,18 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
   .broad .hdr { grid-column: 1 / -1; }
   .split { display: grid; grid-template-columns: 400px minmax(0, 1fr); grid-template-rows: auto 1fr; align-items: start; }
   .split > .hero { grid-row: span 2; position: sticky; top: 0; }
-  .halves { display: flex; flex: 1; gap: 12px; }
-  .halves > * { flex: 1 1 0; min-width: 0; }
+  /* The home sizes to its content: the game card, its box art under the text, beside the team card and tiles. */
+  .homebox { flex: none; }
+  .halves { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
   .halves > .side { display: flex; flex-direction: column; gap: 12px; }
+  .halves .tiles { min-height: 96px; max-height: none; }
+  .halves .gamecard {
+    flex-direction: column; align-items: stretch; justify-content: space-between; max-height: none;
+    background-size: 240px 240px, auto; background-position: right -54px bottom -54px, 0 0;
+  }
+  .halves .gamecard .texts { margin-right: 0; padding: 20px 24px 0; }
+  .halves .gamecard h2 { font-size: 26px; }
+  .halves .gamecard p { font-size: 14px; }
+  .halves .gamecard .art { position: static; align-self: flex-end; padding: 0 16px 12px; }
+  .halves .gamecard .art img { width: 112px; height: 112px; }
 }
