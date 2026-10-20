@@ -270,7 +270,6 @@ Show all (%d)	Pokaż wszystkie (%d)
 %s has no base power: status moves and fixed damage such as Seismic Toss are not calculated.	%s nie ma mocy bazowej: ruchy statusowe i stałe obrażenia (np. Seismic Toss) nie są liczone.
 Attacker	Atakujący
 BST %d+	BST %d+
-Box	Box
 Choose a move	Wybierz ruch
 Choose both Pokémon and a move.	Wybierz obu Pokémonów i ruch.
 Compare	Porównaj
@@ -334,8 +333,6 @@ Swap %s for %s?	Zamienić %s na %s?
 %s can learn %s in place of %s.	%s może nauczyć się %s zamiast %s.
 %s can learn %s.	%s może nauczyć się %s.
 Teach %s	Naucz: %s
-Each workspace is a separate playthrough with its own caught marks, teams, Box and game.	Każdy obszar roboczy to osobne przejście gry z własnymi oznaczeniami złapanych, drużynami, Boxem i grą.
-Its caught marks, teams, Box and selected game are removed from this device. This cannot be undone.	Jego oznaczenia złapanych, drużyny, Box i wybrana gra zostaną usunięte z tego urządzenia. Tego nie można cofnąć.
 As in %s. Rows attack, columns defend. 2 is super effective, ½ not very effective, 0 no effect. Tap a row to read it in words, a type to see its Pokémon.	Jak w %s. Wiersze atakują, kolumny bronią. 2 to super skuteczny, ½ mało skuteczny, 0 bez efektu. Dotknij wiersza, aby przeczytać go słowami, a typu, aby zobaczyć jego Pokémon.
 %s attacks	%s atakuje
 %d types	%d typów
@@ -360,15 +357,7 @@ Not rated: status or fixed damage	Bez oceny: status lub stałe obrażenia
 The offer hits harder	Propozycja bije mocniej
 This hits harder	Ten bije mocniej
 Loses %s	Traci %s
-Search the Box	Szukaj w Boxie
-Box: %d of %d	Box: %d z %d
-Nothing here yet. Mark a Pokémon caught on its page, or take one off a team, and it lands in the Box.	Na razie pusto. Oznacz Pokémona jako złapanego na jego stronie albo zdejmij go z drużyny, a trafi do Boxa.
-%s is in the Box	%s jest w Boxie
-%s goes to the Box with its moves and item.	%s trafi do Boxa z ruchami i przedmiotem.
-%s comes from the Box: %s	%s przyjdzie z Boxa: %s
-%s joins new at level %d.	%s dołączy jako nowy na poziomie %d.
-Pokémon page	Strona Pokémona
-Release	Wypuść
-Release %s?	Wypuścić %s?
-Its moves, item and stats are forgotten and it no longer counts as caught. This cannot be undone.	Jego ruchy, przedmiot i statystyki przepadną, a on przestanie liczyć się jako złapany. Tego nie można cofnąć.
-It no longer counts as caught.	Przestanie liczyć się jako złapany.
+Each workspace is a separate playthrough with its own caught marks, teams and game.	Każdy obszar roboczy to osobne przejście gry z własnymi oznaczeniami złapanych, drużynami i grą.
+Its caught marks, teams and selected game are removed from this device. This cannot be undone.	Jego oznaczenia złapanych, drużyny i wybrana gra zostaną usunięte z tego urządzenia. Tego nie można cofnąć.
+Its moves, item and stats are removed from %s.	Ruchy, przedmiot i statystyki zostaną usunięte z drużyny %s.
+%s leaves the team. Its moves, item and stats are not kept.	%s opuszcza drużynę. Ruchy, przedmiot i statystyki nie zostaną zachowane.

@@ -99,43 +99,6 @@ object Ui {
     }
 
     /**
-     * The Box holds sets taken off a team (moves, item, EVs), one per species, newest last, so a swap back finds
-     * them. One per workspace, stored as a team line; at most [BOX_SIZE] sets, about 20 KB of text.
-     */
-    fun box(c: Context): MutableList<Team.Member> {
-        val all = Team.parseAll(prefs(c).getString(key(c, "box"), "")!!).firstOrNull()?.members ?: ArrayList()
-        val dex = dex(c)
-        for (x in all) x.num = dex.known(x.num)
-        return all
-    }
-
-    private const val BOX_SIZE = 200
-
-    fun saveBox(c: Context, all: List<Team.Member>) {
-        val t = Team("Box", 0)
-        t.members.addAll(all.takeLast(BOX_SIZE))
-        prefs(c).edit().putString(key(c, "box"), Team.formatAll(listOf(t))).apply()
-    }
-
-    fun boxed(c: Context, num: Int): Team.Member? = box(c).firstOrNull { it.num == num }
-
-    /** Stores `x` in place of an older set of its species; the species counts as caught, as in the games' PC. */
-    fun toBox(c: Context, x: Team.Member) {
-        saveBox(c, box(c).filter { it.num != x.num } + x)
-        setCaught(c, x.num, true)
-    }
-
-    /** Takes the set of `num` out of the Box; null when there is none. */
-    fun fromBox(c: Context, num: Int): Team.Member? {
-        val all = box(c)
-        val i = all.indexOfFirst { it.num == num }
-        if (i < 0) return null
-        val x = all.removeAt(i)
-        saveBox(c, all)
-        return x
-    }
-
-    /**
      * Workspaces keep playthroughs apart (a core game and a fan game played alongside): each has its own caught marks,
      * teams and selected game. "spaces" holds an "id\tname" line per workspace; workspace 0 uses the keys from before
      * workspaces existed, so an update keeps everything in it.

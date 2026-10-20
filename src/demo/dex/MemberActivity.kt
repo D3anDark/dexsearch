@@ -69,8 +69,8 @@ class MemberActivity : Activity() {
         val actions = LinearLayout(this)
         val k = team.members.indexOf(x)
         Ui.addChip(actions, Ui.chip(this, L.t("Swap")) {
-            TeamActivity.pick(this, dex, team, k, L.f("Swap %s", m.name)) { new, boxed ->
-                TeamActivity.confirmSwap(this, dex, game, x, new, boxed) { nx ->
+            TeamActivity.pick(this, dex, team, k, L.f("Swap %s", m.name)) { new ->
+                TeamActivity.confirmSwap(this, dex, game, x, new) { nx ->
                     x = nx
                     team.members[k] = x
                     render()
@@ -478,10 +478,8 @@ class MemberActivity : Activity() {
         left.text = L.f("%d of %d EVs left. At most %d per stat.", Team.EV_TOTAL - x.evs.sum(), Team.EV_TOTAL, Team.EV_STAT)
     }
 
-    /** Off the team and into the Box with its set, as in the games; the Box's Release forgets it. An evolution (setForm) is not a removal. */
     private fun remove(m: Dex.Mon) {
-        Ui.confirm(this, L.f("Remove %s?", m.name), L.f("%s goes to the Box with its moves and item.", m.name), L.t("Remove")) {
-            Ui.toBox(this, x)
+        Ui.confirm(this, L.f("Remove %s?", m.name), L.f("Its moves, item and stats are removed from %s.", team.name), L.t("Remove")) {
             team.members.remove(x)
             TeamsActivity.save(this, teams)
             removed = true

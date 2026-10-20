@@ -25,7 +25,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 
 /**
- * Home: title with the Box and Settings, one search box across Pokémon, moves, abilities, items and types, then the selected
+ * Home: title with Settings, one search box across Pokémon, moves, abilities, items and types, then the selected
  * game's card opening its Pokédex, a team builder card with Compare and Damage calc, and three-column reference tiles.
  * The page fills the screen without scrolling at 360 x 640 dp and up, an update banner included: the game card and
  * the tiles share the height left over. Only what cannot fit (landscape, the largest fonts) scrolls.
@@ -61,16 +61,7 @@ class MainActivity : Activity() {
 
         val head = LinearLayout(this)
         head.gravity = Gravity.CENTER_VERTICAL
-        // One line, smaller when needed: beside Box and "Ustawienia" at 360 dp, 30 sp broke the word in two.
-        val title = Ui.title(this, "DexSearch")
-        title.setPadding(title.paddingLeft, title.paddingTop, Ui.dp(this, 8), title.paddingBottom)
-        title.maxLines = 1
-        title.ellipsize = TextUtils.TruncateAt.END
-        title.setAutoSizeTextTypeUniformWithConfiguration(20, 30, 1, TypedValue.COMPLEX_UNIT_SP)
-        head.addView(title, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        // Beside Settings, not on a card: the page has no height to spare, and the Box is wanted from any card's task.
-        val box = Ui.chip(this, L.t("Box")) { startActivity(Intent(this, BoxActivity::class.java)) }
-        head.addView(box, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 4, 8, 0))
+        head.addView(Ui.title(this, "DexSearch"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         val settings = Ui.chip(this, L.t("Settings")) { startActivity(Intent(this, SettingsActivity::class.java)) }
         head.addView(settings, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 4, 16, 0))
 
@@ -141,7 +132,7 @@ class MainActivity : Activity() {
             switch(spaces[i].first)
             refresh()
         }
-        val note = Ui.muted(this, L.t("Each workspace is a separate playthrough with its own caught marks, teams, Box and game."), 14)
+        val note = Ui.muted(this, L.t("Each workspace is a separate playthrough with its own caught marks, teams and game."), 14)
         note.setPadding(Ui.dp(this, 4), 0, Ui.dp(this, 4), 0)
         s.body.addView(note, 0, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 0, 12))
         if (spaces.size > 1) s.button(L.t("Delete")) { delete(spaces, k) }
@@ -165,9 +156,10 @@ class MainActivity : Activity() {
     private fun delete(spaces: List<Pair<Int, String>>, k: Int) {
         val id = spaces[k].first
         Ui.confirm(this, L.f("Delete %s?", spaces[k].second),
-            L.t("Its caught marks, teams, Box and selected game are removed from this device. This cannot be undone."), L.t("Delete")) {
+            L.t("Its caught marks, teams and selected game are removed from this device. This cannot be undone."), L.t("Delete")) {
             val rest = spaces.filter { it.first != id }
             val e = Ui.prefs(this).edit()
+            // "box" holds sets kept by an older version.
             for (base in arrayOf("caught", "teams", "box", "game")) e.remove(Ui.key(this, base, id))
             e.putInt("space", rest[0].first).apply()
             Ui.saveSpaces(this, rest)

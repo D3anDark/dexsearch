@@ -10,7 +10,6 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.Toast
 import java.util.Locale
 
 /** Saved teams, each with its game and six slots, and a button that starts a new one in the selected game. */
@@ -95,48 +94,18 @@ class TeamsActivity : Activity() {
         fun member(m: Dex.Mon) = Team.Member(m.num, if (m.abilities.isNotEmpty()) m.abilities[0] else m.hidden, 50)
 
         /**
-         * Picks a Pokémon of `game` in tabs: `first` (title and rows) when given, then the caught ones (Box), then all
+         * Picks a Pokémon of `game` in tabs: `first` (title and rows) when given, then the caught ones, then all
          * but [Dex.alike] forms, which a member's Form row reaches.
-         * A row whose ref is a team member passes that member, any other a new one ([member]); the flag says it is the
-         * Box's set, which a team taking it removes from there. `top` goes above the tabs.
+         * A row whose ref is a team member passes that member, any other a new one ([member]). `top` goes above the tabs.
          */
         fun pick(a: Activity, dex: Dex, game: Dex.Game, heading: String, first: Pair<String, List<Ui.Item>>?, top: View? = null,
-                 picked: (Team.Member, Boolean) -> Unit) {
+                 picked: (Team.Member) -> Unit) {
             val caught = Ui.caught(a)
-            // A species with a set in the Box shows that set (level, item, moves) and passes it on.
-            val kept = Ui.box(a).associateBy { it.num }
             val every = game.dex.map { monItem(dex, game, it.mon) }
-            val box = every.filter { val m = it.ref as Dex.Mon; m.num.toString() in caught || m.num in kept }.map { it ->
-                val m = it.ref as Dex.Mon
-                val x = kept[m.num] ?: return@map it
-                Ui.Item(m.num, L.f("Lv %d", x.level), m.name, setLine(dex, x), dex.types(game, m), x)
-            }
-            val tabs = listOfNotNull(first?.first, L.t("Box"), L.t("All"))
-            val lists = listOfNotNull(first?.second, box, every.filter { !dex.alike(game, it.ref as Dex.Mon) })
-            Ui.pickSearch(a, heading, tabs.toTypedArray(), lists, top) { ref ->
-                val x = ref as? Team.Member
-                picked(x ?: member(ref as Dex.Mon), x != null && kept[x.num] === x)
-            }
-        }
-
-        /**
-         * Picks a team (or starts one in the selected game), adds `m` and opens it in the team builder. `member` is `m`
-         * with a Smogon set applied; without it the set the Box keeps of `m` moves onto the team, else `m` joins new.
-         */
-        fun addTo(a: Activity, m: Dex.Mon, member: Team.Member? = null) {
-            val teams = load(a)
-            val labels = teams.map { "${it.name}  (${it.members.size}/${Team.SIZE}, ${Ui.dex(a).game(it.game).name})" } + L.t("New team")
-            Ui.pickOne(a, L.f("Add %s to", m.name), labels, -1) { i ->
-                if (i == teams.size) teams.add(Team(L.f("Team %d", i + 1), Ui.game(a).id))
-                val t = teams[i]
-                if (t.members.size >= Team.SIZE) {
-                    Toast.makeText(a, L.f("%s already has %d Pokémon", t.name, Team.SIZE), Toast.LENGTH_SHORT).show()
-                    return@pickOne
-                }
-                t.members.add(member ?: Ui.fromBox(a, m.num) ?: member(m))
-                save(a, teams)
-                MemberActivity.open(a, i, t.members.size - 1)
-            }
+            val tabs = listOfNotNull(first?.first, L.t("Caught"), L.t("All"))
+            val lists = listOfNotNull(first?.second, every.filter { (it.ref as Dex.Mon).num.toString() in caught },
+                every.filter { !dex.alike(game, it.ref as Dex.Mon) })
+            Ui.pickSearch(a, heading, tabs.toTypedArray(), lists, top) { ref -> picked(ref as? Team.Member ?: member(ref as Dex.Mon)) }
         }
 
         /** Held item and moves of `x` on one line, as under a team's rows. */

@@ -44,7 +44,7 @@ class CompareActivity : Activity() {
         val teams = TeamsActivity.members(this, dex, game)
         val other = dex.monOrNull(nums[1 - i])
         val heading = if (other == null) L.t("Compare") else L.f("Compare with %s", other.name)
-        TeamsActivity.pick(this, dex, game, heading, if (teams.isEmpty()) null else L.t("Teams") to teams, other?.let { slots(i, it) }) { x, _ ->
+        TeamsActivity.pick(this, dex, game, heading, if (teams.isEmpty()) null else L.t("Teams") to teams, other?.let { slots(i, it) }) { x ->
             nums[i] = x.num
             render()
             if (i == 0 && nums[1] == 0) pick(1)

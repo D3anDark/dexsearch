@@ -12,7 +12,6 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.TextView
 import android.widget.Toast
 
 /** One team: its six slots, a type weakness table and move coverage, rename, copy as text, delete. */
@@ -108,24 +107,20 @@ class TeamActivity : Activity() {
         return root
     }
 
-    /**
-     * Pokémon of this team's game (species and their forms), by regional number, suggestions first. A pick from the
-     * Box tab joins as the Box's set and leaves the Box; any other joins new.
-     */
+    /** Pokémon of this team's game (species and their forms), by regional number, suggestions first. */
     private fun addMember() {
-        pick(this, dex, team, -1, L.t("Add Pokémon")) { x, boxed ->
-            if (boxed) Ui.fromBox(this, x.num)
-            team.members.add(x)
+        pick(this, dex, team, -1, L.t("Add Pokémon")) { m ->
+            team.members.add(TeamsActivity.member(m))
             TeamsActivity.save(this, teams)
             MemberActivity.open(this, index, team.members.size - 1)
         }
     }
 
-    /** Swaps slot `k` for another Pokémon after [confirmSwap]; the old one goes to the Box. */
+    /** Swaps slot `k` for another Pokémon, which starts a new set at the old one's level. */
     private fun replace(k: Int) {
         val old = team.members[k]
-        pick(this, dex, team, k, L.f("Swap %s", dex.mon(old.num).name)) { x, boxed ->
-            confirmSwap(this, dex, game, old, x, boxed) { nx ->
+        pick(this, dex, team, k, L.f("Swap %s", dex.mon(old.num).name)) { m ->
+            confirmSwap(this, dex, game, old, m) { nx ->
                 team.members[k] = nx
                 TeamsActivity.save(this, teams)
                 onResume()
@@ -382,37 +377,24 @@ class TeamActivity : Activity() {
             s.show()
         }
 
-        /**
-         * Asks before `new` takes `old`'s slot: both with their base stats side by side, and where each set goes. `old`
-         * goes to the Box, as in the games, so no question about it; `boxed` says `new` is the Box's set, which leaves
-         * the Box, else `new` joins fresh at `old`'s level. `yes` gets the member that joins.
-         */
-        fun confirmSwap(a: Activity, dex: Dex, game: Dex.Game, old: Team.Member, new: Team.Member, boxed: Boolean, yes: (Team.Member) -> Unit) {
+        /** Asks before `new` takes `old`'s slot, both with their base stats side by side; `yes` gets the member that joins. */
+        fun confirmSwap(a: Activity, dex: Dex, game: Dex.Game, old: Team.Member, new: Dex.Mon, yes: (Team.Member) -> Unit) {
             val om = dex.mon(old.num)
-            val nm = dex.mon(new.num)
             val box = Ui.vertical(a)
             box.addView(CompareActivity.pair(a, side(a, null, om.num, om.name, dex.types(game, om), ""),
-                side(a, null, nm.num, nm.name, dex.types(game, nm), ""), 12),
+                side(a, null, new.num, new.name, dex.types(game, new), ""), 12),
                 Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, a, 0, 0, 0, 10))
-            for (i in Dex.STATS.indices) box.addView(CompareActivity.sides(a, CompareActivity.label(a, L.t(Dex.STATS[i])), om.stats[i], nm.stats[i],
-                om.stats[i].toString(), nm.stats[i].toString(), true))
-            box.addView(CompareActivity.sides(a, CompareActivity.label(a, L.t("Total")), om.bst, nm.bst, om.bst.toString(), nm.bst.toString(), false))
-            box.addView(Ui.muted(a, L.f("%s goes to the Box with its moves and item.", om.name), 13),
-                Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, a, 0, 12, 0, 0))
-            val from = if (boxed) L.f("%s comes from the Box: %s", nm.name, L.f("Lv %d", new.level) + "  ·  " + TeamsActivity.setLine(dex, new))
-                else L.f("%s joins new at level %d.", nm.name, old.level)
-            box.addView(Ui.muted(a, from, 13), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, a, 0, 6, 0, 0))
+            for (i in Dex.STATS.indices) box.addView(CompareActivity.sides(a, CompareActivity.label(a, L.t(Dex.STATS[i])), om.stats[i], new.stats[i],
+                om.stats[i].toString(), new.stats[i].toString(), true))
+            box.addView(CompareActivity.sides(a, CompareActivity.label(a, L.t("Total")), om.bst, new.bst, om.bst.toString(), new.bst.toString(), false))
+            box.addView(Ui.muted(a, L.f("%s leaves the team. Its moves, item and stats are not kept.", om.name), 13),
+                Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, a, 0, 10, 0, 0))
             val scroll = ScrollView(a)
             scroll.addView(box)
-            val s = Ui.Sheet(a, L.f("Swap %s for %s?", om.name, nm.name))
+            val s = Ui.Sheet(a, L.f("Swap %s for %s?", om.name, new.name))
             s.body.addView(scroll)
             s.button(L.t("Cancel"))
-            s.button(L.t("Swap"), main = true) {
-                // Out of the Box before the old set goes in, which would replace a set of the same species.
-                if (boxed) Ui.fromBox(a, new.num) else new.level = old.level
-                Ui.toBox(a, old)
-                yes(new)
-            }
+            s.button(L.t("Swap"), main = true) { yes(TeamsActivity.member(new).also { it.level = old.level }) }
             s.show()
         }
 
@@ -441,11 +423,12 @@ class TeamActivity : Activity() {
             return col
         }
 
-        /** A Pokémon for slot `skip` of `team` (-1: a new slot), with [Team.suggest]ions in the first tab; see [TeamsActivity.pick]. */
-        fun pick(a: Activity, dex: Dex, team: Team, skip: Int, heading: String, picked: (Team.Member, Boolean) -> Unit) {
+        /** A Pokémon for slot `skip` of `team` (-1: a new slot), with [Team.suggest]ions in the first tab. */
+        fun pick(a: Activity, dex: Dex, team: Team, skip: Int, heading: String, picked: (Dex.Mon) -> Unit) {
             val game = dex.game(team.game)
-            TeamsActivity.pick(a, dex, game, heading, L.t("Suggested") to team.suggest(dex, skip).map { TeamsActivity.monItem(dex, game, it) },
-                picked = picked)
+            TeamsActivity.pick(a, dex, game, heading, L.t("Suggested") to team.suggest(dex, skip).map { TeamsActivity.monItem(dex, game, it) }) {
+                picked(dex.mon(it.num))
+            }
         }
     }
 }

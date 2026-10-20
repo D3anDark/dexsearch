@@ -94,28 +94,6 @@ function loadTeams() {
 const saveTeams = teams => store.set(spaceKey('teams'), Team.formatAll(teams));
 const newMember = m => Team.member(m.num, m.abilities.length ? m.abilities[0] : m.hidden, 50);
 
-/**
- * The Box, as Ui.box: sets taken off a team and kept for later, one per species, stored as one team line. At most
- * BOX_SIZE sets (about 20 KB); past that the oldest goes.
- */
-const BOX_SIZE = 200;
-const loadBox = () => Team.parseAll(store.get(spaceKey('box'), ''))[0]?.members.map(x => { x.num = d.known(x.num); return x; }) ?? [];
-const saveBox = all => store.set(spaceKey('box'), Team.formatAll([Object.assign(new Team('Box', 0), { members: all.slice(-BOX_SIZE) })]));
-const boxed = num => loadBox().find(x => x.num === num);
-/** Replaces an older set of the same species; the Pokémon counts as caught, as in the games' PC. */
-function toBox(x) {
-  saveBox([...loadBox().filter(o => o.num !== x.num), x]);
-  setCaught(x.num, true);
-}
-/** Takes the species' set out of the Box, or null when it holds none. */
-function fromBox(num) {
-  const all = loadBox();
-  const i = all.findIndex(x => x.num === num);
-  if (i < 0) return null;
-  const [x] = all.splice(i, 1);
-  saveBox(all);
-  return x;
-}
 /** A member's set in a line: its item, then its moves or that it has none yet. */
 function setLine(x) {
   const moves = x.moves.filter(id => id).map(id => d.move(id).name);
@@ -704,22 +682,15 @@ function teamsTab(g) {
 const teamMonEntry = (g, m) => monEntry(m, d.typesOf(g, m), g.byNum.has(m.num) ? '#' + String(g.byNum.get(m.num).number).padStart(3, '0') : '', '');
 
 /**
- * A Pokémon of `g` in tabs: `first`, then the Box (the caught ones, and the sets kept there with their level and
- * moves), then all but d.alike forms, which a member's Form row reaches; `picked` gets a team member: the kept set
- * when one was tapped, else a new one, and whether it is the Box's set, which a team taking it removes from there.
- * `top` goes above the tabs.
+ * A Pokémon of `g` in tabs: `first`, then the caught ones, then all but d.alike forms, which a member's Form row
+ * reaches; `picked` gets a team member: the one tapped in `first`, else a new one. `top` goes above the tabs.
  */
 function pickMon(g, heading, first, picked, top) {
   const every = g.dex.map(e => teamMonEntry(g, e.mon));
   const have = caughtSet();
-  const kept = new Map(loadBox().map(x => [x.num, x]));
-  const box = every.flatMap(it => {
-    const x = kept.get(it.ref.num);
-    if (!x) return have.has(it.ref.num) ? [it] : [];
-    return [entry(x.num, L.f("Lv %d", x.level), it.ref.name, setLine(x), d.typesOf(g, it.ref), x)];
-  });
-  const tabs = [...(first ? [first] : []), [L.t("Box"), box], [L.t("All"), every.filter(it => !d.alike(g, it.ref))]];
-  pickSearch(heading, tabs.map(t => t[0]), tabs.map(t => t[1]), ref => picked(ref.evs ? ref : newMember(ref), kept.get(ref.num) === ref), top);
+  const tabs = [...(first ? [first] : []), [L.t("Caught"), every.filter(it => have.has(it.ref.num))],
+    [L.t("All"), every.filter(it => !d.alike(g, it.ref))]];
+  pickSearch(heading, tabs.map(t => t[0]), tabs.map(t => t[1]), ref => picked(ref.evs ? ref : newMember(ref)), top);
 }
 
 // --- home ------------------------------------------------------------------------------------
@@ -739,11 +710,7 @@ function home(p) {
   const below = h('div', 'homedex', h('div', 'hdr caption', L.t("Pokédex")), dex);
   const search = searchBox(L.t("Pokémon, moves, abilities, types"), q => find(q));
   search.el.classList.add('wide', 'mb10');
-  // Beside Settings, not on a card: the page has no height to spare, and the Box is wanted from any card's task.
-  const boxChip = chip(L.t("Box"), () => open(boxScreen));
-  boxChip.style.marginRight = '4px';
-  p.el.append(h('div', 'col broad', h('div', 'head home', h('h1', 'title', 'DexSearch'), boxChip, chip(L.t("Settings"), () => open(settings))),
-    search.el, results, box, below));
+  p.el.append(h('div', 'col broad', h('div', 'head home', h('h1', 'title', 'DexSearch'), chip(L.t("Settings"), () => open(settings))), search.el, results, box, below));
   p.resume = () => {
     render();
     find(search.input.value);
@@ -832,16 +799,17 @@ function home(p) {
     const all = spaces();
     const k = all.findIndex(s => s[0] === spaceId());
     const s = sheet(L.t("Workspaces"));
-    s.body.append(h('p', 'note mb12', L.t("Each workspace is a separate playthrough with its own caught marks, teams, Box and game.")));
+    s.body.append(h('p', 'note mb12', L.t("Each workspace is a separate playthrough with its own caught marks, teams and game.")));
     all.forEach((w, i) => s.body.append(h('button', { class: i === k ? 'opt on' : 'opt', onclick: () => {
       if (!s.close()) return;
       store.set('space', w[0]);
       p.resume();
     } }, w[1])));
     if (all.length > 1) s.button(L.t("Delete"), false, () => confirm(L.f("Delete %s?", all[k][1]),
-      L.t("Its caught marks, teams, Box and selected game are removed from this device. This cannot be undone."), L.t("Delete"), () => {
+      L.t("Its caught marks, teams and selected game are removed from this device. This cannot be undone."), L.t("Delete"), () => {
         const id = all[k][0];
         const rest = all.filter(w => w[0] !== id);
+        // 'box' holds sets kept by an older version.
         for (const base of ['caught', 'teams', 'box', 'game']) store.remove(spaceKey(base, id));
         store.set('spaces', rest);
         store.set('space', rest[0][0]);
@@ -983,7 +951,7 @@ function listScreen(p, s) {
     const shown = s.items(search.input.value);
     fill(list, shown, it => (s.cards ? card : row)(it, () => (s.open ? s.open(it, shown) : openRef(it.ref))), p.el, keep);
     count.textContent = s.count(shown);
-    none.textContent = shown.length ? '' : s.empty?.() ?? L.t("Nothing matches. Change the search or the filters.");
+    none.textContent = shown.length ? '' : L.t("Nothing matches. Change the search or the filters.");
     s.labels?.();
   }
 }
@@ -1131,62 +1099,6 @@ function moves(p, tm) {
       setChip(chips.type, types.size ? [...types].map(t => d.label(t)).join(' / ') : L.t("Type"), types.size > 0);
       setChip(chips.cat, cats.size ? [...cats].map(t => d.label(t)).join(' / ') : L.t("Category"), cats.size > 0);
       setChip(chips.sort, L.f("Sort: %s", L.t(sort)), sort !== MOVE_SORTS[0]);
-    },
-  });
-}
-
-/**
- * The workspace's Box, the games' PC: every Pokémon marked caught and every set taken off a team, in national order.
- * A kept set shows its level, item and moves, as in pickMon's Box tab. A tap offers what can be done with it: onto a
- * team (with its set), its page, or Release, the only way out of the Box.
- */
-function boxScreen(p) {
-  const g = game();
-  let total = 0;
-  // Marks change on the Pokémon page above this one.
-  p.resume = () => p.refresh(true);
-  /** The game's Pokémon not in the Box yet; one picked counts as caught, as Mark caught on its page does. */
-  const add = refresh => {
-    const have = caughtSet();
-    pickSearch(L.t("Add Pokémon"), [], [g.dex.map(e => e.mon).filter(m => !have.has(m.num) && !d.alike(g, m)).map(m => teamMonEntry(g, m))], m => {
-      setCaught(m.num, true);
-      toast(L.f("%s is in the Box", m.name));
-      refresh();
-    });
-  };
-  /** Out of the Box for good: the caught mark goes, and so does a kept set. Teams keep their members. */
-  const release = (m, kept) => confirm(L.f("Release %s?", m.name),
-    kept ? L.t("Its moves, item and stats are forgotten and it no longer counts as caught. This cannot be undone.") : L.t("It no longer counts as caught."),
-    L.t("Release"), () => {
-      fromBox(m.num);
-      setCaught(m.num, false);
-      p.refresh(true);
-    });
-  listScreen(p, {
-    heading: L.t("Box"),
-    hint: L.t("Search the Box"),
-    setup(bar, refresh) {
-      bar.append(chip(L.t("Add Pokémon"), () => add(refresh)));
-    },
-    items(q) {
-      const have = caughtSet();
-      const kept = new Map(loadBox().map(x => [x.num, x]));
-      const all = d.national.filter(e => have.has(e.mon.num) || kept.has(e.mon.num));
-      total = all.length;
-      return d.pokedex(g, all, q, new Set(), new Set(), 0, SORTS[0]).map(e => {
-        const x = kept.get(e.mon.num);
-        return x ? monEntry(e.mon, d.typesOf(g, e.mon), L.f("Lv %d", x.level), setLine(x))
-          : monEntry(e.mon, d.typesOf(g, e.mon), national(e.number), e.mon.genus);
-      });
-    },
-    count: shown => L.f("Box: %d of %d", shown.length, total),
-    empty: () => (total ? null : L.t("Nothing here yet. Mark a Pokémon caught on its page, or take one off a team, and it lands in the Box.")),
-    open(it, shown) {
-      const m = it.ref;
-      const kept = boxed(m.num);
-      const s = pickOne(m.name, [L.t("Add to team"), L.t("Pokémon page"), L.t("Release")], -1, i =>
-        [() => addToTeam(m), () => openMon(m.num, nums(shown)), () => release(m, kept)][i]());
-      if (kept) s.body.prepend(h('p', 'note mb10', L.f("Lv %d", kept.level) + '  ·  ' + setLine(kept)));
     },
   });
 }
@@ -1341,8 +1253,6 @@ function monScreen(p, start, list) {
         const on = !caughtSet().has(num);
         setCaught(num, on);
         paint(on);
-        // Caught is what fills the Box; saying so ties the two words together.
-        if (on) toast(L.f("%s is in the Box", m.name));
       },
     });
     const paint = on => {
@@ -1544,18 +1454,15 @@ function how(e) {
   return h('span', null, ink(h('b', null, female ? L.t("Female only") : L.t("Male only")), color(female ? 'fairy' : 'water')), '  ·  ' + e.how);
 }
 
-/**
- * `member` is `m` with a Smogon set applied; without it the set the Box keeps of `m` moves onto the team, else `m`
- * joins with its first ability at level 50.
- */
-function addToTeam(m, member) {
+/** `member` is `m` with a Smogon set applied; without it `m` joins with its first ability at level 50. */
+function addToTeam(m, member = newMember(m)) {
   const teams = loadTeams();
   const labels = teams.map(t => `${t.name}  (${t.members.length}/${Team.SIZE}, ${d.game(t.game).name})`);
   pickOne(L.f("Add %s to", m.name), [...labels, L.t("New team")], -1, i => {
     if (i === teams.length) teams.push(new Team(L.f("Team %d", i + 1), game().id));
     const t = teams[i];
     if (t.members.length >= Team.SIZE) return toast(L.f("%s already has %d Pokémon", t.name, Team.SIZE));
-    t.members.push(member ?? fromBox(m.num) ?? newMember(m));
+    t.members.push(member);
     saveTeams(teams);
     open(q => memberScreen(q, i, t.members.length - 1));
   });
@@ -1755,14 +1662,12 @@ function teamScreen(p, ti) {
     const g = d.game(team.game);
     const save = () => saveTeams(teams);
     const pick = (skip, heading, picked) => pickMon(g, heading, [L.t("Suggested"), team.suggest(d, skip).map(m => teamMonEntry(g, m))], picked);
-    // A pick from the Box tab joins as the Box's set and leaves the Box; any other joins new.
-    const add = () => pick(-1, L.t("Add Pokémon"), (x, inBox) => {
-      if (inBox) fromBox(x.num);
+    const add = () => pick(-1, L.t("Add Pokémon"), x => {
       team.members.push(x);
       save();
       open(q => memberScreen(q, ti, team.members.length - 1));
     });
-    const replace = k => pick(k, L.f("Swap %s", d.mon(team.members[k].num).name), (x, inBox) => confirmSwap(g, team.members[k], x, inBox, nx => {
+    const replace = k => pick(k, L.f("Swap %s", d.mon(team.members[k].num).name), x => confirmSwap(g, team.members[k], x, nx => {
       team.members[k] = nx;
       save();
       render();
@@ -1935,26 +1840,18 @@ function confirmTeach(g, mon, x, slot, id, yes) {
   s.button(L.t("Cancel")).button(L.f("Teach %s", nw.name), true, yes).show();
 }
 
-/**
- * Asks before `nw` takes `old`'s slot: both with their base stats side by side, and where each set goes. `old` goes to
- * the Box, as in the games, so no question about it; `inBox` says `nw` is the Box's set, which leaves the Box, else
- * `nw` joins fresh at `old`'s level. `yes` gets the member for the slot.
- */
-function confirmSwap(g, old, nw, inBox, yes) {
+/** Asks before `nw` takes `old`'s slot, both with their base stats side by side; `yes` gets the member for the slot. */
+function confirmSwap(g, old, nw, yes) {
   const om = d.mon(old.num);
   const nm = d.mon(nw.num);
   const s = sheet(L.f("Swap %s for %s?", om.name, nm.name));
   s.body.append(h('div', 'pair mb12', half(null, om.num, om.name, d.typesOf(g, om), ''), half(null, nm.num, nm.name, d.typesOf(g, nm), '')),
     ...STATS.map((st, i) => sides(L.t(st), om.stats[i], nm.stats[i], true)), sides(L.t("Total"), om.bst, nm.bst, false),
-    h('p', 'note mt12', L.f("%s goes to the Box with its moves and item.", om.name)),
-    h('p', 'note mt8', inBox ? L.f("%s comes from the Box: %s", nm.name, L.f("Lv %d", nw.level) + '  ·  ' + setLine(nw))
-      : L.f("%s joins new at level %d.", nm.name, old.level)));
+    h('p', 'note mt8', L.f("%s leaves the team. Its moves, item and stats are not kept.", om.name)));
   s.button(L.t("Cancel")).button(L.t("Swap"), true, () => {
-    // Out of the Box before the old set goes in, which would replace a set of the same species.
-    if (inBox) fromBox(nw.num);
-    else nw.level = old.level;
-    toBox(old);
-    yes(nw);
+    const nx = newMember(nm);
+    nx.level = old.level;
+    yes(nx);
   }).show();
 }
 
@@ -2109,14 +2006,12 @@ function memberScreen(p, ti, k) {
     const evo = stages(m);
     if (evo) top.append(...evo);
     // An evolution (setForm) is not a swap: the set stays.
-    const swap = () => pickMon(g, L.f("Swap %s", m.name), [L.t("Suggested"), team.suggest(d, k).map(o => teamMonEntry(g, o))], (nx, inBox) => confirmSwap(g, x, nx, inBox, nn => {
+    const swap = () => pickMon(g, L.f("Swap %s", m.name), [L.t("Suggested"), team.suggest(d, k).map(o => teamMonEntry(g, o))], nx => confirmSwap(g, x, nx, nn => {
       team.members[k] = x = nn;
       save();
       build();
     }));
-    // Into the Box with its set, as in the games; the Box's Release forgets it.
-    const remove = () => confirm(L.f("Remove %s?", m.name), L.f("%s goes to the Box with its moves and item.", m.name), L.t("Remove"), () => {
-      toBox(x);
+    const remove = () => confirm(L.f("Remove %s?", m.name), L.f("Its moves, item and stats are removed from %s.", team.name), L.t("Remove"), () => {
       team.members.splice(k, 1);
       save();
       close();

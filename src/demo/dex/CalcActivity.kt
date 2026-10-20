@@ -69,7 +69,7 @@ class CalcActivity : Activity() {
     /** Picks side `i`; picking the attacker while the defender is empty goes straight on to it. */
     private fun pick(i: Int) {
         val teams = TeamsActivity.members(this, dex, game)
-        TeamsActivity.pick(this, dex, game, L.t(SIDES[i]), if (teams.isEmpty()) null else L.t("Teams") to teams) { x, _ ->
+        TeamsActivity.pick(this, dex, game, L.t(SIDES[i]), if (teams.isEmpty()) null else L.t("Teams") to teams) { x ->
             sides[i] = x
             if (i == 0) move = x.moves.firstOrNull { it != 0 && dex.move(game, it).power > 0 } ?: move
             render()
