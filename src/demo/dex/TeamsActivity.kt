@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -93,15 +94,18 @@ class TeamsActivity : Activity() {
         fun member(m: Dex.Mon) = Team.Member(m.num, if (m.abilities.isNotEmpty()) m.abilities[0] else m.hidden, 50)
 
         /**
-         * Picks a Pokémon of `game` in tabs: `first` (title and rows) when given, then the caught ones (Box), then all.
-         * A row whose ref is a team member passes that member, any other a new one ([member]).
+         * Picks a Pokémon of `game` in tabs: `first` (title and rows) when given, then the caught ones (Box), then all
+         * but [Dex.alike] forms, which a member's Form row reaches.
+         * A row whose ref is a team member passes that member, any other a new one ([member]). `top` goes above the tabs.
          */
-        fun pick(a: Activity, dex: Dex, game: Dex.Game, heading: String, first: Pair<String, List<Ui.Item>>?, picked: (Team.Member) -> Unit) {
+        fun pick(a: Activity, dex: Dex, game: Dex.Game, heading: String, first: Pair<String, List<Ui.Item>>?, top: View? = null,
+                 picked: (Team.Member) -> Unit) {
             val caught = Ui.caught(a)
-            val all = game.dex.map { monItem(dex, game, it.mon) }
+            val every = game.dex.map { monItem(dex, game, it.mon) }
             val tabs = listOfNotNull(first?.first, L.t("Box"), L.t("All"))
-            val lists = listOfNotNull(first?.second, all.filter { (it.ref as Dex.Mon).num.toString() in caught }, all)
-            Ui.pickSearch(a, heading, tabs.toTypedArray(), lists) { ref -> picked(ref as? Team.Member ?: member(ref as Dex.Mon)) }
+            val lists = listOfNotNull(first?.second, every.filter { (it.ref as Dex.Mon).num.toString() in caught },
+                every.filter { !dex.alike(game, it.ref as Dex.Mon) })
+            Ui.pickSearch(a, heading, tabs.toTypedArray(), lists, top) { ref -> picked(ref as? Team.Member ?: member(ref as Dex.Mon)) }
         }
 
         fun monItem(dex: Dex, game: Dex.Game, m: Dex.Mon) =

@@ -287,6 +287,12 @@ class Dex private constructor(private val assets: Assets) {
         return listOf(base) + forms[base.num].orEmpty()
     }
 
+    /** A form with its species' types in `g` and its abilities (Gourgeist's sizes): pickers list only the species. */
+    fun alike(g: Game, m: Mon): Boolean {
+        val s = mon(m.species)
+        return m !== s && types(g, m) == types(g, s) && m.abilities.contentEquals(s.abilities) && m.hidden == s.hidden
+    }
+
     /**
      * The Pokémon `step` places from `num`'s species in `order` (Pokédex or search order), passing over that species'
      * forms, which the Forms and looks card reaches, and landing on a species rather than its last form; 0 past either

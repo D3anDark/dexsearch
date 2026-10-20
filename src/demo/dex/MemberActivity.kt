@@ -18,6 +18,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Space
 import android.widget.TextView
 
 /** One team member's set: form, ability, item, nature, Tera type, level, moves, IVs and EVs with live stats. */
@@ -79,23 +80,6 @@ class MemberActivity : Activity() {
         root.addView(Ui.chipBar(this, actions), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 12, 0, 0))
 
-        // Devolve, forms, then each evolution in this game; moves, item and stats carry over.
-        val forms = dex.family(m).filter { it === m || game.byNum.containsKey(it.num) }
-        val from = dex.evo(m.num)?.from?.takeIf { game.byNum.containsKey(it) }?.let { dex.mon(it) }
-        val into = dex.evolutions(m.num).map { it.to }.distinct().filter { game.byNum.containsKey(it) }.map { dex.mon(it) }
-        if (forms.size > 1 || from != null || into.isNotEmpty()) {
-            val chips = LinearLayout(this)
-            if (from != null) Ui.addChip(chips, Ui.chip(this, L.f("Devolve to %s", from.name)) { setForm(from) })
-            if (forms.size > 1) for (f in forms) {
-                val chip = Ui.chip(this, f.name) { setForm(f) }
-                Ui.chipActive(chip, f === m)
-                Ui.addChip(chips, chip)
-            }
-            for (e in into) Ui.addChip(chips, Ui.chip(this, L.f("Evolve into %s", e.name)) { setForm(e) })
-            root.addView(Ui.chipBar(this, chips), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 8, 0, 0))
-        }
-
         root.addView(details(m), Ui.wide(this, 12, 0))
         root.addView(moves(m), Ui.wide(this, 12, 0))
         root.addView(stats(m), Ui.wide(this, 12, 12))
@@ -132,7 +116,47 @@ class MemberActivity : Activity() {
         img.setOnClickListener { Ui.openMon(this, m.num, null) }
         row.addView(img, LinearLayout.LayoutParams(Ui.dp(this, 128), Ui.dp(this, 128)))
         h.addView(row, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 12, 0, 0))
+
+        // Back a stage on the left, forward on the right; moves, item and stats carry over. Space, not a bare View,
+        // holds an empty half: a View takes all the height it is offered.
+        val from = dex.evo(m.num)?.from?.takeIf { game.byNum.containsKey(it) }?.let { dex.mon(it) }
+        val into = dex.evolutions(m.num).map { it.to }.distinct().filter { game.byNum.containsKey(it) }.map { dex.mon(it) }
+        if (from != null || into.isNotEmpty()) {
+            val evo = LinearLayout(this)
+            val half = { v: View, start: Boolean ->
+                evo.addView(v, Ui.margins(0, ViewGroup.LayoutParams.WRAP_CONTENT, this, if (start) 0 else 5, 0, if (start) 5 else 0, 0)
+                    .apply { weight = 1f })
+            }
+            half(if (from == null) Space(this) else stage(from.name, L.f("Devolve to %s", from.name), true) { setForm(from) }, true)
+            half(when (into.size) {
+                0 -> Space(this)
+                1 -> stage(into[0].name, L.f("Evolve into %s", into[0].name), false) { setForm(into[0]) }
+                // Eevee's eight would not fit a line; they go in a list.
+                else -> stage(L.t("Evolve"), L.t("Evolve"), false) {
+                    Ui.pickOne(this, L.t("Evolve"), into.map { it.name }, -1) { i -> setForm(into[i]) }
+                }
+            }, false)
+            h.addView(evo, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 14, 0, 0))
+        }
         return h
+    }
+
+    /** A glass button in the hero naming a stage, its arrow on the side it leads to. */
+    private fun stage(label: String, description: String, back: Boolean, act: () -> Unit): TextView {
+        val t = Ui.white(this, label, 14, true)
+        t.gravity = Gravity.CENTER
+        t.setSingleLine()
+        t.ellipsize = TextUtils.TruncateAt.END
+        t.minHeight = Ui.dp(this, 44)
+        t.setPadding(Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 12), Ui.dp(this, 10))
+        t.background = Ui.pressable(this, Ui.rounded(this, 0x2E000000, 999), 999)
+        t.contentDescription = description
+        val arrow = Ui.Chevron(Ui.WHITE, back)
+        arrow.setBounds(0, 0, Ui.dp(this, 10), Ui.dp(this, 10))
+        if (back) t.setCompoundDrawablesRelative(arrow, null, null, null) else t.setCompoundDrawablesRelative(null, null, arrow, null)
+        t.compoundDrawablePadding = Ui.dp(this, 6)
+        t.setOnClickListener { act() }
+        return t
     }
 
     /** Keeps the ability if the new form has it, else takes the form's first one. */
@@ -145,26 +169,26 @@ class MemberActivity : Activity() {
     /** Smogon sets, ability (Gen 3 on), held item (Gen 2 on), nature (Gen 3 on), Tera type (Scarlet and Violet), level. */
     private fun details(m: Dex.Mon): View {
         val p = Ui.panel(this, L.t("Set"))
+        // Every form in this game, also the [Dex.alike] ones pickers leave out.
+        val forms = dex.family(m).filter { it === m || game.byNum.containsKey(it.num) }
+        if (forms.size > 1) p.addView(Ui.setting(this, L.t("Form"), m.name) {
+            Ui.pickOne(this, L.t("Form"), forms.map { it.name }, forms.indexOf(m)) { i -> setForm(forms[i]) }
+        })
         val sets = builds(m)
         if (sets.isNotEmpty()) p.addView(Ui.setting(this, L.t("Smogon set"), L.f("Sets: %d", sets.size)) { pickBuild(sets) })
         if (game.gen >= 3) {
             val ids = m.abilities.toMutableList()
             if (m.hidden != 0 && m.hidden !in ids) ids.add(m.hidden)
-            val chips = LinearLayout(this)
-            for (id in ids) {
-                val label = if (id == m.hidden) L.f("%s (hidden)", dex.ability(id).name) else dex.ability(id).name
-                val chip = Ui.chip(this, label) {
-                    x.ability = id
+            val labels = ids.map { if (it == m.hidden) L.f("%s (hidden)", dex.ability(it).name) else dex.ability(it).name }
+            // A list, not chips: three names with "(hidden)" do not fit one line at 360 dp.
+            p.addView(Ui.setting(this, L.t("Ability"), if (x.ability == 0) L.t("Not set") else dex.ability(x.ability).name) {
+                Ui.pickOne(this, L.t("Ability"), labels, ids.indexOf(x.ability)) { i ->
+                    x.ability = ids[i]
                     render()
                 }
-                Ui.chipActive(chip, id == x.ability)
-                Ui.addChip(chips, chip)
-            }
-            p.addView(Ui.caption(this, L.t("Ability")))
-            val bar = Ui.chipBar(this, chips)
-            bar.setPadding(0, 0, 0, 0)
-            p.addView(bar, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 6, 0, 8))
-            if (x.ability != 0) p.addView(Ui.muted(this, dex.ability(x.ability).shortEffect, 13))
+            })
+            if (x.ability != 0) p.addView(Ui.muted(this, dex.ability(x.ability).shortEffect, 13),
+                Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 0, 8))
         }
         if (game.gen >= 2) p.addView(Ui.setting(this, L.t("Item"), if (x.item == 0) L.t("None") else Ui.itemName(this, dex.item(x.item))) { pickItem() })
         if (game.gen >= 3) {
@@ -199,7 +223,7 @@ class MemberActivity : Activity() {
         }
         for ((i, q) in quick.withIndex()) {
             Ui.chipActive(q, LEVELS[i] == x.level)
-            Ui.addChip(level, q)
+            level.addView(q, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 8, 0))
         }
         level.addView(box, LinearLayout.LayoutParams(Ui.dp(this, 56), ViewGroup.LayoutParams.WRAP_CONTENT))
         p.addView(level)
@@ -392,34 +416,38 @@ class MemberActivity : Activity() {
         }
 
         /**
-         * A chip per format in `sets` ("OU  2", first seen first) over cards of the picked format's sets, starting on
-         * `start` if the sets have it. Each card is `color` with `actions(set)` at its foot; `picked` gets a new format.
-         * Only one format's cards exist at a time: Arceus has 76 sets in Gen 9, about 36 views a card.
+         * A Format row ("OU  ·  2"; a list of them, first seen first, to pick from) over cards of that format's sets,
+         * starting on `start` if the sets have it. A row, not a chip per format: a Pokémon can have a dozen. Each card
+         * is `color` with `actions(set)` at its foot; `picked` gets a new format. Only one format's cards exist at a
+         * time: Arceus has 76 sets in Gen 9, about 36 views a card.
          */
         fun buildList(a: Activity, dex: Dex, game: Dex.Game, sets: List<Dex.Build>, num: Int, start: String, color: Int,
                       actions: (Dex.Build) -> View, picked: (String) -> Unit): LinearLayout {
             val box = Ui.vertical(a)
             val counts = sets.groupingBy { it.format }.eachCount()
-            val chips = LinearLayout(a)
+            val formats = counts.keys.toList()
+            val labels = formats.map { "$it  ·  ${counts[it]}" }
+            var current = if (start in counts) start else formats.first()
             val cards = Ui.vertical(a)
+            lateinit var value: TextView
             val show = { f: String ->
-                for (i in 0 until chips.childCount) Ui.chipActive(chips.getChildAt(i) as TextView, (chips.getChildAt(i).tag) == f)
+                current = f
+                value.text = labels[formats.indexOf(f)]
                 cards.removeAllViews()
                 for (b in sets) if (b.format == f) cards.addView(buildCard(a, dex, game, b, num, color, actions(b)), Ui.wide(a, 0, 12))
             }
-            for ((f, n) in counts) {
-                val chip = Ui.chip(a, "$f  $n") {
-                    show(f)
-                    picked(f)
+            val row = Ui.setting(a, L.t("Format"), "") {
+                Ui.pickOne(a, L.t("Format"), labels, formats.indexOf(current)) { i ->
+                    show(formats[i])
+                    picked(formats[i])
                 }
-                chip.tag = f
-                Ui.addChip(chips, chip)
-            }
-            box.addView(Ui.chipBar(a, chips))
+            } as ViewGroup
+            value = row.getChildAt(1) as TextView
+            box.addView(row, Ui.wide(a, 0, 0))
             box.addView(cards, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 topMargin = Ui.dp(a, 12)
             })
-            show(if (start in counts) start else counts.keys.first())
+            show(current)
             return box
         }
 

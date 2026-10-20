@@ -95,13 +95,16 @@ class TeamActivity : Activity() {
         }
 
         val actions = LinearLayout(this)
-        val deleteChip = Ui.chip(this, L.t("Delete team")) { delete() }
-        deleteChip.setTextColor(if (Ui.night) 0xFFFF8A65.toInt() else Ui.ACCENT)
         Ui.addChip(actions, Ui.chip(this, L.t("Compare")) { CompareActivity.open(this, 0, game.id) })
         Ui.addChip(actions, Ui.chip(this, L.t("Damage calc")) { CalcActivity.open(this, index, -1) })
         Ui.addChip(actions, Ui.chip(this, L.t("Copy as text")) { copy() })
-        Ui.addChip(actions, deleteChip)
         root.addView(Ui.chipBar(this, actions))
+        // Its own row, as "Remove from team" on a member: out of reach of a tap meant for the actions above.
+        val deleteChip = Ui.chip(this, L.t("Delete team")) { delete() }
+        deleteChip.setTextColor(if (Ui.night) 0xFFFF8A65.toInt() else Ui.ACCENT)
+        val last = LinearLayout(this)
+        Ui.addChip(last, deleteChip)
+        root.addView(Ui.chipBar(this, last))
         return root
     }
 
@@ -166,7 +169,7 @@ class TeamActivity : Activity() {
         return row
     }
 
-    /** [Team.gaps] in words: what hurts, what nothing answers, what no move hits, then the type that fixes most. */
+    /** [Team.gaps] in words: what hurts, what nothing answers, what no move hits, each with the type that fixes most. */
     private fun tips(): View {
         val p = Ui.panel(this, L.t("Tips"))
         val g = team.gaps(dex)
@@ -175,16 +178,18 @@ class TeamActivity : Activity() {
             val n = list.map { dex.label(types[it]) }
             if (n.size == 1) n[0] else L.f("%s and %s", n.dropLast(1).joinToString(L.t(", ")), n.last())
         }
-        if (g.stacked.isNotEmpty()) tip(p, L.t("Weak spots"), L.t("Super effective against half the team or more, and resisted by fewer."), g.stacked)
-        if (g.counter.isNotEmpty()) tip(p, L.t("Nothing counters these"), L.t("No member resists them and no move hits them super effectively."), g.counter)
-        if (g.uncovered.isNotEmpty()) tip(p, L.t("Missing coverage"), L.t("No move hits these super effectively."), g.uncovered)
-        if (g.wall >= 0) {
-            val detail = L.f("It resists %s.", names((g.counter + g.stacked).filter { dex.factor(game, types[it], listOf(types[g.wall])) < 100 }))
-            if (team.members.size < Team.SIZE) tip(p, L.f("Try a %s Pokémon", dex.label(types[g.wall])), detail, emptyList(), L.t("Suggestions")) { addMember() }
-            else tip(p, L.f("Try a %s Pokémon", dex.label(types[g.wall])), detail, emptyList())
-        }
-        if (g.move >= 0) tip(p, L.f("Try a %s move", dex.label(types[g.move])), L.f("It hits %s super effectively.",
-            names((g.counter + g.uncovered).filter { dex.factor(game, types[g.move], listOf(types[it])) > 100 })), emptyList())
+        val stacked = if (g.stacked.isEmpty()) null
+            else tip(p, L.t("Weak spots"), L.t("Super effective against half the team or more, and resisted by fewer."), g.stacked)
+        val counter = if (g.counter.isEmpty()) null
+            else tip(p, L.t("Nothing counters these"), L.t("No member resists them and no move hits them super effectively."), g.counter)
+        val uncovered = if (g.uncovered.isEmpty()) null
+            else tip(p, L.t("Missing coverage"), L.t("No move hits these super effectively."), g.uncovered)
+        // gaps() leaves wall at -1 when counter and stacked are empty, move when counter and uncovered are.
+        if (g.wall >= 0) fix((counter ?: stacked)!!, L.f("Try a %s Pokémon", dex.label(types[g.wall])),
+            L.f("It resists %s.", names((g.counter + g.stacked).filter { dex.factor(game, types[it], listOf(types[g.wall])) < 100 })),
+            if (team.members.size < Team.SIZE) L.t("Suggestions") else null) { addMember() }
+        if (g.move >= 0) fix((uncovered ?: counter)!!, L.f("Try a %s move", dex.label(types[g.move])), L.f("It hits %s super effectively.",
+            names((g.counter + g.uncovered).filter { dex.factor(game, types[g.move], listOf(types[it])) > 100 })))
         if (!team.attacks(dex)) tip(p, L.t("No attacks yet"), L.t("Give your Pokémon damaging moves to see what nothing counters."), emptyList())
         else if (p.childCount == 1) tip(p, L.t("No gaps"), L.t("Every type is resisted or hit super effectively, and none hits half the team."), emptyList())
         // The lower base stat total of a pair is the one to swap: Noibat beside Garchomp.
@@ -198,20 +203,36 @@ class TeamActivity : Activity() {
         return p
     }
 
-    /** Bold title, muted detail, then the types as pills and an optional `action` chip. */
-    private fun tip(p: LinearLayout, title: String, detail: String, list: List<Int>, action: String? = null, act: () -> Unit = {}) {
+    /** Bold title, muted detail, then the types as pills and an optional `action` chip; a hairline above all but the first. */
+    private fun tip(p: LinearLayout, title: String, detail: String, list: List<Int>, action: String? = null, act: () -> Unit = {}): LinearLayout {
+        if (p.childCount > 1) {
+            val line = View(this)
+            line.setBackgroundColor(Ui.FILL)
+            p.addView(line, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 1), this, 0, 12, 0, 12))
+        }
         val box = Ui.vertical(this)
         box.addView(Ui.text(this, title, 15, true))
         box.addView(Ui.muted(this, detail, 13), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 2, 0, 0))
         if (list.isNotEmpty()) box.addView(Ui.typePills(this, list.map { dex.types(game)[it] }, 4),
             Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 6, 0, 0))
-        if (action != null) {
-            val chip = Ui.chip(this, action) { act() }
-            Ui.chipActive(chip, true)
-            box.addView(chip, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 8, 0, 0))
-        }
-        p.addView(box, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0,
-            if (p.childCount == 1) 0 else 14, 0, 0))
+        if (action != null) box.addView(Ui.chip(this, action) { act() },
+            Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 8, 0, 0))
+        p.addView(box, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        return box
+    }
+
+    /** The answer to a [tip], inside it on a green tint, so it does not read as one more problem. */
+    private fun fix(box: LinearLayout, title: String, detail: String, action: String? = null, act: () -> Unit = {}) {
+        val f = Ui.vertical(this)
+        f.background = Ui.rounded(this, Ui.tonal(Ui.GOOD), 12)
+        f.setPadding(Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 12), Ui.dp(this, 10))
+        val t = Ui.text(this, title, 14, true)
+        t.setTextColor(Ui.GOOD)
+        f.addView(t)
+        f.addView(Ui.muted(this, detail, 13), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 2, 0, 0))
+        if (action != null) f.addView(Ui.chip(this, action) { act() },
+            Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 8, 0, 0))
+        box.addView(f, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 10, 0, 0))
     }
 
     private fun rename() {

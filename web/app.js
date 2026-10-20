@@ -234,7 +234,49 @@ const chip = (label, act, cls) => h('button', { class: cls ? 'chip ' + cls : 'ch
 const setChip = (c, label, active) => {
   c.textContent = label;
   c.classList.toggle('on', active);
+  if (c.parentElement?.classList.contains('chips')) refit(c.parentElement);
 };
+
+/**
+ * One line of chips across the width, as Ui.chipBar: it never wraps or scrolls sideways, so a page scrolls one way.
+ * The chips share out the room left; when they do not fit, [fit] drops their side padding from 14 to 8 px, then
+ * shrinks every label alike down to 11 px, and past that the longest ends in "...".
+ */
+function chipRow(cls, ...kids) {
+  const bar = h('div', cls ? 'chips ' + cls : 'chips', ...kids);
+  refit(bar);
+  return bar;
+}
+
+/** Rows to fit on the next frame, once they are on the page; at most the rows on screen, emptied every frame. */
+const unfit = new Set();
+function refit(bar) {
+  if (unfit.size === 0) requestAnimationFrame(() => {
+    for (const b of unfit) fit(b);
+    unfit.clear();
+  });
+  unfit.add(bar);
+}
+addEventListener('resize', () => document.querySelectorAll('.chips').forEach(refit));
+
+function fit(bar) {
+  if (!bar.isConnected) return;
+  bar.style.removeProperty('--pad');
+  bar.style.removeProperty('--fs');
+  // Two layouts per row: natural widths with the chips held at their size, then the row as it ends up.
+  bar.classList.add('measure');
+  const kids = [...bar.children].filter(c => c.offsetWidth);
+  const cs = getComputedStyle(bar);
+  const room = bar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - parseFloat(cs.columnGap) * (kids.length - 1);
+  let width = 0;
+  for (const c of kids) width += c.offsetWidth;
+  if (width > room) {
+    const text = width - kids.length * 28;
+    bar.style.setProperty('--pad', '8px');
+    bar.style.setProperty('--fs', Math.max(11, Math.min(14, 14 * (room - kids.length * 16) / text)) + 'px');
+  }
+  bar.classList.remove('measure');
+}
 const panel = (title, cls = 'wide mb12') => h('section', 'panel ' + cls, title ? h('h2', null, title) : null);
 const backButton = () => h('button', { class: 'back', 'aria-label': L.t("Back"), onclick: close }, icon(BACK, 22));
 const head = (title, ...extra) => h('div', 'head', backButton(), h('h1', 'title', title), extra);
@@ -594,8 +636,8 @@ function confirm(heading, message, action, yes) {
   s.button(L.t("Cancel")).button(action, true, yes).show();
 }
 
-/** A search over long lists, in tabs when there are two; rows match on their shown or English name. */
-function pickSearch(heading, tabs, lists, picked) {
+/** A search over long lists, in tabs when there are two; rows match on their shown or English name. `top` goes first. */
+function pickSearch(heading, tabs, lists, picked, top) {
   const s = sheet(heading);
   let tab = 0;
   const list = h('div', 'list');
@@ -612,6 +654,7 @@ function pickSearch(heading, tabs, lists, picked) {
   };
   const box = searchBox(L.t("Search"), filter);
   box.el.classList.add('mb8');
+  if (top) s.body.append(top);
   if (tabs.length > 1) s.body.append(seg(tabs, 0, k => { tab = k; filter(); }), h('div', 'mb8'));
   s.body.append(box.el, list);
   s.button(L.t("Cancel")).show();
@@ -630,12 +673,16 @@ function teamsTab(g) {
 
 const teamMonEntry = (g, m) => monEntry(m, d.typesOf(g, m), g.byNum.has(m.num) ? '#' + String(g.byNum.get(m.num).number).padStart(3, '0') : '', '');
 
-/** A Pokémon of `g` in tabs: `first`, then the caught ones (Box), then All; `picked` gets a team member, new unless one was tapped. */
-function pickMon(g, heading, first, picked) {
-  const all = g.dex.map(e => teamMonEntry(g, e.mon));
+/**
+ * A Pokémon of `g` in tabs: `first`, then the caught ones (Box), then all but d.alike forms, which a member's Form row
+ * reaches; `picked` gets a team member, new unless one was tapped. `top` goes above the tabs.
+ */
+function pickMon(g, heading, first, picked, top) {
+  const every = g.dex.map(e => teamMonEntry(g, e.mon));
   const have = caughtSet();
-  const tabs = [...(first ? [first] : []), [L.t("Box"), all.filter(it => have.has(it.ref.num))], [L.t("All"), all]];
-  pickSearch(heading, tabs.map(t => t[0]), tabs.map(t => t[1]), ref => picked(ref.evs ? ref : newMember(ref)));
+  const tabs = [...(first ? [first] : []), [L.t("Box"), every.filter(it => have.has(it.ref.num))],
+    [L.t("All"), every.filter(it => !d.alike(g, it.ref))]];
+  pickSearch(heading, tabs.map(t => t[0]), tabs.map(t => t[1]), ref => picked(ref.evs ? ref : newMember(ref)), top);
 }
 
 // --- home ------------------------------------------------------------------------------------
@@ -881,7 +928,7 @@ function games(p) {
 function listScreen(p, s) {
   const search = searchBox(s.hint, () => refresh());
   search.el.classList.add('wide', 'mb10');
-  const bar = h('div', 'chips');
+  const bar = chipRow(null);
   const count = h('div', { class: 'caption', style: 'padding:14px 16px 6px' });
   const list = h('div', s.cards ? 'cards' : 'rows');
   const none = h('p', 'empty');
@@ -930,17 +977,31 @@ function pokedex(p, type) {
         refresh();
       });
       add('type', () => pickMany(L.t("Type (must have all)"), d.typesIn(g), types, refresh));
-      if (!gen) add('gen', () => pickGens(gens, refresh));
-      add('bst', () => pickOne(L.t("Lowest base stat total"), BST.map(b => (b ? b + '+' : L.t("All"))), BST.indexOf(minBst), i => {
-        minBst = BST[i];
-        refresh();
-      }));
+      // Generation, caught and lowest total share one sheet, so the chip row fits one line.
+      add('filters', () => {
+        const s = sheet(L.t("Filters"));
+        const row = (label, value, open) => s.body.append(h('button', { class: 'set', onclick: () => { if (s.close()) open(); } },
+          h('span', null, label), h('span', 'v', value)));
+        if (!gen) row(L.t("Generation"), gens.size ? [...gens].sort((a, b) => a - b).join(', ') : L.t("All"), () => pickGens(gens, refresh));
+        row(L.t("Caught"), CAUGHT[caughtFilter], () => pickOne(L.t("Caught"), CAUGHT, caughtFilter, i => {
+          caughtFilter = i;
+          refresh();
+        }));
+        row(L.t("Lowest base stat total"), minBst ? minBst + '+' : L.t("All"), () => pickOne(L.t("Lowest base stat total"),
+          BST.map(b => (b ? b + '+' : L.t("All"))), BST.indexOf(minBst), i => {
+            minBst = BST[i];
+            refresh();
+          }));
+        if (gens.size || caughtFilter || minBst) s.button(L.t("Clear"), false, () => {
+          gens.clear();
+          caughtFilter = 0;
+          minBst = 0;
+          refresh();
+        });
+        s.button(L.t("Done"), true).show();
+      });
       add('sort', () => pickOne(L.t("Sort"), SORTS.map(o => L.t(o.label)), SORTS.indexOf(sort), i => {
         sort = SORTS[i];
-        refresh();
-      }));
-      add('caught', () => pickOne(L.t("Caught"), CAUGHT, caughtFilter, i => {
-        caughtFilter = i;
         refresh();
       }));
     },
@@ -953,11 +1014,11 @@ function pokedex(p, type) {
     count: shown => L.f("%s  ·  %d of %d  ·  caught %d", gen ? g.dex[0].dex : nationalDex ? L.t("National") : g.name, shown.length, source.length,
       source.filter(e => have.has(e.mon.num)).length),
     labels() {
-      setChip(chips.caught, caughtFilter ? CAUGHT[caughtFilter] : L.t("Caught"), caughtFilter > 0);
       if (chips.dex) setChip(chips.dex, nationalDex ? L.t("National") : L.t("Regional"), nationalDex);
       setChip(chips.type, types.size ? [...types].map(t => d.label(t)).join(' / ') : L.t("Type"), types.size > 0);
-      if (chips.gen) setChip(chips.gen, gens.size ? L.f("Gen %s", [...gens].sort((a, b) => a - b).join(',')) : L.t("Gen"), gens.size > 0);
-      setChip(chips.bst, minBst ? L.f("BST %d+", minBst) : L.t("BST"), minBst > 0);
+      const on = [gens.size ? L.f("Gen %s", [...gens].sort((a, b) => a - b).join(',')) : '', caughtFilter ? CAUGHT[caughtFilter] : '',
+        minBst ? L.f("BST %d+", minBst) : ''].filter(Boolean);
+      setChip(chips.filters, on.length ? on.join('  ·  ') : L.t("Filters"), on.length > 0);
       setChip(chips.sort, L.f("Sort: %s", L.t(sort.label)), sort !== SORTS[0]);
     },
     open: (it, shown) => openMon(it.ref.num, nums(shown)),
@@ -1350,14 +1411,16 @@ function monScreen(p, start, list) {
     if (!counts.some(n => n)) return body.append(h('p', 'note pad', L.f("No move data for %s.", m.name)));
     if (!counts[method]) method = counts.findIndex(n => n > 0);
     body.append(h('p', 'note pad mb8', lg === g || g.virtual ? L.f("Moves in %s", lg.name) : L.f("No %s moves for %s. Showing %s.", g.name, m.name, lg.name)));
-    const bar = h('div', 'chips');
+    const bar = chipRow(null);
     const list = h('div', 'panel flush wide');
     body.append(bar, list);
     const paint = () => {
-      bar.replaceChildren(...counts.map((n, k) => (n ? chip(L.t(METHODS[k]) + '  ' + n, () => {
+      // No count beside the name: five methods with counts do not fit one line at 360 px in Polish.
+      bar.replaceChildren(...counts.map((n, k) => (n ? chip(L.t(METHODS[k]), () => {
         method = k;
         paint();
       }, k === method ? 'on' : null) : '')));
+      refit(bar);
       let rows;
       if (method === 0) {
         rows = [];
@@ -1602,11 +1665,12 @@ function teamScreen(p, ti) {
     p.el.replaceChildren(h('div', 'col', top, h('p', 'sub', g.name), slots,
       h('p', { class: 'note', style: 'padding:6px 20px 12px' }, L.t("Hold a Pokémon to swap it for another.")),
       team.members.length ? [tips(team, g, add, replace), defense(team, g)] : null,
-      h('div', 'chips',
+      chipRow(null,
         chip(L.t("Compare"), () => open(q => compare(q, 0, g.id))),
         chip(L.t("Damage calc"), () => open(q => calc(q, ti, -1))),
-        chip(L.t("Copy as text"), () => copy(team)),
-        chip(L.t("Delete team"), del, 'danger'))));
+        chip(L.t("Copy as text"), () => copy(team))),
+      // Its own row, as "Remove from team" on a member: out of reach of a tap meant for the actions above.
+      chipRow(null, chip(L.t("Delete team"), del, 'danger'))));
     p.el.scrollTop = y;
   }
 }
@@ -1638,21 +1702,26 @@ function tips(team, g, add, replace) {
     count++;
     const pills = list.length ? typePills(list.map(i => types[i]), 4) : null;
     if (pills) pills.style.marginTop = '6px';
-    box.append(h('div', 'tip', h('div', { class: 'bold', style: 'font-size:15px' }, title), h('p', { class: 'note', style: 'margin-top:2px' }, detail),
-      pills, action ? chip(action, act, 'on') : null));
+    const el = h('div', 'tip', h('div', { class: 'bold', style: 'font-size:15px' }, title), h('p', { class: 'note', style: 'margin-top:2px' }, detail),
+      pills, action ? chip(action, act) : null);
+    box.append(el);
+    return el;
   };
-  if (gp.stacked.length) tip(L.t("Weak spots"), L.t("Super effective against half the team or more, and resisted by fewer."), gp.stacked);
-  if (gp.counter.length) tip(L.t("Nothing counters these"), L.t("No member resists them and no move hits them super effectively."), gp.counter);
-  if (gp.uncovered.length) tip(L.t("Missing coverage"), L.t("No move hits these super effectively."), gp.uncovered);
+  // The answer to a tip, inside it on a green tint, so it does not read as one more problem.
+  const fix = (el, title, detail, action, act) => el.append(h('div', 'fix', h('div', 'bold', title),
+    h('p', { class: 'note', style: 'margin-top:2px' }, detail), action ? chip(action, act) : null));
+  const stacked = gp.stacked.length ? tip(L.t("Weak spots"), L.t("Super effective against half the team or more, and resisted by fewer."), gp.stacked) : null;
+  const counter = gp.counter.length ? tip(L.t("Nothing counters these"), L.t("No member resists them and no move hits them super effectively."), gp.counter) : null;
+  const uncovered = gp.uncovered.length ? tip(L.t("Missing coverage"), L.t("No move hits these super effectively."), gp.uncovered) : null;
+  // gaps() leaves wall at -1 when counter and stacked are empty, move when counter and uncovered are.
   if (gp.wall >= 0) {
-    const detail = L.f("It resists %s.", names([...gp.counter, ...gp.stacked].filter(i => d.factor(g, types[i], [types[gp.wall]]) < 100)));
-    const title = L.f("Try a %s Pokémon", d.label(types[gp.wall]));
-    if (team.members.length < Team.SIZE) tip(title, detail, [], L.t("Suggestions"), add);
-    else tip(title, detail, []);
+    fix(counter ?? stacked, L.f("Try a %s Pokémon", d.label(types[gp.wall])),
+      L.f("It resists %s.", names([...gp.counter, ...gp.stacked].filter(i => d.factor(g, types[i], [types[gp.wall]]) < 100))),
+      team.members.length < Team.SIZE ? L.t("Suggestions") : null, add);
   }
   if (gp.move >= 0) {
-    tip(L.f("Try a %s move", d.label(types[gp.move])), L.f("It hits %s super effectively.",
-      names([...gp.counter, ...gp.uncovered].filter(i => d.factor(g, types[gp.move], [types[i]]) > 100))), []);
+    fix(uncovered ?? counter, L.f("Try a %s move", d.label(types[gp.move])), L.f("It hits %s super effectively.",
+      names([...gp.counter, ...gp.uncovered].filter(i => d.factor(g, types[gp.move], [types[i]]) > 100))));
   }
   if (!team.attacks(d)) tip(L.t("No attacks yet"), L.t("Give your Pokémon damaging moves to see what nothing counters."), []);
   else if (!count) tip(L.t("No gaps"), L.t("Every type is resisted or hit super effectively, and none hits half the team."), []);
@@ -1686,7 +1755,7 @@ function defense(team, g) {
 }
 
 /**
- * A chip per format in `sets` ("OU  2", first seen first) over cards of the picked format's sets, as
+ * A Format row ("OU  ·  2"; a list of them, first seen first, to pick from) over cards of that format's sets, as
  * MemberActivity.buildList, starting on `start` if the sets have it. Each card gets class `cls` and `actions(set)` at its
  * foot; `picked` gets a new format. Only one format's cards exist at a time: Arceus has 76 sets in Gen 9.
  */
@@ -1694,17 +1763,22 @@ function buildList(g, sets, num, start, cls, actions, picked = () => {}) {
   const counts = new Map();
   for (const b of sets) counts.set(b.format, (counts.get(b.format) ?? 0) + 1);
   const cards = h('div');
-  const chips = [...counts].map(([f, n]) => chip(f + '  ' + n, () => {
-    show(f);
-    picked(f);
-  }));
   const formats = [...counts.keys()];
+  const labels = formats.map(f => f + '  ·  ' + counts.get(f));
+  // A row, not a chip per format: a Pokémon can have a dozen.
+  const value = h('span', 'v');
+  let current = counts.has(start) ? start : formats[0];
+  const row = h('button', { class: cls === 'wide' ? 'set wide' : 'set', onclick: () => pickOne(L.t("Format"), labels, formats.indexOf(current), i => {
+    show(formats[i]);
+    picked(formats[i]);
+  }) }, h('span', null, L.t("Format")), value);
   const show = f => {
-    chips.forEach((c, i) => c.classList.toggle('on', formats[i] === f));
+    current = f;
+    value.textContent = labels[formats.indexOf(f)];
     cards.replaceChildren(...sets.filter(b => b.format === f).map(b => buildCard(g, b, num, cls, actions(b))));
   };
-  show(counts.has(start) ? start : formats[0]);
-  return h('div', 'builds', h('div', 'chips', chips), cards);
+  show(current);
+  return h('div', 'builds', row, cards);
 }
 
 /**
@@ -1788,6 +1862,8 @@ function memberScreen(p, ti, k) {
     top.append(h('div', 'member',
       h('div', null, h('h1', null, m.name), h('div', { style: 'font-size:14px;color:rgba(255,255,255,.8)' }, team.name + '  ·  ' + g.name), h('div', 'mt10', types.map(glass))),
       art));
+    const evo = stages(m);
+    if (evo) top.append(evo);
     const swap = () => pickMon(g, L.f("Swap %s", m.name), [L.t("Suggested"), team.suggest(d, k).map(o => teamMonEntry(g, o))], nx => {
       nx.level = x.level;
       team.members[k] = x = nx;
@@ -1801,29 +1877,35 @@ function memberScreen(p, ti, k) {
     });
     const y = p.el.scrollTop;
     p.el.replaceChildren(h('div', 'col', top,
-      h('div', 'chips mt12', chip(L.t("Swap"), swap), chip(L.t("Compare"), () => open(q => compare(q, m.num, g.id))), chip(L.t("Damage calc"), () => open(q => calc(q, ti, k)))),
-      forms(m), set(m), movesPanel(m), stats(m),
-      h('div', 'chips', chip(L.t("Remove from team"), remove, 'danger'))));
+      chipRow('mt12', chip(L.t("Swap"), swap), chip(L.t("Compare"), () => open(q => compare(q, m.num, g.id))), chip(L.t("Damage calc"), () => open(q => calc(q, ti, k)))),
+      set(m), movesPanel(m), stats(m),
+      chipRow(null, chip(L.t("Remove from team"), remove, 'danger'))));
     p.el.scrollTop = y;
   }
 
-  /** Forms of the species in this game, the stage before and the stages after. */
-  function forms(m) {
-    const fam = d.family(m).filter(f => g.byNum.has(f.num) || f === m);
+  /** Keeps the ability if the new form has it, else takes the form's first one. */
+  function setForm(f) {
+    if (!f.abilities.includes(x.ability) && f.hidden !== x.ability) x.ability = newMember(f).ability;
+    x.num = f.num;
+    save();
+    build();
+  }
+
+  /** In the hero, as MemberActivity: the stage before on the left, the stages after on the right. */
+  function stages(m) {
     const evo = d.evo(m.num);
     const from = evo && g.byNum.has(evo.from) ? d.mon(evo.from) : null;
     const into = [...new Set(d.evolutions(m.num).map(e => e.to))].filter(n => g.byNum.has(n)).map(n => d.mon(n));
-    if (fam.length < 2 && !from && !into.length) return null;
-    const to = f => () => {
-      if (!f.abilities.includes(x.ability) && f.hidden !== x.ability) x.ability = newMember(f).ability;
-      x.num = f.num;
-      save();
-      build();
-    };
-    return h('div', 'chips mt8',
-      from ? chip(L.f("Devolve to %s", from.name), to(from)) : null,
-      fam.length > 1 ? fam.map(f => chip(f.name, to(f), f === m ? 'on' : null)) : null,
-      into.map(f => chip(L.f("Evolve into %s", f.name), to(f))));
+    if (!from && !into.length) return null;
+    const stage = (label, aria, back, act) => h('button', { class: 'add stage', 'aria-label': aria, onclick: act },
+      back ? icon(BACK, 14) : null, h('span', null, label), back ? null : icon(NEXT, 14));
+    const gap = () => h('div', 'add');
+    return h('div', 'acts',
+      from ? stage(from.name, L.f("Devolve to %s", from.name), true, () => setForm(from)) : gap(),
+      into.length === 1 ? stage(into[0].name, L.f("Evolve into %s", into[0].name), false, () => setForm(into[0]))
+        // Eevee's eight would not fit a line; they go in a list.
+        : into.length ? stage(L.t("Evolve"), L.t("Evolve"), false, () => pickOne(L.t("Evolve"), into.map(f => f.name), -1, i => setForm(into[i])))
+        : gap());
   }
 
   function set(m) {
@@ -1833,6 +1915,9 @@ function memberScreen(p, ti, k) {
       build();
     };
     const setting = (label, value, act) => h('button', { class: 'set', onclick: act }, h('span', null, label), h('span', 'v', value));
+    // Every form in this game, also the d.alike ones pickers leave out.
+    const fam = d.family(m).filter(f => g.byNum.has(f.num) || f === m);
+    if (fam.length > 1) box.append(setting(L.t("Form"), m.name, () => pickOne(L.t("Form"), fam.map(f => f.name), fam.indexOf(m), i => setForm(fam[i]))));
     const smogon = h('div');
     box.append(smogon);
     builds(m).then(all => {
@@ -1840,14 +1925,13 @@ function memberScreen(p, ti, k) {
     });
     if (g.gen >= 3) {
       const ids = [...new Set([...m.abilities, m.hidden].filter(id => id))];
-      box.append(h('div', 'caption', L.t("Ability")), h('div', { class: 'wrap', style: 'margin:6px 0 8px' }, ids.map(id => {
-        const name = d.ability(id).name;
-        return chip(id === m.hidden ? L.f("%s (hidden)", name) : name, () => {
-          x.ability = id;
-          redo();
-        }, id === x.ability ? 'on' : null);
-      })));
+      const labels = ids.map(id => id === m.hidden ? L.f("%s (hidden)", d.ability(id).name) : d.ability(id).name);
       const a = d.ability(x.ability);
+      // A list, not chips: three names with "(hidden)" do not fit one line at 360 px.
+      box.append(setting(L.t("Ability"), a ? a.name : L.t("Not set"), () => pickOne(L.t("Ability"), labels, ids.indexOf(x.ability), i => {
+        x.ability = ids[i];
+        redo();
+      })));
       if (a) box.append(h('p', 'note mb8', a.shortEffect));
     }
     if (g.gen >= 2) {
@@ -2014,12 +2098,19 @@ function compare(p, first, gameId) {
   const picked = [first, 0];
   const col = h('div', 'col');
   p.el.append(col);
-  // With the other side picked the title names it: the second list looked the same as the first, as if the first pick had not counted.
-  const pick = i => pickMon(g, picked[1 - i] ? L.f("Compare with %s", d.mon(picked[1 - i]).name) : L.t("Compare"), teamsTab(g), x => {
-    picked[i] = x.num;
-    render();
-    if (i === 0 && !picked[1]) pick(1);
-  });
+  // With the other side picked the title names it and the slots show it: the second list looked the same as the first,
+  // as if the first pick had not counted, and the title alone was still easy to miss.
+  const pick = i => {
+    const other = picked[1 - i] ? d.mon(picked[1 - i]) : null;
+    pickMon(g, other ? L.f("Compare with %s", other.name) : L.t("Compare"), teamsTab(g), x => {
+      picked[i] = x.num;
+      render();
+      if (i === 0 && !picked[1]) pick(1);
+    }, other ? slots(i === 1 ? [other, null] : [null, other]) : null);
+  };
+  const slot = m => h('div', m ? 'slot' : 'slot empty', m ? sprite(m.num) : h('div', { class: 'plus', 'aria-hidden': 'true' }, '+'),
+    h('div', 'nm', m ? m.name : L.t("Choose a Pokémon")));
+  const slots = both => h('div', 'slots mb12', slot(both[0]), h('span', 'muted', L.t("vs")), slot(both[1]));
   render();
   pick(picked[0] ? 1 : 0);
 
@@ -2045,7 +2136,27 @@ function compare(p, first, gameId) {
       m.hidden && !m.abilities.includes(m.hidden) ? h('div', { style: 'font-size:15px' }, L.f("%s (hidden)", d.ability(m.hidden).name)) : null);
     const abil = panel(L.t("Abilities"));
     abil.append(h('div', 'pair', names(a), names(b)));
-    col.append(base, def, abil);
+    col.append(base, def, abil, verdict(a, b, ta, tb));
+  }
+
+  /**
+   * The short answer, last: who is better in more of four plain measures, each shown so it can be checked. Fewer
+   * weaknesses is better, so those go in negated like the defenses; resistances include immunities.
+   */
+  function verdict(a, b, ta, tb) {
+    const count = (types, hit) => d.typesIn(g).filter(t => hit(d.factor(g, t, types))).length;
+    const rows = [[L.t("Total"), a.bst, b.bst], [L.t(STATS[5]), a.stats[5], b.stats[5]],
+      [L.t("Weaknesses"), -count(ta, f => f > 100), -count(tb, f => f > 100)],
+      [L.t("Resistances"), count(ta, f => f < 100), count(tb, f => f < 100)]];
+    const wa = rows.filter(r => r[1] > r[2]).length;
+    const wb = rows.filter(r => r[2] > r[1]).length;
+    const best = wa === wb ? null : wa > wb ? a : b;
+    const p = panel(null);
+    p.append(h('div', 'verdict', best ? sprite(best.num) : null, h('div', null,
+      h('div', 'h', best ? L.f("%s comes out ahead", best.name) : L.t("Too close to call")),
+      h('div', 'muted', best ? L.f("Better in %d of these %d.", Math.max(wa, wb), rows.length) : L.f("Each is better in %d of these %d.", wa, rows.length)))),
+      ...rows.map(([name, x, y]) => sides(name, x, y, false, String(Math.abs(x)), String(Math.abs(y)))));
+    return p;
   }
 }
 
@@ -2099,7 +2210,7 @@ function calc(p, ti, k) {
     const mv = panel(L.t("Move"), 'flush wide mb12');
     mv.append(row(move ? moveEntry(d.move(g, move), '') : entry(0, '', L.t("Choose a move"), '', [], ''), pickMove));
     col.replaceChildren(head(L.t("Damage calc")), h('p', 'sub', g.name), h('div', 'pair wide mb12', heads),
-      h('div', 'chips', chip(L.t("Swap sides"), () => {
+      chipRow(null, chip(L.t("Swap sides"), () => {
         picked.reverse();
         render();
       })),

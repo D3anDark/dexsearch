@@ -3,6 +3,7 @@ package demo.dex
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -10,6 +11,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import kotlin.math.abs
 
 /**
  * Two Pokémon side by side: types, base stats on bars growing out from the middle, every attacking type that is not
@@ -35,13 +37,14 @@ class CompareActivity : Activity() {
 
     /**
      * Picks side `i`; picking the first while the second is empty goes straight on to it. With the other side picked
-     * the title names it: the second list looked the same as the first, as if the first pick had not counted.
+     * the title names it and [slots] show it: the second list looked the same as the first, as if the first pick had
+     * not counted, and the title alone was still easy to miss.
      */
     private fun pick(i: Int) {
         val teams = TeamsActivity.members(this, dex, game)
         val other = dex.monOrNull(nums[1 - i])
         val heading = if (other == null) L.t("Compare") else L.f("Compare with %s", other.name)
-        TeamsActivity.pick(this, dex, game, heading, if (teams.isEmpty()) null else L.t("Teams") to teams) { x ->
+        TeamsActivity.pick(this, dex, game, heading, if (teams.isEmpty()) null else L.t("Teams") to teams, other?.let { slots(i, it) }) { x ->
             nums[i] = x.num
             render()
             if (i == 0 && nums[1] == 0) pick(1)
@@ -69,9 +72,16 @@ class CompareActivity : Activity() {
             val defenses = Ui.panel(this, L.t("Type defenses"))
             val ta = dex.types(game, a)
             val tb = dex.types(game, b)
+            // Attacking types each side is weak to and resists (immunities included), for the verdict.
+            val weak = IntArray(2)
+            val resist = IntArray(2)
             for (t in dex.types(game)) {
                 val fa = dex.factor(game, t, ta)
                 val fb = dex.factor(game, t, tb)
+                for ((k, f) in listOf(fa, fb).withIndex()) {
+                    if (f > 100) weak[k]++
+                    if (f < 100) resist[k]++
+                }
                 if (fa == 100 && fb == 100) continue
                 // Less damage taken is better, so the values go in negated.
                 defenses.addView(sides(Ui.pill(this, t), -fa, -fb, CalcActivity.effect(fa), CalcActivity.effect(fb), false))
@@ -81,26 +91,47 @@ class CompareActivity : Activity() {
             val abilities = Ui.panel(this, L.t("Abilities"))
             abilities.addView(pair(this, abilities(a), abilities(b), 12))
             root.addView(abilities, Ui.wide(this, 0, 12))
+            root.addView(verdict(a, b, weak, resist), Ui.wide(this, 0, 12))
         }
         scroll.removeAllViews()
         scroll.addView(root)
     }
 
-    /** Sprite, name and types; tap to pick another. An empty side is a slot to fill: dashed outline, a plus for the sprite. */
+    /**
+     * The short answer, last: who is better in more of four plain measures, each shown so it can be checked. Fewer
+     * weaknesses is better, so those go in negated like the defenses.
+     */
+    private fun verdict(a: Dex.Mon, b: Dex.Mon, weak: IntArray, resist: IntArray): View {
+        val rows = listOf(
+            Triple(L.t("Total"), a.bst, b.bst),
+            Triple(L.t(Dex.STATS[5]), a.stats[5], b.stats[5]),
+            Triple(L.t("Weaknesses"), -weak[0], -weak[1]),
+            Triple(L.t("Resistances"), resist[0], resist[1]))
+        val wins = intArrayOf(rows.count { it.second > it.third }, rows.count { it.third > it.second })
+        val best = if (wins[0] == wins[1]) null else if (wins[0] > wins[1]) a else b
+        val p = Ui.panel(this, null)
+        val top = LinearLayout(this)
+        top.gravity = Gravity.CENTER_VERTICAL
+        top.setPadding(0, 0, 0, Ui.dp(this, 8))
+        if (best != null) top.addView(ImageView(this).apply { setImageDrawable(Ui.sprite(this@CompareActivity, best.num, 2)) },
+            Ui.margins(Ui.dp(this, 56), Ui.dp(this, 56), this, 0, 0, 10, 0))
+        val texts = Ui.vertical(this)
+        texts.addView(Ui.text(this, if (best == null) L.t("Too close to call") else L.f("%s comes out ahead", best.name), 17, true))
+        texts.addView(Ui.muted(this, if (best == null) L.f("Each is better in %d of these %d.", wins[0], rows.size)
+            else L.f("Better in %d of these %d.", maxOf(wins[0], wins[1]), rows.size), 13))
+        top.addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        p.addView(top)
+        for ((name, x, y) in rows) p.addView(sides(label(name), x, y, abs(x).toString(), abs(y).toString(), false))
+        return p
+    }
+
+    /** Sprite, name and types; tap to pick another. */
     private fun head(i: Int, m: Dex.Mon?): View {
         val h = Ui.vertical(this)
         h.gravity = Gravity.CENTER_HORIZONTAL
-        val face = Ui.rounded(this, Ui.SURFACE, 18)
-        if (m == null) face.setStroke(Ui.dp(this, 2), Ui.MUTED, Ui.dp(this, 6).toFloat(), Ui.dp(this, 4).toFloat())
-        h.background = Ui.pressable(this, face, 18)
+        h.background = Ui.pressable(this, face(m, 18), 18)
         h.setPadding(Ui.dp(this, 10), Ui.dp(this, 12), Ui.dp(this, 10), Ui.dp(this, 12))
-        val img = if (m != null) ImageView(this).apply { setImageDrawable(Ui.sprite(this@CompareActivity, m.num, 2)) }
-            else Ui.text(this, "+", 40, false).apply {
-                setTextColor(Ui.MUTED)
-                gravity = Gravity.CENTER
-                background = Ui.rounded(this@CompareActivity, Ui.FILL, 48)
-            }
-        h.addView(img, LinearLayout.LayoutParams(Ui.dp(this, 96), Ui.dp(this, 96)))
+        h.addView(image(m, 40), LinearLayout.LayoutParams(Ui.dp(this, 96), Ui.dp(this, 96)))
         val name = Ui.text(this, m?.name ?: L.t("Choose a Pokémon"), 16, true)
         if (m == null) name.setTextColor(Ui.MUTED)
         name.gravity = Gravity.CENTER
@@ -109,6 +140,43 @@ class CompareActivity : Activity() {
             Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 6, 0, 0))
         h.setOnClickListener { pick(i) }
         return h
+    }
+
+    /** An empty side is a slot to fill: dashed outline on `fill`, and [image] draws a plus for the sprite. */
+    private fun face(m: Dex.Mon?, radius: Int, fill: Int = Ui.SURFACE): GradientDrawable {
+        val face = Ui.rounded(this, if (m == null) Ui.SURFACE else fill, radius)
+        if (m == null) face.setStroke(Ui.dp(this, 2), Ui.MUTED, Ui.dp(this, 6).toFloat(), Ui.dp(this, 4).toFloat())
+        return face
+    }
+
+    private fun image(m: Dex.Mon?, plusSp: Int): View =
+        if (m != null) ImageView(this).apply { setImageDrawable(Ui.sprite(this@CompareActivity, m.num, 2)) }
+        else Ui.text(this, "+", plusSp, false).apply {
+            setTextColor(Ui.MUTED)
+            gravity = Gravity.CENTER
+            background = Ui.rounded(this@CompareActivity, Ui.FILL, 48)
+        }
+
+    /** Above the second list: the side already picked and the one being picked, in their places, "vs" between. */
+    private fun slots(i: Int, other: Dex.Mon): View {
+        val row = LinearLayout(this)
+        row.gravity = Gravity.CENTER_VERTICAL
+        val both = if (i == 1) listOf(other, null) else listOf(null, other)
+        for ((k, m) in both.withIndex()) {
+            if (k == 1) row.addView(Ui.muted(this, L.t("vs"), 13), Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, this, 8, 0, 8, 0))
+            val s = LinearLayout(this)
+            s.gravity = Gravity.CENTER_VERTICAL
+            s.background = face(m, 14, Ui.FILL)
+            s.setPadding(Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 10), Ui.dp(this, 6))
+            s.addView(image(m, 22), LinearLayout.LayoutParams(Ui.dp(this, 40), Ui.dp(this, 40)))
+            val name = Ui.text(this, m?.name ?: L.t("Choose a Pokémon"), 14, true)
+            name.maxLines = 2
+            if (m == null) name.setTextColor(Ui.MUTED)
+            s.addView(name, Ui.margins(0, ViewGroup.LayoutParams.WRAP_CONTENT, this, 8, 0, 0, 0).apply { weight = 1f })
+            row.addView(s, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        }
+        return row
     }
 
     private fun label(s: String): View {

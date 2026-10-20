@@ -263,6 +263,12 @@ class Dex {
     return [base, ...(this.forms.get(base.num) ?? [])];
   }
 
+  /** A form with its species' types in `g` and its abilities (Gourgeist's sizes): pickers list only the species. */
+  alike(g, m) {
+    const s = this.mon(m.species);
+    return m !== s && this.typesOf(g, m).join() === this.typesOf(g, s).join() && m.abilities.join() === s.abilities.join() && m.hidden === s.hidden;
+  }
+
   /** See Dex.neighbor: 0 past either end, -1 when the species is not in `order`. */
   neighbor(order, num, step) {
     const species = this.mon(num).species;

@@ -173,7 +173,10 @@ Generation	世代
 National	全国
 %s  ·  %d of %d  ·  caught %d	%s  ·  %d / %d  ·  捕獲 %d
 Regional	地方
-Gen	世代
+Filters	絞り込み
+Format	フォーマット
+Evolve	進化させる
+Form	フォルム
 Gen %s	第%s世代
 All	すべて
 Not caught	未捕獲
@@ -278,6 +281,13 @@ Choose a move	わざを選択
 Choose both Pokémon and a move.	ポケモン2匹とわざを選んでください。
 Compare	比較
 Compare with %s	%sと比較
+vs	vs
+%s comes out ahead	%sが優勢
+Too close to call	互角
+Better in %d of these %d.	下の%2$d項目中%1$d項目で上回る。
+Each is better in %d of these %d.	どちらも下の%2$d項目中%1$d項目で上回る。
+Weaknesses	弱点
+Resistances	耐性
 Damage	ダメージ
 Damage calc	ダメージ計算
 Defender	防御側

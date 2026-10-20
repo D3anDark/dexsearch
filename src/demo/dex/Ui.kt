@@ -50,7 +50,6 @@ import android.widget.BaseAdapter
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.GridView
-import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ListView
@@ -519,6 +518,7 @@ object Ui {
         t.gravity = Gravity.CENTER
         t.setPadding(dp(c, 14), dp(c, 8), dp(c, 14), dp(c, 8))
         t.setSingleLine()
+        t.ellipsize = TextUtils.TruncateAt.END
         // 44 dp to tap, the pill drawn 34 dp tall inside it.
         t.minHeight = dp(c, 44)
         t.setOnClickListener(l)
@@ -542,18 +542,48 @@ object Ui {
         v.setPadding(l, t, r, b)
     }
 
-    /** Horizontally scrolling row for chips; add them with [addChip]. */
-    fun chipBar(c: Context, chips: LinearLayout): HorizontalScrollView {
-        val s = HorizontalScrollView(c)
-        s.isHorizontalScrollBarEnabled = false
-        s.clipToPadding = false
-        s.setPadding(dp(c, 16), 0, dp(c, 8), 0)
-        s.addView(chips)
-        return s
+    /**
+     * One line of chips across the width, added with [addChip]: never wrapping, never scrolling sideways, so a screen
+     * scrolls one way only. Chips share out the room left over. When they do not fit, their side padding drops from
+     * 14 to 8 dp, then every label shrinks by the same factor down to 11 sp; past that the longest ends in "...".
+     * Screens keep a row to about four chips for that, the rest goes into a sheet.
+     */
+    fun chipBar(c: Context, chips: LinearLayout): FrameLayout {
+        val probe = Paint()
+        val full = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 14f, c.resources.displayMetrics)
+        val bar = object : FrameLayout(c) {
+            override fun onMeasure(widthSpec: Int, heightSpec: Int) {
+                val shown = (0 until chips.childCount).map { chips.getChildAt(it) as TextView }.filter { it.visibility != GONE }
+                val room = MeasureSpec.getSize(widthSpec) - paddingLeft - paddingRight - (shown.size - 1) * dp(c, 8)
+                // Widths at 14 sp from a copy of the paint: resizing the chips to measure would ask for another layout.
+                var text = 0f
+                for (t in shown) {
+                    probe.set(t.paint)
+                    probe.textSize = full
+                    text += probe.measureText(t.text.toString())
+                }
+                val pad = dp(c, if (text + shown.size * dp(c, 28) <= room) 14 else 8)
+                val scale = if (text > 0f) ((room - shown.size * 2 * pad) / text).coerceIn(11f / 14f, 1f) else 1f
+                // Both calls skip an unchanged value, so the pass after this one changes nothing.
+                for (t in shown) {
+                    t.setPadding(pad, t.paddingTop, pad, t.paddingBottom)
+                    t.setTextSize(TypedValue.COMPLEX_UNIT_PX, full * scale)
+                }
+                super.onMeasure(widthSpec, heightSpec)
+            }
+        }
+        // Gaps between chips only, so a bar with its padding cleared lines up with both edges of a panel.
+        val gap = GradientDrawable()
+        gap.setSize(dp(c, 8), 0)
+        chips.dividerDrawable = gap
+        chips.showDividers = LinearLayout.SHOW_DIVIDER_MIDDLE
+        bar.setPadding(dp(c, 16), 0, dp(c, 16), 0)
+        bar.addView(chips, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        return bar
     }
 
     fun addChip(bar: LinearLayout, chip: TextView) {
-        bar.addView(chip, margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, bar.context, 0, 0, 8, 0))
+        bar.addView(chip, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
     }
 
     /** Segmented control filling `into`; `picked` gets the index. Highlight one with [segmentActive]. */
@@ -1199,11 +1229,14 @@ object Ui {
      * Headers show only while the search is empty. Rows match on their shown or English name.
      */
     fun pickSearch(a: Activity, heading: String, items: List<Item>, picked: (Any?) -> Unit) {
-        pickSearch(a, heading, emptyArray(), listOf(items), picked)
+        pickSearch(a, heading, emptyArray(), listOf(items), picked = picked)
     }
 
-    /** With two or more tabs, a segmented control above the search box switches lists; the search applies to each. */
-    fun pickSearch(a: Activity, heading: String, tabs: Array<String>, lists: List<List<Item>>, picked: (Any?) -> Unit) {
+    /**
+     * With two or more tabs, a segmented control above the search box switches lists; the search applies to each.
+     * `top` goes first, under the heading.
+     */
+    fun pickSearch(a: Activity, heading: String, tabs: Array<String>, lists: List<List<Item>>, top: View? = null, picked: (Any?) -> Unit) {
         val adapter = Adapter()
         val lv = list(a, false) as ListView
         lv.adapter = adapter
@@ -1220,6 +1253,7 @@ object Ui {
         val d = Sheet(a, heading)
         val content = d.body
         content.setPadding(0, 0, 0, 0)
+        if (top != null) content.addView(top, wide(a, 0, 10))
         if (tabs.size > 1) {
             val bar = LinearLayout(a)
             lateinit var segs: Array<TextView>

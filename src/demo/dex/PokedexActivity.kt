@@ -28,9 +28,7 @@ class PokedexActivity : ListScreen() {
     private lateinit var caught: Set<String>
     private lateinit var dexChip: TextView
     private lateinit var typeChip: TextView
-    private lateinit var genChip: TextView
-    private lateinit var caughtChip: TextView
-    private lateinit var bstChip: TextView
+    private lateinit var filterChip: TextView
     private lateinit var sortChip: TextView
 
     override fun heading() = if (gen > 0) L.f("Gen %d Pokédex", gen) else L.t("Pokédex")
@@ -52,20 +50,7 @@ class PokedexActivity : ListScreen() {
         }
         if (game.virtual) dexChip.visibility = View.GONE
         typeChip = addChip { Ui.pickMany(this, L.t("Type (must have all)"), dex.types(game), types, this::refresh) }
-        genChip = addChip { pickGens(allGens) }
-        if (gen > 0) genChip.visibility = View.GONE
-        caughtChip = addChip {
-            Ui.pickOne(this, L.t("Caught"), CAUGHT.map { L.t(it) }, caughtFilter) { i ->
-                caughtFilter = i
-                refresh()
-            }
-        }
-        bstChip = addChip {
-            Ui.pickOne(this, L.t("Lowest base stat total"), BST.map { if (it == 0) L.t("All") else "$it+" }, BST.indexOf(minBst)) { i ->
-                minBst = BST[i]
-                refresh()
-            }
-        }
+        filterChip = addChip { filters(allGens) }
         sortChip = addChip {
             Ui.pickOne(this, L.t("Sort"), sorts, sort.ordinal) { i ->
                 sort = Dex.Sort.entries[i]
@@ -100,14 +85,46 @@ class PokedexActivity : ListScreen() {
         Ui.chipActive(dexChip, national)
         typeChip.text = if (types.isEmpty()) L.t("Type") else types.joinToString(" / ") { dex.label(it) }
         Ui.chipActive(typeChip, types.isNotEmpty())
-        genChip.text = if (gens.isEmpty()) L.t("Gen") else L.f("Gen %s", gens.joinToString(","))
-        Ui.chipActive(genChip, gens.isNotEmpty())
-        caughtChip.text = if (caughtFilter == 0) L.t("Caught") else L.t(CAUGHT[caughtFilter])
-        Ui.chipActive(caughtChip, caughtFilter != 0)
-        bstChip.text = if (minBst == 0) L.t("BST") else L.f("BST %d+", minBst)
-        Ui.chipActive(bstChip, minBst != 0)
+        val on = listOfNotNull(
+            if (gens.isEmpty()) null else L.f("Gen %s", gens.joinToString(",")),
+            if (caughtFilter == 0) null else L.t(CAUGHT[caughtFilter]),
+            if (minBst == 0) null else L.f("BST %d+", minBst))
+        filterChip.text = if (on.isEmpty()) L.t("Filters") else on.joinToString("  ·  ")
+        Ui.chipActive(filterChip, on.isNotEmpty())
         sortChip.text = L.f("Sort: %s", L.t(sort.label))
         Ui.chipActive(sortChip, sort != Dex.Sort.NUMBER)
+    }
+
+    /**
+     * Generation (when the list spans several), caught and lowest total in one sheet, so the chip row fits one line.
+     * A row closes it and opens that filter's own picker.
+     */
+    private fun filters(allGens: List<Int>) {
+        val s = Ui.Sheet(this, L.t("Filters"))
+        val add = { label: String, value: String, open: () -> Unit ->
+            s.body.addView(Ui.setting(this, label, value) { if (s.close()) open() })
+        }
+        if (gen == 0) add(L.t("Generation"), if (gens.isEmpty()) L.t("All") else gens.joinToString(", ")) { pickGens(allGens) }
+        add(L.t("Caught"), L.t(CAUGHT[caughtFilter])) {
+            Ui.pickOne(this, L.t("Caught"), CAUGHT.map { L.t(it) }, caughtFilter) { i ->
+                caughtFilter = i
+                refresh()
+            }
+        }
+        add(L.t("Lowest base stat total"), if (minBst == 0) L.t("All") else "$minBst+") {
+            Ui.pickOne(this, L.t("Lowest base stat total"), BST.map { if (it == 0) L.t("All") else "$it+" }, BST.indexOf(minBst)) { i ->
+                minBst = BST[i]
+                refresh()
+            }
+        }
+        if (gens.isNotEmpty() || caughtFilter != 0 || minBst != 0) s.button(L.t("Clear")) {
+            gens.clear()
+            caughtFilter = 0
+            minBst = 0
+            refresh()
+        }
+        s.button(L.t("Done"), main = true)
+        s.show()
     }
 
     /**

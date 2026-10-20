@@ -711,7 +711,8 @@ class MonActivity : Activity() {
         }
         for ((k, col) in cols.withIndex()) {
             if (col.isEmpty()) continue
-            val chip = Ui.chip(this, L.t(Dex.METHODS[k]) + "  " + (if (k == 0) col.size / 2 else col.size)) {
+            // No count beside the name: five methods with counts do not fit one line at 360 dp in Polish.
+            val chip = Ui.chip(this, L.t(Dex.METHODS[k])) {
                 method = k
                 moves(m)
             }

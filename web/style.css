@@ -92,8 +92,10 @@ img { -webkit-touch-callout: none; -webkit-user-drag: none; user-select: none; }
 }
 .chip.on { background: var(--accent) padding-box; color: #fff; }
 .chip.danger { color: var(--accent-text); }
-.chips { display: flex; gap: 8px; overflow-x: auto; padding: 0 16px 3px; scrollbar-width: none; }
-.chips::-webkit-scrollbar { display: none; }
+/* One line, never scrolling sideways: fit() in app.js sets --pad and --fs when the labels do not fit. */
+.chips { display: flex; gap: 8px; padding: 0 16px 3px; --pad: 14px; --fs: 14px; }
+.chips > .chip { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; padding-inline: var(--pad); font-size: var(--fs); }
+.chips.measure > .chip { flex: none; }
 .wrap { display: flex; flex-wrap: wrap; gap: 0 8px; }
 
 /* Each segment reaches the control's edge to be tapped and draws its highlight 4px inside (radius 15 - 4 = 11). */
@@ -189,6 +191,7 @@ img.pixel { image-rendering: pixelated; }
 .set { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 4px; width: 100%; border-radius: 10px; background: var(--surface); }
 .set > span:first-child { flex: 1; font-size: 15px; }
 .set .v { flex: 2; font-size: 15px; font-weight: 700; color: var(--accent-text); text-align: end; }
+.set + .note { padding-inline: 4px; }
 input.num {
   width: 60px; font: inherit; font-size: 16px; text-align: center; color: var(--text); background: var(--fill); border: 0;
   border-radius: 10px; padding: 6px; -moz-appearance: textfield; appearance: textfield;
@@ -268,7 +271,9 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .slot { flex: 1; height: 46px; border-radius: 50%; background: var(--fill); display: grid; place-items: center; overflow: hidden; }
 .slot img { height: 46px; width: 46px; object-fit: contain; }
 .button { display: block; width: calc(100% - 32px); margin: 6px 16px 0; padding: 14px 16px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; text-align: center; }
-.tip + .tip { margin-top: 14px; }
+.tip + .tip { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--fill); }
+.fix { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--good) var(--tone), var(--surface)); }
+.fix .bold { font-size: 14px; color: var(--good); }
 .tip .chip { margin-top: 8px; }
 .defs { display: flex; gap: 12px; }
 .defs > div { flex: 1; min-width: 0; }
@@ -287,6 +292,18 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .headcard.empty .nm { color: var(--muted); }
 .headcard .plus { width: 96px; height: 96px; border-radius: 50%; background: var(--fill); color: var(--muted); font-size: 40px; display: grid; place-items: center; }
 .headcard .pills { width: 100%; margin-top: 6px; }
+/* Above the second list: the side already picked and the one being picked, in their places. */
+.slots { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.slot { flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 8px; background: var(--fill); border-radius: 14px; padding: 6px 10px 6px 6px; }
+.slot img, .slot .plus { width: 40px; height: 40px; flex: none; object-fit: contain; }
+.slot .plus { border-radius: 50%; background: var(--fill); color: var(--muted); font-size: 22px; display: grid; place-items: center; }
+.slot .nm { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.slot.empty { background: var(--surface); outline: 2px dashed var(--muted); outline-offset: -2px; }
+.slot.empty .nm { color: var(--muted); }
+.verdict { display: flex; align-items: center; gap: 10px; padding-bottom: 8px; }
+.verdict img { width: 56px; height: 56px; object-fit: contain; flex: none; }
+.verdict .h { font-size: 17px; font-weight: 700; text-wrap: balance; }
+.verdict .muted { font-size: 13px; }
 .lvl { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 .sides { display: flex; align-items: center; padding: 5px 0; }
 .sides.bars { padding: 4px 0; }
@@ -366,11 +383,13 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 /* Caught and Add to team side by side on the Pokémon page. */
 .hero .acts { display: flex; gap: 8px; margin-top: 14px; }
 .hero .acts .add { flex: 1; min-width: 0; margin-top: 0; }
+.hero .acts div.add { background: none; }
+.hero .stage { display: flex; align-items: center; justify-content: center; gap: 6px; padding-inline: 12px; }
+.hero .stage span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hero .mark[aria-pressed="true"] { background: #fff; color: var(--ink); }
 
 /* Smogon set cards, as MemberActivity.buildCard. */
 .builds .build { margin-top: 12px; }
-.sheet .builds > .chips { margin: 0 -16px; }
 .build.fill { background: var(--fill); }
 .btop { display: flex; align-items: center; gap: 6px; }
 .btop > div { flex: 1; min-width: 0; }
@@ -390,10 +409,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .steps { padding-left: 22px; font-size: 16px; line-height: 1.4; }
 .steps li + li { margin-top: 10px; }
 
-/* Mouse and trackpad. The hidden scroll bar of a chip bar leaves a mouse no way to reach the chips past the edge. */
-@media (pointer: fine) {
-  .chips { flex-wrap: wrap; }
-}
+/* Mouse and trackpad. */
 @media (hover: hover) {
   button:not(.on):not(:disabled):hover, [role=button]:hover { box-shadow: inset 0 0 0 100vmax var(--hover); }
 }

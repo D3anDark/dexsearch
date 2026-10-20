@@ -173,7 +173,10 @@ Generation	Generación
 National	Nacional
 %s  ·  %d of %d  ·  caught %d	%s  ·  %d de %d  ·  capturados %d
 Regional	Regional
-Gen	Gen.
+Filters	Filtros
+Format	Formato
+Evolve	Evolucionar
+Form	Forma
 Gen %s	Gen. %s
 All	Todos
 Not caught	No capturados
@@ -278,6 +281,13 @@ Choose a move	Elige un movimiento
 Choose both Pokémon and a move.	Elige los dos Pokémon y un movimiento.
 Compare	Comparar
 Compare with %s	Comparar con %s
+vs	vs
+%s comes out ahead	%s sale ganando
+Too close to call	Sin un claro ganador
+Better in %d of these %d.	Mejor en %d de estas %d.
+Each is better in %d of these %d.	Cada uno es mejor en %d de estas %d.
+Weaknesses	Debilidades
+Resistances	Resistencias
 Damage	Daño
 Damage calc	Calculadora de daño
 Defender	Defensor
