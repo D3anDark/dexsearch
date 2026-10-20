@@ -129,6 +129,22 @@ const lang = async code => {
   kept.item = Team.EVIOLITE;
   check(fox.evolved(d, d.whole, fox.members[0]).num === 10104 && !fox.overlaps(d).length && fox.evolved(d, d.whole, eevee).num === 133
     && fox.evolved(d, d.whole, kept).num === 10103, 'Alolan Vulpix counts as Alolan Ninetales, so no overlap with Lucario; Eevee and an Eviolite stay');
+  const umbreon = { ...Team.member(133, 0, 20), evo: 197 };
+  const gallade = { ...Team.member(280, 0, 20), evo: 475 };
+  const picked = new Team('', WHOLE);
+  picked.members.push(umbreon);
+  check(fox.evolved(d, d.whole, umbreon).num === 197 && fox.evolved(d, d.whole, gallade).num === 475
+    && Team.parse(picked.format()).members[0].evo === 197 && Team.parse(fox.format()).members[0].evo === 0
+    && fox.branches(d, d.whole, umbreon).length === 8 && !fox.branches(d, d.whole, Team.member(236, 0, 20)).length,
+    'Eevee picked as Umbreon and Ralts as Gallade count as them and keep the pick; Tyrogue asks nothing');
+  const lesson = new Team('', sv.id);
+  lesson.members.push(Team.member(445, 0, 50));
+  lesson.members[0].moves[0] = 337;
+  const open = await lesson.teach(d, 'fire');
+  lesson.members[0].moves = [337, 89, 14, 523];
+  const full = await lesson.teach(d, 'fire');
+  check(open && open.slot === 1 && d.move(sv, open.move).type === 'fire' && d.move(sv, open.move).category === 'physical'
+    && full && full.slot === 3 && full.move === open.move, 'Garchomp learns a physical Fire move, else in place of Bulldoze: ' + JSON.stringify([open, full]));
   check(Team.damage(75, 65, 123, 163, true, 400).join() === '168,196' && Team.damage(50, 40, 10, 400, false, 50)[0] === 1
     && Team.damage(50, 90, 100, 100, true, 0)[1] === 0, 'damage');
 

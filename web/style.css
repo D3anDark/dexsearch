@@ -188,10 +188,11 @@ img.pixel { image-rendering: pixelated; }
 .hero .cols b { display: block; font-size: 22px; }
 .hero .cols span { font-size: 12px; }
 
-.set { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 4px; width: 100%; border-radius: 10px; background: var(--surface); }
+.set { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 8px; width: 100%; border-radius: 10px; background: var(--surface); }
+/* Inside a panel or sheet the label lines up with the heading; the hover and press fill reach 8 px past it. */
+.set:not(.wide) { margin-inline: -8px; width: calc(100% + 16px); }
 .set > span:first-child { flex: 1; font-size: 15px; }
 .set .v { flex: 2; font-size: 15px; font-weight: 700; color: var(--accent-text); text-align: end; }
-.set + .note { padding-inline: 4px; }
 input.num {
   width: 60px; font: inherit; font-size: 16px; text-align: center; color: var(--text); background: var(--fill); border: 0;
   border-radius: 10px; padding: 6px; -moz-appearance: textfield; appearance: textfield;

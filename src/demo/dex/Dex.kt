@@ -907,6 +907,21 @@ class Dex private constructor(private val assets: Assets) {
             check(fox.evolved(d, d.whole, fox.members[0]).num == 10104 && fox.overlaps(d).isEmpty()
                     && fox.evolved(d, d.whole, Team.Member(133, 0, 20)).num == 133 && fox.evolved(d, d.whole, kept).num == 10103,
                 "Alolan Vulpix counts as Alolan Ninetales, so no overlap with Lucario; Eevee and an Eviolite holder stay")
+            val umbreon = Team.Member(133, 0, 20).apply { evo = 197 }
+            val gallade = Team.Member(280, 0, 20).apply { evo = 475 }
+            val picked = Team.parse(Team("", WHOLE).apply { members.add(umbreon) }.format()).members[0]
+            check(fox.evolved(d, d.whole, umbreon).num == 197 && fox.evolved(d, d.whole, gallade).num == 475 && picked.evo == 197
+                    && fox.branches(d, d.whole, umbreon).size == 8 && fox.branches(d, d.whole, Team.Member(236, 0, 20)).isEmpty()
+                    && Team.parse(fox.format()).members[0].evo == 0,
+                "Eevee picked as Umbreon and Ralts as Gallade count as them and keep the pick; Tyrogue's all-Fighting ends ask nothing")
+            val lesson = Team("", sv.id).apply { members.add(Team.Member(445, 0, 50).apply { moves[0] = 337 }) }
+            val open = lesson.teach(d, "fire")
+            lesson.members[0].apply { moves[1] = 89; moves[2] = 14; moves[3] = 523 }
+            val full = lesson.teach(d, "fire")
+            check(open != null && open.slot == 1 && d.move(sv, open.move).let { it.type == "fire" && it.category == "physical" }
+                    && full != null && full.slot == 3 && full.move == open.move,
+                "Garchomp learns a physical Fire move into its empty slot, else in place of Bulldoze, not Swords Dance or its other attacks: " +
+                    "${open?.let { d.move(it.move).name }} in ${open?.slot}, ${full?.slot}")
             check(Team.damage(75, 65, 123, 163, true, 400).contentEquals(intArrayOf(168, 196))
                     && Team.damage(50, 40, 10, 400, false, 50)[0] == 1 && Team.damage(50, 90, 100, 100, true, 0)[1] == 0,
                 "damage: Glaceon's Ice Fang on Garchomp 168-196 (Bulbapedia), at least 1, 0 if immune")

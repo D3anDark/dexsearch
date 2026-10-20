@@ -176,6 +176,14 @@ class MemberActivity : Activity() {
         if (forms.size > 1) p.addView(Ui.setting(this, L.t("Form"), m.name) {
             Ui.pickOne(this, L.t("Form"), forms.map { it.name }, forms.indexOf(m)) { i -> setForm(forms[i]) }
         })
+        // What Team.evolved counts it as in the tips, where the line branches.
+        val ways = team.branches(dex, game, x)
+        if (ways.isNotEmpty()) p.addView(Ui.setting(this, L.t("Evolves into"), ways.firstOrNull { it.num == x.evo }?.name ?: L.t("Not set")) {
+            Ui.pickOne(this, L.t("Evolves into"), ways.map { it.name }, ways.indexOfFirst { it.num == x.evo }) { i ->
+                x.evo = ways[i].num
+                render()
+            }
+        })
         val sets = builds(m)
         if (sets.isNotEmpty()) p.addView(Ui.setting(this, L.t("Smogon set"), L.f("Sets: %d", sets.size)) { pickBuild(sets) })
         if (game.gen >= 3) {

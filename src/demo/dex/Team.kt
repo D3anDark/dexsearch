@@ -19,12 +19,17 @@ class Team(var name: String, val game: Int) {
         val ivs = IntArray(6) { IV_MAX }
         /** Move ids, 0 for an empty slot. */
         val moves = IntArray(MOVES)
+        /** Last stage picked where the evolution branches (Eevee into Umbreon), 0 until picked; see [evolved]. */
+        var evo = 0
 
         /** Most EVs this stat can take: 252, less whatever the other five already use of the 510 total. */
         fun evRoom(stat: Int) = minOf(EV_STAT, EV_TOTAL - evs.sum() + evs[stat])
     }
 
-    /** name, game, members separated by tabs; a member is num,ability,item,nature,tera,level, 6 EVs, 6 IVs, 4 moves. */
+    /**
+     * name, game, members separated by tabs; a member is num,ability,item,nature,tera,level, 6 EVs, 6 IVs, 4 moves, and
+     * then [Member.evo] when picked; teams saved before it was added have 22 fields.
+     */
     fun format(): String {
         val b = StringBuilder(name.replace('\t', ' ').replace('\n', ' ')).append('\t').append(game).append('\t')
         for ((i, m) in members.withIndex()) {
@@ -32,6 +37,7 @@ class Team(var name: String, val game: Int) {
             b.append(m.num).append(',').append(m.ability).append(',').append(m.item).append(',').append(m.nature)
                 .append(',').append(m.tera).append(',').append(m.level)
             for (part in arrayOf(m.evs, m.ivs, m.moves)) for (v in part) b.append(',').append(v)
+            if (m.evo != 0) b.append(',').append(m.evo)
         }
         return b.toString()
     }
@@ -60,17 +66,33 @@ class Team(var name: String, val game: Int) {
 
     /**
      * What member `x` counts as in the type checks below: the Pokémon it ends up as while each stage has one evolution
-     * in `g`, as a team built during a playthrough will (Alolan Vulpix: Alolan Ninetales, part Fairy). It stays as it is
-     * at a branch (Eevee, Kirlia) and when holding an Eviolite, which only helps a Pokémon that has not evolved.
+     * in `g`, as a team built during a playthrough will (Alolan Vulpix: Alolan Ninetales, part Fairy). At a branch (Eevee,
+     * Kirlia) it takes the way to [Member.evo] and stays as it is until one is picked; it also stays when holding an
+     * Eviolite, which only helps a Pokémon that has not evolved.
      */
     fun evolved(d: Dex, g: Dex.Game, x: Member): Dex.Mon {
         var m = d.mon(x.num)
         if (x.item == EVIOLITE) return m
         while (true) {
             val next = d.evolutions(m.num).map { it.to }.distinct().filter { g.byNum.containsKey(it) }
-            if (next.size != 1) return m
-            m = d.mon(next[0])
+            m = d.mon(next.singleOrNull() ?: next.firstOrNull { it == x.evo || reaches(d, it, x.evo) } ?: return m)
         }
+    }
+
+    /**
+     * Last stages member `x` can reach in `g` (Eevee: eight), when they differ in type, else empty: Tyrogue's three are
+     * all Fighting, so the pick would change no tip. Empty with an Eviolite too, as [evolved] then stays.
+     */
+    fun branches(d: Dex, g: Dex.Game, x: Member): List<Dex.Mon> {
+        if (x.item == EVIOLITE) return emptyList()
+        val out = LinkedHashSet<Int>()
+        fun walk(n: Int) {
+            val next = d.evolutions(n).map { it.to }.distinct().filter { g.byNum.containsKey(it) }
+            if (next.isEmpty()) out.add(n) else next.forEach { walk(it) }
+        }
+        walk(x.num)
+        val ends = out.map { d.mon(it) }
+        return if (ends.map { d.types(g, it) }.distinct().size > 1) ends else emptyList()
     }
 
     /**
@@ -129,6 +151,49 @@ class Team(var name: String, val game: Int) {
             best(counter + uncovered) { a, t -> d.factor(g, types[a], listOf(types[t])) > 100 })
     }
 
+    /** Move `move` for member `member`, in `slot` (empty, or holding the attack it replaces). */
+    class Lesson(val member: Int, val slot: Int, val move: Int)
+
+    /**
+     * The best `type` attack a member can learn, as [evolved], and where it goes: an empty slot, else the weakest attack
+     * whose loss leaves every type in [offense] still hit; status moves stay. Ranked by power, accuracy, same-type bonus
+     * and the attacking base stat for its category. ponytail: learn level, TM availability and the member's level are
+     * not checked; awkward moves are left out by their effect text ([AWKWARD]).
+     */
+    fun teach(d: Dex, type: String): Lesson? {
+        val g = d.game(game)
+        val before = offense(d)
+        var best: Lesson? = null
+        var top = 0
+        for ((k, x) in members.withIndex()) {
+            val m = evolved(d, g, x)
+            val cols = d.learnGame(g, m)?.let { d.learnset(it, m) } ?: continue
+            val stab = d.types(g, m)
+            val score = { mv: Dex.Move ->
+                mv.power * (if (mv.accuracy == 0) 100 else mv.accuracy) * (if (mv.type in stab) 3 else 2) *
+                    m.stats[if (mv.category == "physical") 1 else 3]
+            }
+            val learnable = cols.withIndex().flatMap { (c, col) -> if (c == 0) col.filterIndexed { i, _ -> i % 2 == 1 } else col.asList() }
+            val mv = learnable.distinct().filter { it !in x.moves }.map { d.move(g, it) }
+                .filter { it.type == type && it.category != "status" && it.power > 0 && !AWKWARD.containsMatchIn(it.shortEffect) }
+                .maxByOrNull(score) ?: continue
+            if (score(mv) <= top) continue
+            val slots = x.moves.indexOf(0).takeIf { it >= 0 }?.let { listOf(it) } ?: (0 until MOVES)
+                .filter { d.move(g, x.moves[it]).let { o -> o.category != "status" && o.power > 0 } }
+                .sortedBy { score(d.move(g, x.moves[it])) }
+            val slot = slots.firstOrNull { s ->
+                val old = x.moves[s]
+                x.moves[s] = mv.id
+                val after = offense(d)
+                x.moves[s] = old
+                before.indices.all { before[it] == 0 || after[it] > 0 }
+            } ?: continue
+            best = Lesson(k, slot, mv.id)
+            top = score(mv)
+        }
+        return best
+    }
+
     /** Members `a` < `b` that double up, and the attacking types (index into the game's types) both are weak to. */
     class Overlap(val a: Int, val b: Int, val weak: List<Int>)
 
@@ -181,11 +246,16 @@ class Team(var name: String, val game: Int) {
         private const val FIELDS = 6 + 6 + 6 + MOVES
         private const val SHEDINJA = 292
         private const val EVIOLITE = 581
+        /** Effect text of attacks a team does not run for coverage: recharge or charge turns, fainting, conditions. */
+        private val AWKWARD = Regex("recharge|faints|charge before|charges for|next turn|later|[Oo]nly (works|inflicts|be used)|" +
+            "[Ff]ails if|canceled|half of its max HP|damages the user\\.|no longer|Removes the user|readying|shares a type|Misty Terrain is active")
         /** Legendary, mythical, Ultra Beast and Paradox species, Articuno to Pecharunt; the data has no flag for them. */
         private val LEGENDS = listOf(144..146, 150..151, 243..245, 249..251, 377..386, 480..494, 638..649, 716..721,
             772..773, 785..809, 888..898, 905..905, 984..995, 1001..1010, 1014..1017, 1020..1025)
 
         fun legend(species: Int) = LEGENDS.any { species in it }
+
+        private fun reaches(d: Dex, from: Int, to: Int): Boolean = d.evolutions(from).any { it.to == to || reaches(d, it.to, to) }
 
         fun parse(line: String): Team {
             val f = line.split('\t')
@@ -193,7 +263,7 @@ class Team(var name: String, val game: Int) {
             if (f[2].isEmpty()) return t
             for (s in f[2].split(';')) {
                 val v = s.split(',').map { it.toInt() }.toIntArray()
-                require(v.size == FIELDS) { "member has ${v.size} fields: $s" }
+                require(v.size == FIELDS || v.size == FIELDS + 1) { "member has ${v.size} fields: $s" }
                 val m = Member(v[0], v[1], v[5])
                 m.item = v[2]
                 m.nature = v[3]
@@ -201,6 +271,7 @@ class Team(var name: String, val game: Int) {
                 v.copyInto(m.evs, 0, 6, 12)
                 v.copyInto(m.ivs, 0, 12, 18)
                 v.copyInto(m.moves, 0, 18, 18 + MOVES)
+                if (v.size > FIELDS) m.evo = v[FIELDS]
                 t.members.add(m)
             }
             return t

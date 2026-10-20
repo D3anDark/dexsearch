@@ -189,11 +189,38 @@ class TeamActivity : Activity() {
         if (g.wall >= 0) fix((counter ?: stacked)!!, L.f("Try a %s Pokémon", dex.label(types[g.wall])),
             L.f("It resists %s.", names((g.counter + g.stacked).filter { dex.factor(game, types[it], listOf(types[g.wall])) < 100 })),
             if (team.members.size < Team.SIZE) L.t("Suggestions") else null) { addMember() }
-        if (g.move >= 0) fix((uncovered ?: counter)!!, L.f("Try a %s move", dex.label(types[g.move])), L.f("It hits %s super effectively.",
-            names((g.counter + g.uncovered).filter { dex.factor(game, types[g.move], listOf(types[it])) > 100 })))
+        if (g.move >= 0) {
+            val hits = L.f("It hits %s super effectively.", names((g.counter + g.uncovered).filter { dex.factor(game, types[g.move], listOf(types[it])) > 100 }))
+            val t = team.teach(dex, types[g.move])
+            if (t == null) fix((uncovered ?: counter)!!, L.f("Try a %s move", dex.label(types[g.move])), hits)
+            else {
+                val x = team.members[t.member]
+                val mon = team.evolved(dex, game, x).name
+                val move = dex.move(game, t.move).name
+                val how = if (x.moves[t.slot] == 0) L.f("%s can learn %s.", mon, move)
+                    else L.f("%s can learn %s in place of %s.", mon, move, dex.move(game, x.moves[t.slot]).name)
+                fix((uncovered ?: counter)!!, L.f("Try a %s move", dex.label(types[g.move])), "$hits $how", L.f("Teach %s", move)) {
+                    x.moves[t.slot] = t.move
+                    TeamsActivity.save(this, teams)
+                    onResume()
+                }
+            }
+        }
         if (!team.attacks(dex)) tip(p, L.t("No attacks yet"), L.t("Give your Pokémon damaging moves to see what nothing counters."), emptyList())
         else if (p.childCount == 1) tip(p, L.t("No gaps"), L.t("Every type is resisted or hit super effectively, and none hits half the team."), emptyList())
         val ends = team.members.map { team.evolved(dex, game, it) }
+        // Until picked, a branching Pokémon counts as it is: Eevee stays Normal.
+        for ((i, x) in team.members.withIndex()) {
+            val ways = team.branches(dex, game, x)
+            if (ways.isEmpty() || ways.any { it.num == ends[i].num }) continue
+            tip(p, L.f("What will %s evolve into?", dex.mon(x.num).name), L.t("Tips count it as it is until you pick."), emptyList(), L.t("Pick evolution")) {
+                Ui.pickOne(this, L.t("Evolves into"), ways.map { it.name }, -1) { j ->
+                    x.evo = ways[j].num
+                    TeamsActivity.save(this, teams)
+                    onResume()
+                }
+            }
+        }
         // The lower base stat total once evolved is the one to swap: Noibat beside Garchomp, but Gible beside Noivern.
         for (o in team.overlaps(dex)) {
             val a = dex.mon(team.members[o.a].num)

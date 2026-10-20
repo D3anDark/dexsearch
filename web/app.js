@@ -1666,7 +1666,10 @@ function teamScreen(p, ti) {
     const y = p.el.scrollTop;
     p.el.replaceChildren(h('div', 'col', top, h('p', 'sub', g.name), slots,
       h('p', { class: 'note', style: 'padding:6px 20px 12px' }, L.t("Hold a Pokémon to swap it for another.")),
-      team.members.length ? [tips(team, g, add, replace), defense(team, g)] : null,
+      team.members.length ? [tips(team, g, add, replace, () => {
+        save();
+        render();
+      }), defense(team, g)] : null,
       chipRow(null,
         chip(L.t("Compare"), () => open(q => compare(q, 0, g.id))),
         chip(L.t("Damage calc"), () => open(q => calc(q, ti, -1))),
@@ -1691,7 +1694,7 @@ function copy(team) {
 }
 
 /** Team.gaps in words: what hurts, what nothing answers, what no move hits, then the type that fixes most. */
-function tips(team, g, add, replace) {
+function tips(team, g, add, replace, edited) {
   const box = panel(L.t("Tips"));
   const gp = team.gaps(d);
   const types = d.typesIn(g);
@@ -1710,8 +1713,11 @@ function tips(team, g, add, replace) {
     return el;
   };
   // The answer to a tip, inside it on a green tint, so it does not read as one more problem.
-  const fix = (el, title, detail, action, act) => el.append(h('div', 'fix', h('div', 'bold', title),
-    h('p', { class: 'note', style: 'margin-top:2px' }, detail), action ? chip(action, act) : null));
+  const fix = (el, title, detail, action, act) => {
+    const f = h('div', 'fix', h('div', 'bold', title), h('p', { class: 'note', style: 'margin-top:2px' }, detail), action ? chip(action, act) : null);
+    el.append(f);
+    return f;
+  };
   const stacked = gp.stacked.length ? tip(L.t("Weak spots"), L.t("Super effective against half the team or more, and resisted by fewer."), gp.stacked) : null;
   const counter = gp.counter.length ? tip(L.t("Nothing counters these"), L.t("No member resists them and no move hits them super effectively."), gp.counter) : null;
   const uncovered = gp.uncovered.length ? tip(L.t("Missing coverage"), L.t("No move hits these super effectively."), gp.uncovered) : null;
@@ -1722,12 +1728,35 @@ function tips(team, g, add, replace) {
       team.members.length < Team.SIZE ? L.t("Suggestions") : null, add);
   }
   if (gp.move >= 0) {
-    fix(uncovered ?? counter, L.f("Try a %s move", d.label(types[gp.move])), L.f("It hits %s super effectively.",
+    const f = fix(uncovered ?? counter, L.f("Try a %s move", d.label(types[gp.move])), L.f("It hits %s super effectively.",
       names([...gp.counter, ...gp.uncovered].filter(i => d.factor(g, types[gp.move], [types[i]]) > 100))));
+    // Learnsets load from files, so the move joins the tip when they have.
+    team.teach(d, types[gp.move]).then(t => {
+      if (!t) return;
+      const x = team.members[t.member];
+      const mon = team.evolved(d, g, x).name;
+      const move = d.move(g, t.move).name;
+      f.querySelector('p').append(' ' + (x.moves[t.slot] ? L.f("%s can learn %s in place of %s.", mon, move, d.move(g, x.moves[t.slot]).name)
+        : L.f("%s can learn %s.", mon, move)));
+      f.append(chip(L.f("Teach %s", move), () => {
+        x.moves[t.slot] = t.move;
+        edited();
+      }));
+    });
   }
   if (!team.attacks(d)) tip(L.t("No attacks yet"), L.t("Give your Pokémon damaging moves to see what nothing counters."), []);
   else if (!count) tip(L.t("No gaps"), L.t("Every type is resisted or hit super effectively, and none hits half the team."), []);
   const ends = team.members.map(x => team.evolved(d, g, x));
+  // Until picked, a branching Pokémon counts as it is: Eevee stays Normal.
+  team.members.forEach((x, i) => {
+    const ways = team.branches(d, g, x);
+    if (!ways.length || ways.some(w => w.num === ends[i].num)) return;
+    tip(L.f("What will %s evolve into?", d.mon(x.num).name), L.t("Tips count it as it is until you pick."), [], L.t("Pick evolution"),
+      () => pickOne(L.t("Evolves into"), ways.map(w => w.name), -1, j => {
+        x.evo = ways[j].num;
+        edited();
+      }));
+  });
   // The lower base stat total once evolved is the one to swap: Noibat beside Garchomp, but Gible beside Noivern.
   for (const o of team.overlaps(d)) {
     const a = d.mon(team.members[o.a].num);
@@ -1928,6 +1957,15 @@ function memberScreen(p, ti, k) {
     // Every form in this game, also the d.alike ones pickers leave out.
     const fam = d.family(m).filter(f => g.byNum.has(f.num) || f === m);
     if (fam.length > 1) box.append(setting(L.t("Form"), m.name, () => pickOne(L.t("Form"), fam.map(f => f.name), fam.indexOf(m), i => setForm(fam[i]))));
+    // What team.evolved counts it as in the tips, where the line branches.
+    const ways = team.branches(d, g, x);
+    if (ways.length) {
+      box.append(setting(L.t("Evolves into"), ways.find(w => w.num === x.evo)?.name ?? L.t("Not set"),
+        () => pickOne(L.t("Evolves into"), ways.map(w => w.name), ways.findIndex(w => w.num === x.evo), i => {
+          x.evo = ways[i].num;
+          redo();
+        })));
+    }
     const smogon = h('div');
     box.append(smogon);
     builds(m).then(all => {

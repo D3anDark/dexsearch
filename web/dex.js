@@ -555,6 +555,8 @@ class Team {
   static EV_TOTAL = 510;
   static IV_MAX = 31;
   static EVIOLITE = 581;
+  /** Effect text of attacks a team does not run for coverage; see Team.AWKWARD. */
+  static AWKWARD = /recharge|faints|charge before|charges for|next turn|later|[Oo]nly (works|inflicts|be used)|[Ff]ails if|canceled|half of its max HP|damages the user\.|no longer|Removes the user|readying|shares a type|Misty Terrain is active/;
   static LEGENDS = [[144, 146], [150, 151], [243, 245], [249, 251], [377, 386], [480, 494], [638, 649], [716, 721],
     [772, 773], [785, 809], [888, 898], [905, 905], [984, 995], [1001, 1010], [1014, 1017], [1020, 1025]];
 
@@ -565,7 +567,7 @@ class Team {
   }
 
   static member(num, ability, level) {
-    return { num, ability, level, item: 0, nature: -1, tera: -1, evs: [0, 0, 0, 0, 0, 0], ivs: Array(6).fill(Team.IV_MAX), moves: [0, 0, 0, 0] };
+    return { num, ability, level, item: 0, nature: -1, tera: -1, evs: [0, 0, 0, 0, 0, 0], ivs: Array(6).fill(Team.IV_MAX), moves: [0, 0, 0, 0], evo: 0 };
   }
 
   static evRoom(x, stat) {
@@ -577,7 +579,8 @@ class Team {
   }
 
   format() {
-    const members = this.members.map(m => [m.num, m.ability, m.item, m.nature, m.tera, m.level, ...m.evs, ...m.ivs, ...m.moves].join(','));
+    // evo only when picked: teams saved before it was added have 22 fields.
+    const members = this.members.map(m => [m.num, m.ability, m.item, m.nature, m.tera, m.level, ...m.evs, ...m.ivs, ...m.moves, ...(m.evo ? [m.evo] : [])].join(','));
     return `${this.name.replace(/[\t\n]/g, ' ')}\t${this.game}\t${members.join(';')}`;
   }
 
@@ -587,7 +590,7 @@ class Team {
     if (!f[2]) return t;
     for (const s of f[2].split(';')) {
       const v = s.split(',').map(Number);
-      if (v.length !== 22 || v.some(Number.isNaN)) throw new Error('member has ' + v.length + ' fields: ' + s);
+      if ((v.length !== 22 && v.length !== 23) || v.some(Number.isNaN)) throw new Error('member has ' + v.length + ' fields: ' + s);
       const m = Team.member(v[0], v[1], v[5]);
       m.item = v[2];
       m.nature = v[3];
@@ -595,6 +598,7 @@ class Team {
       m.evs = v.slice(6, 12);
       m.ivs = v.slice(12, 18);
       m.moves = v.slice(18, 22);
+      m.evo = v[22] ?? 0;
       t.members.push(m);
     }
     return t;
@@ -631,15 +635,71 @@ class Team {
     return b.trim();
   }
 
-  /** What member `x` counts as in the type checks: its last stage while each has one evolution in `g`; see Team.evolved. */
+  /** What member `x` counts as in the type checks: its last stage while each has one evolution in `g`, at a branch the way to x.evo; see Team.evolved. */
   evolved(d, g, x) {
     let m = d.mon(x.num);
     if (x.item === Team.EVIOLITE) return m;
+    const reaches = (from, to) => d.evolutions(from).some(e => e.to === to || reaches(e.to, to));
     for (;;) {
       const next = [...new Set(d.evolutions(m.num).map(e => e.to))].filter(n => g.byNum.has(n));
-      if (next.length !== 1) return m;
-      m = d.mon(next[0]);
+      const n = next.length === 1 ? next[0] : next.find(n => n === x.evo || reaches(n, x.evo));
+      if (n === undefined) return m;
+      m = d.mon(n);
     }
+  }
+
+  /** Last stages member `x` can reach in `g` when they differ in type, else empty (also with an Eviolite); see Team.branches. */
+  branches(d, g, x) {
+    if (x.item === Team.EVIOLITE) return [];
+    const out = new Set();
+    const walk = n => {
+      const next = [...new Set(d.evolutions(n).map(e => e.to))].filter(t => g.byNum.has(t));
+      if (next.length) next.forEach(walk);
+      else out.add(n);
+    };
+    walk(x.num);
+    const ends = [...out].map(n => d.mon(n));
+    return new Set(ends.map(m => d.typesOf(g, m).join())).size > 1 ? ends : [];
+  }
+
+  /** The best `type` attack a member can learn, as evolved, and its slot: {member, slot, move} or null; see Team.teach. */
+  async teach(d, type) {
+    const g = d.game(this.game);
+    const before = this.offense(d);
+    let best = null;
+    let top = 0;
+    for (const [k, x] of this.members.entries()) {
+      const m = this.evolved(d, g, x);
+      const lg = d.learnGame(g, m);
+      const cols = lg ? await d.learnset(lg, m) : null;
+      if (!cols) continue;
+      const stab = d.typesOf(g, m);
+      const score = mv => mv.power * (mv.accuracy || 100) * (stab.includes(mv.type) ? 3 : 2) * m.stats[mv.category === 'physical' ? 1 : 3];
+      const ids = new Set(cols.flatMap((c, i) => i === 0 ? c.filter((_, j) => j % 2 === 1) : c));
+      let mv = null;
+      for (const id of ids) {
+        if (x.moves.includes(id)) continue;
+        const o = d.move(g, id);
+        if (o.type === type && o.category !== 'status' && o.power > 0 && !Team.AWKWARD.test(o.shortEffect) && (!mv || score(o) > score(mv))) mv = o;
+      }
+      if (!mv || score(mv) <= top) continue;
+      const empty = x.moves.indexOf(0);
+      const slots = empty >= 0 ? [empty] : [0, 1, 2, 3].filter(s => {
+        const o = d.move(g, x.moves[s]);
+        return o.category !== 'status' && o.power > 0;
+      }).sort((a, b) => score(d.move(g, x.moves[a])) - score(d.move(g, x.moves[b])));
+      const slot = slots.find(s => {
+        const old = x.moves[s];
+        x.moves[s] = mv.id;
+        const after = this.offense(d);
+        x.moves[s] = old;
+        return before.every((n, i) => n === 0 || after[i] > 0);
+      });
+      if (slot === undefined) continue;
+      best = { member: k, slot, move: mv.id };
+      top = score(mv);
+    }
+    return best;
   }
 
   /** Per attacking type: [members it hits super effectively, members that resist or are immune], each as evolved. Types only. */

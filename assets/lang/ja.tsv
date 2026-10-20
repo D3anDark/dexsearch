@@ -326,3 +326,10 @@ Tap Add, then open DexSearch from its new icon. It works offline from then on.	�
 Do not show again	今後表示しない
 %s as %s	%1$sを%2$sとして
 Counted as evolved: %s.	進化後で計算: %s。
+What will %s evolve into?	%sを何に進化させる？
+Tips count it as it is until you pick.	選ぶまでは、ヒントは今の姿で計算します。
+Pick evolution	進化先を選ぶ
+Evolves into	進化先
+%s can learn %s in place of %s.	%1$sは%3$sの代わりに%2$sを覚えられます。
+%s can learn %s.	%sは%sを覚えられます。
+Teach %s	%sを覚えさせる
