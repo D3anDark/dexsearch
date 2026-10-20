@@ -738,7 +738,11 @@ function home(p) {
   const below = h('div', 'homedex', h('div', 'hdr caption', L.t("Pokédex")), dex);
   const search = searchBox(L.t("Pokémon, moves, abilities, types"), q => find(q));
   search.el.classList.add('wide', 'mb10');
-  p.el.append(h('div', 'col broad', h('div', 'head home', h('h1', 'title', 'DexSearch'), chip(L.t("Settings"), () => open(settings))), search.el, results, box, below));
+  // Beside Settings, not on a card: the page has no height to spare, and the Box is wanted from any card's task.
+  const boxChip = chip(L.t("Box"), () => open(boxScreen));
+  boxChip.style.marginRight = '4px';
+  p.el.append(h('div', 'col broad', h('div', 'head home', h('h1', 'title', 'DexSearch'), boxChip, chip(L.t("Settings"), () => open(settings))),
+    search.el, results, box, below));
   p.resume = () => {
     render();
     find(search.input.value);
@@ -978,7 +982,7 @@ function listScreen(p, s) {
     const shown = s.items(search.input.value);
     fill(list, shown, it => (s.cards ? card : row)(it, () => (s.open ? s.open(it, shown) : openRef(it.ref))), p.el, keep);
     count.textContent = s.count(shown);
-    none.textContent = shown.length ? '' : L.t("Nothing matches. Change the search or the filters.");
+    none.textContent = shown.length ? '' : s.empty?.() ?? L.t("Nothing matches. Change the search or the filters.");
     s.labels?.();
   }
 }
@@ -1127,6 +1131,36 @@ function moves(p, tm) {
       setChip(chips.cat, cats.size ? [...cats].map(t => d.label(t)).join(' / ') : L.t("Category"), cats.size > 0);
       setChip(chips.sort, L.f("Sort: %s", L.t(sort)), sort !== MOVE_SORTS[0]);
     },
+  });
+}
+
+/**
+ * The workspace's Box: every Pokémon marked caught and every set taken off a team, in national order. A kept set
+ * shows its level, item and moves, as in pickMon's Box tab; a tap opens the Pokémon's page, whose Add to team takes
+ * that set along.
+ */
+function boxScreen(p) {
+  const g = game();
+  let total = 0;
+  // Marks change on the Pokémon page above this one.
+  p.resume = () => p.refresh(true);
+  listScreen(p, {
+    heading: L.t("Box"),
+    hint: L.t("Search the Box"),
+    items(q) {
+      const have = caughtSet();
+      const kept = new Map(loadBox().map(x => [x.num, x]));
+      const all = d.national.filter(e => have.has(e.mon.num) || kept.has(e.mon.num));
+      total = all.length;
+      return d.pokedex(g, all, q, new Set(), new Set(), 0, SORTS[0]).map(e => {
+        const x = kept.get(e.mon.num);
+        return x ? monEntry(e.mon, d.typesOf(g, e.mon), L.f("Lv %d", x.level), setLine(x))
+          : monEntry(e.mon, d.typesOf(g, e.mon), national(e.number), e.mon.genus);
+      });
+    },
+    count: shown => L.f("Box: %d of %d", shown.length, total),
+    empty: () => (total ? null : L.t("Nothing here yet. Mark a Pokémon caught on its page, or take one off a team, and it lands in the Box.")),
+    open: (it, shown) => openMon(it.ref.num, nums(shown)),
   });
 }
 
@@ -1482,14 +1516,15 @@ function how(e) {
 }
 
 /** `member` is `m` with a Smogon set applied; without it `m` joins with its first ability at level 50. */
-function addToTeam(m, member = newMember(m)) {
+function addToTeam(m, member) {
   const teams = loadTeams();
   const labels = teams.map(t => `${t.name}  (${t.members.length}/${Team.SIZE}, ${d.game(t.game).name})`);
   pickOne(L.f("Add %s to", m.name), [...labels, L.t("New team")], -1, i => {
     if (i === teams.length) teams.push(new Team(L.f("Team %d", i + 1), game().id));
     const t = teams[i];
     if (t.members.length >= Team.SIZE) return toast(L.f("%s already has %d Pokémon", t.name, Team.SIZE));
-    t.members.push(member);
+    // A set kept in the Box moves onto the team, as an empty slot's picker does with it.
+    t.members.push(member ?? fromBox(m.num) ?? newMember(m));
     saveTeams(teams);
     open(q => memberScreen(q, i, t.members.length - 1));
   });

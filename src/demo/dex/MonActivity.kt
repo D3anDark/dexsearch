@@ -459,7 +459,8 @@ class MonActivity : Activity() {
                 Toast.makeText(this, L.f("%s already has %d Pokémon", t.name, Team.SIZE), Toast.LENGTH_SHORT).show()
                 return@pickOne
             }
-            t.members.add(member ?: TeamsActivity.member(m))
+            // A set kept in the Box moves onto the team, as an empty slot's picker does with it.
+            t.members.add(member ?: Ui.fromBox(this, m.num) ?: TeamsActivity.member(m))
             TeamsActivity.save(this, teams)
             MemberActivity.open(this, i, t.members.size - 1)
         }

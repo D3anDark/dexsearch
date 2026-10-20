@@ -25,7 +25,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 
 /**
- * Home: title with Settings, one search box across Pokémon, moves, abilities, items and types, then the selected
+ * Home: title with the Box and Settings, one search box across Pokémon, moves, abilities, items and types, then the selected
  * game's card opening its Pokédex, a team builder card with Compare and Damage calc, and three-column reference tiles.
  * The page fills the screen without scrolling at 360 x 640 dp and up, an update banner included: the game card and
  * the tiles share the height left over. Only what cannot fit (landscape, the largest fonts) scrolls.
@@ -61,7 +61,16 @@ class MainActivity : Activity() {
 
         val head = LinearLayout(this)
         head.gravity = Gravity.CENTER_VERTICAL
-        head.addView(Ui.title(this, "DexSearch"), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        // One line, smaller when needed: beside Box and "Ustawienia" at 360 dp, 30 sp broke the word in two.
+        val title = Ui.title(this, "DexSearch")
+        title.setPadding(title.paddingLeft, title.paddingTop, Ui.dp(this, 8), title.paddingBottom)
+        title.maxLines = 1
+        title.ellipsize = TextUtils.TruncateAt.END
+        title.setAutoSizeTextTypeUniformWithConfiguration(20, 30, 1, TypedValue.COMPLEX_UNIT_SP)
+        head.addView(title, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        // Beside Settings, not on a card: the page has no height to spare, and the Box is wanted from any card's task.
+        val box = Ui.chip(this, L.t("Box")) { startActivity(Intent(this, BoxActivity::class.java)) }
+        head.addView(box, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 4, 8, 0))
         val settings = Ui.chip(this, L.t("Settings")) { startActivity(Intent(this, SettingsActivity::class.java)) }
         head.addView(settings, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 4, 16, 0))
 
