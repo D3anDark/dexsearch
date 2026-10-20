@@ -14,20 +14,21 @@
   --bad: #C62828;
   --tone: 16%;
   --press: rgba(0, 0, 0, .12);
+  --hover: rgba(0, 0, 0, .05);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #111215; --surface: #1C1E23; --fill: #2A2D34; --raised: #3B3F48; --text: #F1F2F4; --muted: #9BA1AB;
     --up: #FF8A80; --down: #82B1FF; --accent-text: #FF8A65; --good: #7BD88F; --bad: #FF8A80; --tone: 22%;
-    --press: rgba(255, 255, 255, .2); color-scheme: dark;
+    --press: rgba(255, 255, 255, .2); --hover: rgba(255, 255, 255, .07); color-scheme: dark;
   }
   :root:not([data-theme="light"]) .ink { color: var(--ink-n); }
 }
 :root[data-theme="dark"] {
   --bg: #111215; --surface: #1C1E23; --fill: #2A2D34; --raised: #3B3F48; --text: #F1F2F4; --muted: #9BA1AB;
   --up: #FF8A80; --down: #82B1FF; --accent-text: #FF8A65; --good: #7BD88F; --bad: #FF8A80; --tone: 22%;
-  --press: rgba(255, 255, 255, .2); color-scheme: dark;
+  --press: rgba(255, 255, 255, .2); --hover: rgba(255, 255, 255, .07); color-scheme: dark;
 }
 :root[data-theme="dark"] .ink { color: var(--ink-n); }
 .ink { color: var(--ink-d); }
@@ -239,6 +240,8 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .teamcard .art { display: flex; }
 .teamcard .art img { width: 44px; height: 44px; object-fit: contain; }
 .teamcard .art img + img { margin-left: -14px; }
+/* Side by side on a wide screen; on a phone the game card, team card and tiles stack as children of .homebox. */
+.halves, .halves > .side { display: contents; }
 .tiles { display: flex; gap: 12px; }
 .tile { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 10px 12px; text-align: start; }
 .tile b { font-size: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -367,3 +370,25 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 /* Install steps for Safari. */
 .steps { padding-left: 22px; font-size: 16px; line-height: 1.4; }
 .steps li + li { margin-top: 10px; }
+
+/* Mouse and trackpad. The hidden scroll bar of a chip bar leaves a mouse no way to reach the chips past the edge. */
+@media (pointer: fine) {
+  .chips { flex-wrap: wrap; }
+}
+@media (hover: hover) {
+  button:not(.on):not(:disabled):hover, [role=button]:hover { box-shadow: inset 0 0 0 100vmax var(--hover); }
+}
+
+/* Computer, or a tablet held sideways: lists and the Pokédex use the width, the Pokémon page keeps its picture
+   beside the tabs. */
+@media (min-width: 900px) {
+  .col.broad, .col.split { max-width: 1040px; }
+  .broad .cards { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .broad .rows { display: grid; grid-template-columns: 1fr 1fr; }
+  .broad .hdr { grid-column: 1 / -1; }
+  .split { display: grid; grid-template-columns: 400px minmax(0, 1fr); grid-template-rows: auto 1fr; align-items: start; }
+  .split > .hero { grid-row: span 2; position: sticky; top: 0; }
+  .halves { display: flex; flex: 1; gap: 12px; }
+  .halves > * { flex: 1 1 0; min-width: 0; }
+  .halves > .side { display: flex; flex-direction: column; gap: 12px; }
+}

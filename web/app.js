@@ -638,11 +638,11 @@ let updating = false;
 
 function home(p) {
   p.el.classList.add('fixed');
-  const results = h('div');
+  const results = h('div', 'rows');
   const box = h('div', 'homebox');
   const search = searchBox(L.t("Pokémon, moves, abilities, types"), q => find(q));
   search.el.classList.add('wide', 'mb10');
-  p.el.append(h('div', 'col', h('div', 'head home', h('h1', 'title', 'DexSearch'), chip(L.t("Settings"), () => open(settings))), search.el, results, box));
+  p.el.append(h('div', 'col broad', h('div', 'head home', h('h1', 'title', 'DexSearch'), chip(L.t("Settings"), () => open(settings))), search.el, results, box));
   p.resume = () => {
     render();
     find(search.input.value);
@@ -687,12 +687,11 @@ function home(p) {
     const banner = gameCard(g, L.t("Change game"), () => open(games), progress, pill);
     banner.classList.add('grow');
     banner.onclick = () => open(pokedex);
-    box.append(banner, teamCard());
     const tms = d.tmGame(g);
     const tile = (name, type, value, act) => tonal(h('button', { class: 'tile', onclick: act }, h('b', null, name), value(color(type))), color(type));
     const count = n => c2 => number(String(n), c2);
     const words = s => () => h('span', null, s);
-    box.append(
+    box.append(h('div', 'halves', banner, h('div', 'side', teamCard(),
       h('div', 'tiles grow',
         tile(L.t("Moves"), 'fire', count(d.movesIn(g).length), () => open(q => moves(q, false))),
         tms.virtual ? tile(L.t("TMs"), 'water', words(L.t("Pick a game")), () => open(games))
@@ -701,7 +700,7 @@ function home(p) {
       h('div', 'tiles grow',
         tile(L.t("Items"), 'electric', count(d.items.length), () => open(items)),
         tile(L.t("Type chart"), 'dragon', count(d.typesIn(g).length), () => open(typeChart)),
-        tile(L.t("Natures"), 'ground', count(d.natures.length), () => open(natures))));
+        tile(L.t("Natures"), 'ground', count(d.natures.length), () => open(natures))))));
   }
 
   /** Tap one to switch to it. New starts one in the current game and opens the game picker; Delete asks first. */
@@ -848,10 +847,10 @@ function listScreen(p, s) {
   search.el.classList.add('wide', 'mb10');
   const bar = h('div', 'chips');
   const count = h('div', { class: 'caption', style: 'padding:14px 16px 6px' });
-  const list = h('div', s.cards ? 'cards' : null);
+  const list = h('div', s.cards ? 'cards' : 'rows');
   const none = h('p', 'empty');
   s.setup?.(bar, () => refresh());
-  p.el.append(h('div', 'col', head(s.heading), search.el, bar.childElementCount ? bar : null, count, list, none));
+  p.el.append(h('div', 'col broad', head(s.heading), search.el, bar.childElementCount ? bar : null, count, list, none));
   p.refresh = refresh;
   refresh();
 
@@ -1162,7 +1161,7 @@ function monScreen(p, start, list) {
     });
     tabs.classList.add('wide', 'mt16', 'mb12');
     body = h('div');
-    p.el.replaceChildren(h('div', 'col', top, tabs, body));
+    p.el.replaceChildren(h('div', 'col split', top, tabs, body));
     p.el.scrollTop = 0;
     fillTab(m);
   }

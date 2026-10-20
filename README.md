@@ -51,6 +51,10 @@ shiny pictures as they are shown.
 When a newer release is on Pages, the home screen shows "Update available"; tap it. Teams are stored in the web app on
 that phone only, and deleting the icon deletes them, so keep a copy with "Copy as text".
 
+On a computer the same address works in any current browser. From 900 px wide, the Pokédex and lists use more
+columns and the Pokémon page keeps its picture beside the tabs. Chrome and Edge install it as an app from the icon in
+the address bar, and Safari on a Mac from File > Add to Dock.
+
 Locally: `web/build.sh /tmp/site` (runs `node web/check.js assets` first), then serve that folder over HTTP.
 
 Without an iPhone: the same page opens in Chrome on Android (same code, Blink instead of WebKit) and in GNOME Web

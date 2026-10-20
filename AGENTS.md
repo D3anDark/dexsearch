@@ -46,7 +46,8 @@ adb shell am start -n demo.dex/.MainActivity
 - `web/build.sh <new dir>` runs `node web/check.js assets` (data self-check), copies the app and assets, and writes
   `sw.js` with a hash per file; a changed hash is what makes installed copies show "Update available".
 - A feature or fix in the Android app usually needs the same change in `web/app.js`. Test in a browser at 390 and
-  360 px wide; `.github/workflows/pages.yml` publishes it with each release.
+  360 px wide, and at 1280 for a computer (the wide layout in `style.css` starts at 900 px); `.github/workflows/pages.yml`
+  publishes it with each release.
 
 ## UI conventions
 
