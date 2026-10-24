@@ -217,6 +217,8 @@ Members weak to and resisting each attacking type. Red: half the team or more is
 Weak	弱点
 Resist	耐性
 Tips	ヒント
+Expanded	展開中
+Collapsed	折りたたみ中
 %s and %s	%sと%s
 Weak spots	弱点
 Super effective against half the team or more, and resisted by fewer.	パーティの半分以上にこうかばつぐんで、耐性のあるメンバーのほうが少ないタイプ。

@@ -34,9 +34,12 @@ import android.text.TextWatcher
 import android.text.style.DynamicDrawableSpan
 import android.text.style.ImageSpan
 import android.util.TypedValue
+import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.MotionEvent
+import android.view.VelocityTracker
+import android.view.ViewConfiguration
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -57,6 +60,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import java.io.IOException
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /** Shared data access, navigation, the palette and view helpers. Everything runs on the main thread. */
@@ -425,7 +429,7 @@ object Ui {
         val light = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
         a.window.insetsController?.setSystemBarsAppearance(
             if (night) 0 else if (bar != 0) WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS else light, light)
-        val frame = FrameLayout(a)
+        val frame = SwipeBack(a)
         frame.addView(root)
         val strip = View(a)
         strip.setBackgroundColor(bar)
@@ -444,6 +448,106 @@ object Ui {
         }
         a.setContentView(frame)
         return strip
+    }
+
+    /** An Activity with horizontal swipes of its own: while [swiping], a drag is not a [SwipeBack]. */
+    interface Swipes {
+        val swiping: Boolean
+    }
+
+    /**
+     * The page under [show]: a drag to the right from anywhere on it slides it away and goes back, as the system's
+     * swipe does from the screen edge only. Past a third of the width or flung it leaves, else it springs back. Not on
+     * the first screen, not where the touched content can scroll left, and not once a child claims the touch (a
+     * vertical scroll, a [Swipes] pager). One VelocityTracker per drag, recycled at its end.
+     */
+    private class SwipeBack(private val a: Activity) : FrameLayout(a) {
+        private val slop = ViewConfiguration.get(a).scaledTouchSlop
+        private val fling = ViewConfiguration.get(a).scaledMinimumFlingVelocity * 4f
+        private val first by lazy { a.isTaskRoot }
+        private var x0 = 0f
+        private var y0 = 0f
+        /** 0 undecided, 1 dragging the page, -1 not a swipe back. */
+        private var state = -1
+        private var velocity: VelocityTracker? = null
+
+        override fun onInterceptTouchEvent(e: MotionEvent): Boolean {
+            track(e)
+            return state == 1
+        }
+
+        // Reached only when no child took the touch, or once this one intercepted it.
+        override fun onTouchEvent(e: MotionEvent): Boolean {
+            if (e.actionMasked != MotionEvent.ACTION_DOWN) track(e)
+            return state >= 0
+        }
+
+        override fun requestDisallowInterceptTouchEvent(disallow: Boolean) {
+            if (disallow && state == 0) stop()
+            super.requestDisallowInterceptTouchEvent(disallow)
+        }
+
+        private fun track(e: MotionEvent) {
+            if (e.actionMasked == MotionEvent.ACTION_DOWN) {
+                stop()
+                x0 = e.rawX
+                y0 = e.rawY
+                if (first || translationX != 0f || (a as? Swipes)?.swiping == true || scrollsLeft(this, e.x, e.y)) return
+                state = 0
+                velocity = VelocityTracker.obtain()
+            }
+            val v = velocity ?: return
+            // In screen coordinates: the view itself moves under the finger.
+            val raw = MotionEvent.obtain(e)
+            raw.setLocation(e.rawX, e.rawY)
+            v.addMovement(raw)
+            raw.recycle()
+            val dx = e.rawX - x0
+            val dy = abs(e.rawY - y0)
+            when (e.actionMasked) {
+                MotionEvent.ACTION_MOVE -> {
+                    if (state == 0 && dy > slop) return stop()
+                    if (state == 0 && dx > slop && dx > 2 * dy) state = 1
+                    if (state == 1) translationX = maxOf(0f, dx)
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (state == 1) {
+                        v.computeCurrentVelocity(1000)
+                        val leave = e.actionMasked == MotionEvent.ACTION_UP && (v.xVelocity > fling || dx > width / 3f && v.xVelocity > -fling)
+                        animate().translationX(if (leave) width.toFloat() else 0f).setDuration(150).withEndAction { if (leave) close() }
+                    }
+                    stop()
+                }
+            }
+        }
+
+        private fun stop() {
+            state = -1
+            velocity?.recycle()
+            velocity = null
+        }
+
+        private fun close() {
+            // The page has already slid off, so the system's closing animation would play on an empty window.
+            if (Build.VERSION.SDK_INT >= 34) a.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, 0, 0)
+            a.finish()
+            @Suppress("DEPRECATION")
+            if (Build.VERSION.SDK_INT < 34) a.overridePendingTransition(0, 0)
+        }
+
+        /** Whether the view under (x, y), in `v`'s coordinates, or one holding it can scroll left. */
+        private fun scrollsLeft(v: View, x: Float, y: Float): Boolean {
+            if (v.canScrollHorizontally(-1)) return true
+            if (v !is ViewGroup) return false
+            for (i in v.childCount - 1 downTo 0) {
+                val c = v.getChildAt(i)
+                if (c.visibility != View.VISIBLE) continue
+                val cx = x + v.scrollX - c.left - c.translationX
+                val cy = y + v.scrollY - c.top - c.translationY
+                if (cx >= 0 && cy >= 0 && cx < c.width && cy < c.height) return scrollsLeft(c, cx, cy)
+            }
+            return false
+        }
     }
 
     fun dp(c: Context, v: Float): Int = (v * c.resources.displayMetrics.density).roundToInt()

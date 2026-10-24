@@ -262,21 +262,40 @@ class TeamActivity : Activity() {
         return p
     }
 
-    /** Bold title, muted detail, then the types as pills and an optional `action` chip; a hairline above all but the first. */
+    /**
+     * A bold title that folds out the rest: muted detail, the types as pills and an optional `action` chip; a hairline
+     * above all but the first. Folded on every rebuild of the screen. Returns the folding part, where a [fix] goes.
+     */
     private fun tip(p: LinearLayout, title: String, detail: String, list: List<Int>, action: String? = null, act: () -> Unit = {}): LinearLayout {
         if (p.childCount > 1) {
             val line = View(this)
             line.setBackgroundColor(Ui.FILL)
-            p.addView(line, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 1), this, 0, 12, 0, 12))
+            p.addView(line, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 1), this, 0, 6, 0, 6))
         }
+        val head = LinearLayout(this)
+        head.gravity = Gravity.CENTER_VERTICAL
+        head.minimumHeight = Ui.dp(this, 48)
+        head.background = Ui.pressable(this, null, 12)
+        head.addView(Ui.text(this, title, 15, true), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val arrow = ImageView(this)
+        arrow.setImageDrawable(Ui.Chevron(Ui.MUTED, false))
+        head.addView(arrow, Ui.margins(Ui.dp(this, 12), Ui.dp(this, 12), this, 12, 0, 4, 0))
         val box = Ui.vertical(this)
-        box.addView(Ui.text(this, title, 15, true))
-        box.addView(Ui.muted(this, detail, 13), Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 2, 0, 0))
+        box.visibility = View.GONE
+        head.stateDescription = L.t("Collapsed")
+        head.setOnClickListener {
+            val open = box.visibility != View.VISIBLE
+            box.visibility = if (open) View.VISIBLE else View.GONE
+            arrow.rotation = if (open) 90f else 0f
+            head.stateDescription = if (open) L.t("Expanded") else L.t("Collapsed")
+        }
+        box.addView(Ui.muted(this, detail, 13))
         if (list.isNotEmpty()) box.addView(Ui.typePills(this, list.map { dex.types(game)[it] }, 4),
             Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 6, 0, 0))
         if (action != null) box.addView(Ui.chip(this, action) { act() },
             Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 8, 0, 0))
-        p.addView(box, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        p.addView(head, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        p.addView(box, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 0, 0, 6))
         return box
     }
 

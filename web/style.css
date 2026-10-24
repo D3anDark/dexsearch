@@ -59,7 +59,7 @@ img { -webkit-touch-callout: none; -webkit-user-drag: none; user-select: none; }
 .page.under { visibility: hidden; }
 .page.in { animation: in .2s ease-out; }
 @keyframes in { from { transform: translateX(32px); } }
-@media (prefers-reduced-motion: reduce) { .page.in { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .page.in { animation: none; } .tip summary svg { transition: none; } }
 .col { max-width: 600px; margin: 0 auto; }
 .fixed { padding-bottom: env(safe-area-inset-bottom); }
 .fixed > .col { min-height: 100%; display: flex; flex-direction: column; }
@@ -277,7 +277,12 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .slot { flex: 1; height: 46px; border-radius: 50%; background: var(--fill); display: grid; place-items: center; overflow: hidden; }
 .slot img { height: 46px; width: 46px; object-fit: contain; }
 .button { display: block; width: calc(100% - 32px); margin: 6px 16px 0; padding: 14px 16px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; text-align: center; }
-.tip + .tip { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--fill); }
+.tip + .tip { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--fill); }
+.tip summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; font-size: 15px; cursor: pointer; list-style: none; }
+.tip summary::-webkit-details-marker { display: none; }
+.tip summary svg { flex: none; color: var(--muted); transition: transform 0.15s; }
+.tip[open] summary svg { transform: rotate(90deg); }
+.tip[open] { padding-bottom: 6px; }
 .fix { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--good) var(--tone), var(--surface)); }
 .fix .bold { font-size: 14px; color: var(--good); }
 .tip .chip { margin-top: 8px; }

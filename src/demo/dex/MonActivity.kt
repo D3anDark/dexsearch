@@ -40,7 +40,7 @@ import kotlin.math.abs
  * swipe on the header, walk the list the user came from. The tabs stay pinned at the top once scrolled past. Rows in the list part link to moves and
  * other Pokémon.
  */
-class MonActivity : Activity() {
+class MonActivity : Activity(), Ui.Swipes {
     private val adapter = Ui.Adapter()
     private lateinit var dex: Dex
     private lateinit var game: Dex.Game
@@ -82,7 +82,8 @@ class MonActivity : Activity() {
     private lateinit var head: View
     private lateinit var heroView: View
     /** The gesture began on the header, so a horizontal fling pages to the previous or next Pokémon. */
-    private var swiping = false
+    override var swiping = false
+        private set
     /** -1 or 1 once [swipe] has seen a fling, until [dispatchTouchEvent] acts on it. */
     private var flung = 0
     private val swipe by lazy {

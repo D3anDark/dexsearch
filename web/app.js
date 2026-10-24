@@ -523,8 +523,66 @@ addEventListener('popstate', e => {
   while (pages.length - 1 > depth) pages.pop().el.remove();
   const top = pages.at(-1);
   top.el.classList.remove('under', 'in');
+  top.el.style.visibility = '';
   top.resume?.();
 });
+
+// A drag to the right from anywhere on a page slides it away and goes back, the page underneath showing, as in the
+// Android app: an installed copy on iPhone has no back swipe of its own. Past a third of the width or flung it leaves.
+// Not from the screen edge where the browser has its own swipe, not on content scrolled sideways, not under a sheet.
+{
+  let x0 = 0, y0 = 0, x = 0, lx = 0, lt = 0, vx = 0, state = -1, top = null, under = null;
+  const scrolled = el => { for (; el; el = el.parentElement) if (el.scrollLeft > 0) return true; return false; };
+  addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    top = pages.at(-1);
+    under = pages.at(-2);
+    state = !under || e.touches.length > 1 || top.el.style.transform || (!navigator.standalone && t.clientX < 24)
+      || document.querySelector('dialog[open]') || scrolled(e.target) ? -1 : 0;
+    x0 = lx = t.clientX;
+    y0 = t.clientY;
+    lt = e.timeStamp;
+    x = vx = 0;
+  }, { passive: true });
+  addEventListener('touchmove', e => {
+    if (state < 0) return;
+    const t = e.touches[0];
+    const dx = t.clientX - x0;
+    const dy = Math.abs(t.clientY - y0);
+    if (!state) {
+      if (dy > 10) return void (state = -1);
+      if (dx < 10 || dx < 2 * dy) return;
+      state = 1;
+      top.el.classList.remove('in');
+      under.el.style.visibility = 'visible';
+    }
+    if (e.timeStamp > lt) vx = (t.clientX - lx) / (e.timeStamp - lt);
+    lx = t.clientX;
+    lt = e.timeStamp;
+    x = Math.max(0, dx);
+    top.el.style.transform = `translateX(${x}px)`;
+  }, { passive: true });
+  const end = e => {
+    if (state !== 1) return void (state = -1);
+    state = -1;
+    const page = top.el;
+    const back = under.el;
+    // A finger that rested before lifting has no speed left.
+    if (e.timeStamp - lt > 100) vx = 0;
+    const leave = e.type === 'touchend' && (vx > 0.5 || (x > innerWidth / 3 && vx > -0.5));
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    page.style.transition = still ? '' : 'transform .15s ease-out';
+    page.style.transform = leave ? 'translateX(100%)' : 'translateX(0)';
+    // Leaving, popstate removes the page; staying, it drops its styles once back in place.
+    setTimeout(() => {
+      if (leave) return close();
+      page.style.transition = page.style.transform = '';
+      back.style.visibility = '';
+    }, still ? 0 : 150);
+  };
+  addEventListener('touchend', end, { passive: true });
+  addEventListener('touchcancel', end, { passive: true });
+}
 
 document.addEventListener('keydown', e => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.getAttribute?.('role') === 'button') {
@@ -1738,7 +1796,7 @@ function tips(team, g, add, replace, edited) {
     count++;
     const pills = list.length ? typePills(list.map(i => types[i]), 4) : null;
     if (pills) pills.style.marginTop = '6px';
-    const el = h('div', 'tip', h('div', { class: 'bold', style: 'font-size:15px' }, title), h('p', { class: 'note', style: 'margin-top:2px' }, detail),
+    const el = h('details', 'tip', h('summary', 'bold', title, icon(NEXT, 14)), h('p', { class: 'note', style: 'margin-top:2px' }, detail),
       pills, action ? chip(action, act) : null);
     box.append(el);
     return el;
