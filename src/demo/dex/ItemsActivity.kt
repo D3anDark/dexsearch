@@ -1,6 +1,6 @@
 package demo.dex
 
-/** All held items in sections (Berries, Mega Stones) with their icon and short effect (English); a search ranks them all. */
+/** All held items and Poké Balls in sections (Berries, Mega Stones) with their icon and short effect (English); a search ranks them all. */
 class ItemsActivity : ListScreen() {
     private lateinit var byName: List<Dex.Item>
 

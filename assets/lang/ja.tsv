@@ -247,6 +247,7 @@ Pow %s  ·  Acc %s  ·  PP %d	威力 %s  ·  命中 %s  ·  PP %d
 Done	完了
 Search	検索
 , 	、
+Poké Balls	ボール
 Held items	持ち物
 Berries	きのみ
 Type boosters	タイプ強化
@@ -292,7 +293,6 @@ Evolve into %s	%sに進化
 Faints in %d hits	%d発で倒れる
 Faints in %d to %d hits	%d～%d発で倒れる
 Faints in one hit	1発で倒れる
-Gen 5 and later formula. Not counted: abilities, items, weather, critical hits, stat changes and burns.	第5世代以降の計算式。特性・持ち物・天気・急所・能力変化・やけどは計算しません。
 Hold a Pokémon to swap it for another.	ポケモンを長押しで入れ替え
 Its moves	覚えているわざ
 Lowest base stat total	種族値合計の下限
@@ -363,3 +363,34 @@ Each workspace is a separate playthrough with its own caught marks, teams and ga
 Its caught marks, teams and selected game are removed from this device. This cannot be undone.	捕獲済みの記録、チーム、選んだゲームがこの端末から削除されます。元に戻せません。
 Its moves, item and stats are removed from %s.	わざ、もちもの、能力の設定が%sから削除されます。
 %s leaves the team. Its moves, item and stats are not kept.	%sはチームから外れます。わざ、もちもの、能力の設定は残りません。
+Import team	パーティを読み込む
+Paste	貼り付け
+Import	読み込む
+Paste a team copied from Showdown or a DexSearch team link.	Showdownからコピーしたパーティか、DexSearchのパーティリンクを貼り付けてください。
+No Pokémon found in this text.	このテキストにポケモンが見つかりません。
+Partly imported	一部を読み込みました
+%d Pokémon imported. Not recognized, so left out: %s	%d匹を読み込みました。認識できず省いたもの: %s
+Share	共有
+The text pastes into Showdown. The link opens the team in DexSearch on the web, and Import team in either app reads both.	テキストはShowdownに貼り付けられます。リンクはWeb版DexSearchでパーティを開き、どちらのアプリでも「パーティを読み込む」で両方を読み込めます。
+Share link	リンクを共有
+Link copied	リンクをコピーしました
+This team link is damaged.	このパーティリンクは壊れています。
+Add %s?	%sを追加しますか？
+%d Pokémon for %s: %s	%d匹、%s: %s
+Add team	パーティを追加
+Any move	どの技でも
+Any ability	どの特性でも
+Conditions	条件
+Weather	天気
+Sun	にほんばれ
+Rain	あめ
+Sandstorm	すなあらし
+Snow	ゆき
+Attack stage	攻撃ランク
+Defense stage	防御ランク
+Critical hit	急所
+Attacker burned	攻撃側がやけど
+Burned	やけど
+Yes	はい
+No	いいえ
+Gen 5 and later formula, the defender at full HP. Not counted: Tera, screens, terrain, abilities that need contact or a punch, and moves whose power changes.	第5世代以降の計算式、防御側はHP満タン。テラスタル、壁、フィールド、接触やパンチが条件の特性、威力が変わる技は含みません。

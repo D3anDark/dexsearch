@@ -1,0 +1,40 @@
+{
+  "flags": 32768,
+  "components": [
+    {
+      "type": 17,
+      "accent_color": 14168076,
+      "components": [
+        {
+          "type": 12,
+          "items": [
+            {
+              "media": { "url": "attachment://discord.png" },
+              "description": "DexSearch: all 1025 Pokémon as white silhouettes on red, the magnifier from its icon showing Garchomp in color"
+            }
+          ]
+        },
+        {
+          "type": 10,
+          "content": "## Offline Pokédex and team builder\nEvery Pokémon, form, move, ability and held item from Gen 1 to 9, with per-game Pokédexes and TMs, the type chart and Smogon sets. Build a team, see its type defenses and coverage, run the damage calc, copy it for Showdown.\n-# English · Polski · Español · 日本語 · no account, no ads, works offline"
+        },
+        { "type": 14, "divider": true, "spacing": 2 },
+        {
+          "type": 9,
+          "components": [{ "type": 10, "content": "**Android**\nInstall the APK once; updates arrive inside the app." }],
+          "accessory": { "type": 2, "style": 5, "label": "Download APK", "url": "https://deandark.me/dexsearch/dexsearch.apk" }
+        },
+        {
+          "type": 9,
+          "components": [{ "type": 10, "content": "**iPhone and computers**\nOpen it in Safari or any browser, then add it to the home screen." }],
+          "accessory": { "type": 2, "style": 5, "label": "Open web app", "url": "https://deandark.me/dexsearch/" }
+        },
+        { "type": 14, "divider": false, "spacing": 1 },
+        {
+          "type": 10,
+          "content": "-# Free, unofficial fan project. Source on [GitHub](https://github.com/D3anDark/dexsearch)."
+        }
+      ]
+    }
+  ]
+}

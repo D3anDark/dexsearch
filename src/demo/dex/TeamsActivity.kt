@@ -1,18 +1,21 @@
 package demo.dex
 
 import android.app.Activity
+import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.text.InputType
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import java.util.Locale
 
-/** Saved teams, each with its game and six slots, and a button that starts a new one in the selected game. */
+/** Saved teams, each with its game and six slots, a button that starts a new one in the selected game and one that imports. */
 class TeamsActivity : Activity() {
     private lateinit var box: LinearLayout
 
@@ -75,6 +78,65 @@ class TeamsActivity : Activity() {
             TeamActivity.open(this, teams.size - 1)
         }
         box.addView(add, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 16, 6, 16, 0))
+        val import = Ui.text(this, L.t("Import team"), 15, true)
+        import.gravity = Gravity.CENTER
+        import.background = Ui.pressable(this, Ui.rounded(this, Ui.FILL, 999), 999)
+        import.setPadding(Ui.dp(this, 16), Ui.dp(this, 14), Ui.dp(this, 16), Ui.dp(this, 14))
+        import.setOnClickListener { importTeams() }
+        box.addView(import, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 16, 8, 16, 0))
+    }
+
+    /**
+     * Showdown text or DexSearch links pasted into a box ([Team.read]), Showdown teams in the selected game. One team
+     * opens; names it did not know are listed instead, and the teams wait in the list.
+     */
+    private fun importTeams() {
+        val s = Ui.Sheet(this, L.t("Import team"))
+        val hint = Ui.muted(this, L.t("Paste a team copied from Showdown or a DexSearch team link."), 14)
+        hint.setPadding(Ui.dp(this, 4), 0, Ui.dp(this, 4), Ui.dp(this, 10))
+        s.body.addView(hint)
+        val e = EditText(this)
+        e.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        e.minLines = 6
+        e.maxLines = 10
+        e.gravity = Gravity.TOP or Gravity.START
+        e.textSize = 14f
+        e.setTextColor(Ui.TEXT)
+        e.background = Ui.rounded(this, Ui.FILL, 14)
+        e.setPadding(Ui.dp(this, 14), Ui.dp(this, 12), Ui.dp(this, 14), Ui.dp(this, 12))
+        s.body.addView(e)
+        s.button(L.t("Paste"), close = false) {
+            getSystemService(ClipboardManager::class.java)?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.let { e.setText(it) }
+        }
+        s.button(L.t("Cancel"))
+        s.button(L.t("Import"), main = true, close = false) {
+            val dex = Ui.dex(this)
+            val found = Team.read(dex, e.text.toString(), Ui.game(this).id)
+            if (found.teams.isEmpty()) {
+                hint.text = L.t("No Pokémon found in this text.")
+                hint.setTextColor(Ui.ACCENT_TEXT)
+            } else if (s.close()) {
+                val teams = load(this)
+                for (t in found.teams) {
+                    if (t.name.isBlank()) t.name = L.f("Team %d", teams.size + 1)
+                    teams.add(t)
+                }
+                save(this, teams)
+                when {
+                    found.unknown.isNotEmpty() -> {
+                        onResume()
+                        val n = Ui.Sheet(this, L.t("Partly imported"))
+                        n.body.addView(Ui.muted(this, L.f("%d Pokémon imported. Not recognized, so left out: %s",
+                            found.teams.sumOf { it.members.size }, found.unknown.joinToString(L.t(", "))), 15))
+                        n.button(L.t("Done"), main = true)
+                        n.show()
+                    }
+                    found.teams.size == 1 -> TeamActivity.open(this, teams.size - 1)
+                    else -> onResume()
+                }
+            }
+        }
+        s.show()
     }
 
     companion object {

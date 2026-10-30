@@ -4,7 +4,8 @@ Run once, commit the output. Sprites already on disk at SPRITE_PX are skipped; t
 
 assets/pokemon.tsv     one species per line, then alternate forms (Alolan, Mega, ...); columns documented at Dex.Mon
 assets/merged.tsv      forms left out for sharing their species' types and stats: form id, species id
-assets/items.tsv       held items: id, name, generation, short effect (gen_items.py fills those PokeAPI lacks), section
+assets/items.tsv       held items and Poké Balls: id, name, generation, short effect (gen_items.py fills those PokeAPI
+                       lacks), section
 assets/moves.tsv       id, name, type, category, power, accuracy, pp, priority, gen, chance, short effect, effect
 assets/abilities.tsv   id, name, gen, short effect, effect
 assets/types.tsv       attacking type, then its damage factor (x100) against each type in file order
@@ -42,6 +43,38 @@ HELD = {"held-items": "Held items", "choice": "Held items", "bad-held-items": "H
         "type-enhancement": "Type boosters", "plates": "Type boosters", "jewels": "Gems",
         "species-specific": "Species items", "memories": "Species items", "mega-stones": "Mega Stones",
         "z-crystals": "Z-Crystals", "effort-training": "Training"}
+
+# What each Poké Ball does in current games (Generation 8 and 9), from the table on Bulbapedia's "Poké Ball" page:
+# PokeAPI's short effects are Generation 4-5 values (Timer, Quick, Net Ball). Legends: Arceus's Hisuian balls are left out.
+BALLS = {
+    "master-ball": "Catches any wild Pokémon, every time.",
+    "ultra-ball": "Catch rate 2×.",
+    "great-ball": "Catch rate 1.5×.",
+    "poke-ball": "Catch rate 1×.",
+    "safari-ball": "Catch rate 1× (1.5× before Generation 9).",
+    "net-ball": "Catch rate 3.5× on Water and Bug Pokémon.",
+    "dive-ball": "Catch rate 3.5× while surfing, fishing or underwater.",
+    "nest-ball": "Catch rate (41 - level) ÷ 10× below level 30: 4× at level 1, 2× at level 21.",
+    "repeat-ball": "Catch rate 3.5× on Pokémon already caught in the Pokédex.",
+    "timer-ball": "Catch rate rises about 0.3× each turn, from 1× to 4× after 10 turns.",
+    "luxury-ball": "Catch rate 1×. The Pokémon caught gains friendship twice as fast.",
+    "premier-ball": "Catch rate 1×.",
+    "dusk-ball": "Catch rate 3× at night and in caves.",
+    "heal-ball": "Catch rate 1×. Fully restores the Pokémon caught: HP, PP and status.",
+    "quick-ball": "Catch rate 5× on the first turn of a battle.",
+    "cherish-ball": "Catch rate 1×. Only for event Pokémon.",
+    "fast-ball": "Catch rate 4× on Pokémon with base Speed 100 or more.",
+    "level-ball": "Catch rate 2× when your Pokémon's level is higher than the wild one's, 4× when more than double, 8× at four times.",
+    "lure-ball": "Catch rate 4× on Pokémon hooked by fishing; in Generation 9, on Pokémon on or in water.",
+    "heavy-ball": "Catch rate -20 under 100 kg, +20 from 200 kg, +30 from 300 kg.",
+    "love-ball": "Catch rate 8× on the same species as your Pokémon, of the opposite gender.",
+    "friend-ball": "Catch rate 1×. The Pokémon caught starts with 150 friendship (200 before Generation 8).",
+    "moon-ball": "Catch rate 4× on Pokémon that evolve with a Moon Stone.",
+    "sport-ball": "Catch rate 1× (1.5× before Generation 8).",
+    "park-ball": "Catches every Pokémon in Pal Park; elsewhere it works as a Poké Ball.",
+    "dream-ball": "Catch rate 4× on sleeping or drowsy Pokémon.",
+    "beast-ball": "Catch rate 5× on Ultra Beasts, 0.1× on all other Pokémon. Other balls but the Master Ball have 0.1× on Ultra Beasts.",
+}
 
 OUT = Path(__file__).parent / "assets"
 
@@ -432,11 +465,13 @@ for r in rows("item_game_indices"):
     item_gen[r["item_id"]] = min(item_gen.get(r["item_id"], 99), int(r["generation_id"]))
 item_prose = {r["item_id"]: r for r in rows("item_prose") if r["local_language_id"] == EN}
 held = [i for i in rows("items") if i["id"] in items
-        and (item_cat[i["category_id"]]["pocket_id"] == "5" or item_cat[i["category_id"]]["identifier"] in HELD)]
+        and (item_cat[i["category_id"]]["pocket_id"] == "5" or item_cat[i["category_id"]]["identifier"] in HELD
+             or i["identifier"] in BALLS)]
 # Items new in Legends: Z-A (most of its Mega Stones) have no game index yet: generation 9.
 tsv(OUT / "items.tsv", sorted(([i["id"], items[i["id"]], item_gen.get(i["id"], 9),
-                                clean(item_prose[i["id"]]["short_effect"]) if i["id"] in item_prose else "",
-                                HELD.get(item_cat[i["category_id"]]["identifier"], "Berries")]
+                                BALLS.get(i["identifier"]) or (clean(item_prose[i["id"]]["short_effect"]) if i["id"] in item_prose else ""),
+                                "Poké Balls" if i["identifier"] in BALLS
+                                else HELD.get(item_cat[i["category_id"]]["identifier"], "Berries")]
                                for i in held), key=lambda line: line[1]))
 print(f"wrote {len(mon_lines)} Pokémon and forms, {len(held)} items, {len(move_lines)} moves, {len(abilities)} abilities, {len(games)} games")
 

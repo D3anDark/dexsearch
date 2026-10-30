@@ -10,6 +10,7 @@ sprites repo has the same art but no Generation 8-9 items. The app shows no icon
 """
 import io
 import re
+import unicodedata
 import urllib.request
 from pathlib import Path
 
@@ -40,7 +41,8 @@ def entries(js):
 
 
 def norm(name):
-    return re.sub(r"[^a-z0-9]", "", name.lower())
+    # Poké Ball is "Poke Ball" in Showdown
+    return re.sub(r"[^a-z0-9]", "", unicodedata.normalize("NFKD", name.lower()))
 
 
 sprite = {}

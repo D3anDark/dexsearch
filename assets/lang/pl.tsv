@@ -247,6 +247,7 @@ Pow %s  ·  Acc %s  ·  PP %d	Moc %s  ·  Cel. %s  ·  PP %d
 Done	Gotowe
 Search	Szukaj
 , 	, 
+Poké Balls	Poké Balle
 Held items	Przedmioty do trzymania
 Berries	Jagody
 Type boosters	Wzmacniacze typów
@@ -292,7 +293,6 @@ Evolve into %s	Ewoluuj w %s
 Faints in %d hits	Pada po %d ciosach
 Faints in %d to %d hits	Pada po %d do %d ciosach
 Faints in one hit	Pada po jednym ciosie
-Gen 5 and later formula. Not counted: abilities, items, weather, critical hits, stat changes and burns.	Wzór od 5. generacji. Nie liczone: zdolności, przedmioty, pogoda, trafienia krytyczne, zmiany statystyk i oparzenia.
 Hold a Pokémon to swap it for another.	Przytrzymaj Pokémona, by go zamienić.
 Its moves	Jego ruchy
 Lowest base stat total	Minimalna suma statystyk
@@ -363,3 +363,34 @@ Each workspace is a separate playthrough with its own caught marks, teams and ga
 Its caught marks, teams and selected game are removed from this device. This cannot be undone.	Jego oznaczenia złapanych, drużyny i wybrana gra zostaną usunięte z tego urządzenia. Tego nie można cofnąć.
 Its moves, item and stats are removed from %s.	Ruchy, przedmiot i statystyki zostaną usunięte z drużyny %s.
 %s leaves the team. Its moves, item and stats are not kept.	%s opuszcza drużynę. Ruchy, przedmiot i statystyki nie zostaną zachowane.
+Import team	Importuj drużynę
+Paste	Wklej
+Import	Importuj
+Paste a team copied from Showdown or a DexSearch team link.	Wklej drużynę skopiowaną z Showdown albo link do drużyny z DexSearch.
+No Pokémon found in this text.	W tym tekście nie ma żadnego Pokémona.
+Partly imported	Zaimportowano częściowo
+%d Pokémon imported. Not recognized, so left out: %s	Zaimportowane Pokémony: %d. Pominięte, bo nierozpoznane: %s
+Share	Udostępnij
+The text pastes into Showdown. The link opens the team in DexSearch on the web, and Import team in either app reads both.	Tekst wkleisz do Showdown. Link otwiera drużynę w DexSearch w przeglądarce, a Importuj drużynę w obu aplikacjach czyta jedno i drugie.
+Share link	Udostępnij link
+Link copied	Skopiowano link
+This team link is damaged.	Ten link do drużyny jest uszkodzony.
+Add %s?	Dodać %s?
+%d Pokémon for %s: %s	Pokémony: %d, gra %s: %s
+Add team	Dodaj drużynę
+Any move	Dowolny ruch
+Any ability	Dowolna zdolność
+Conditions	Warunki
+Weather	Pogoda
+Sun	Słońce
+Rain	Deszcz
+Sandstorm	Burza piaskowa
+Snow	Śnieg
+Attack stage	Poziom ataku
+Defense stage	Poziom obrony
+Critical hit	Trafienie krytyczne
+Attacker burned	Atakujący poparzony
+Burned	Poparzenie
+Yes	Tak
+No	Nie
+Gen 5 and later formula, the defender at full HP. Not counted: Tera, screens, terrain, abilities that need contact or a punch, and moves whose power changes.	Wzór z 5. generacji i nowszych, obrońca z pełnym HP. Nie liczone: Tera, ekrany, pola, zdolności wymagające kontaktu lub ciosu pięścią i ruchy o zmiennej mocy.

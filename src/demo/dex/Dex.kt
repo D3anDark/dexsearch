@@ -84,7 +84,7 @@ class Dex private constructor(private val assets: Assets) {
         val key = key(name, en)
     }
 
-    /** A held item: Leftovers, Charizardite X, Sitrus Berry. */
+    /** A held item (Leftovers, Charizardite X, Sitrus Berry) or a Poké Ball. */
     class Item(f: List<String>, val name: String = f[1]) {
         val id = f[0].toInt()
         val en = f[1]
@@ -93,6 +93,8 @@ class Dex private constructor(private val assets: Assets) {
         val effect = f[3].removePrefix("Held: ")
         /** One of [ITEM_GROUPS]. */
         val group = f[4]
+        /** Poké Balls are on the Items screen only, never in a held item picker. */
+        val held = group != "Poké Balls"
         val key = key(name, en)
     }
 
@@ -444,6 +446,13 @@ class Dex private constructor(private val assets: Assets) {
         return all[m.num] ?: all[m.species]
     }
 
+    /** Whether `m` learns move `id` in `g` by any method; false if it is not in that game. */
+    fun learns(g: Game, m: Mon, id: Int): Boolean {
+        val c = learnset(g, m) ?: return false
+        for (i in 1 until c[0].size step 2) if (c[0][i] == id) return true
+        return (1 until c.size).any { id in c[it] }
+    }
+
     /** Species that learn a move in a game, rows of {species, method, level}, by method, level, number. */
     fun learners(g: Game, move: Int): List<IntArray> {
         val out = ArrayList<IntArray>()
@@ -571,7 +580,7 @@ class Dex private constructor(private val assets: Assets) {
         /** English short names: Showdown text and natures.tsv use them; shown through [L.t]. */
         val STATS = arrayOf(L.k("HP"), L.k("Atk"), L.k("Def"), L.k("SpA"), L.k("SpD"), L.k("Spe"))
         /** Sections of the item lists, in list order; items.tsv names one per item. Shown through [L.t]. */
-        val ITEM_GROUPS = arrayOf(L.k("Held items"), L.k("Berries"), L.k("Type boosters"), L.k("Gems"),
+        val ITEM_GROUPS = arrayOf(L.k("Poké Balls"), L.k("Held items"), L.k("Berries"), L.k("Type boosters"), L.k("Gems"),
             L.k("Species items"), L.k("Mega Stones"), L.k("Z-Crystals"), L.k("Training"))
         /** Each generation's first starter, the Grass one; its Fire and Water ones are 3 and 6 after. */
         val STARTERS = intArrayOf(1, 152, 252, 387, 495, 650, 722, 810, 906)
@@ -823,6 +832,9 @@ class Dex private constructor(private val assets: Assets) {
             check(fire[0].startsWith("Evolve Charmander") && fire[1].startsWith("FireRed: ") && "\n\nLeafGreen: " in fire[1],
                     "FireRed where to find and both version entries")
             check(d.learners(sv, 53).any { it[0] == 6 && it[1] == 1 }, "Charizard learns Flamethrower by TM")
+            check(d.learns(sv, charizard, 53) && d.learns(sv, charizard, d.learnset(sv, charizard)!![0][1]) && !d.learns(sv, d.mon(129), 53)
+                    && d.learns(za, d.mon(10034), 53),
+                    "Learns filter: TM and level-up moves, a Mega by its species, Magikarp without Flamethrower")
 
             val alolan = d.mon(10100)
             val raichu = d.national.indexOfFirst { it.mon.num == 26 }
@@ -930,12 +942,80 @@ class Dex private constructor(private val assets: Assets) {
             check(Team.damage(75, 65, 123, 163, true, 400).contentEquals(intArrayOf(168, 196))
                     && Team.damage(50, 40, 10, 400, false, 50)[0] == 1 && Team.damage(50, 90, 100, 100, true, 0)[1] == 0,
                 "damage: Glaceon's Ice Fang on Garchomp 168-196 (Bulbapedia), at least 1, 0 if immune")
+            val named = { en: String -> d.mons.first { it.en == en }.num }
+            val quake = d.move(sv, 89)
+            val biter = Team.Member(named("Garchomp"), 0, 50)
+            val wall = Team.Member(named("Bronzong"), 0, 50)
+            val plain = Team.hit(d, sv, biter, wall, quake, Team.Field())
+            val banded = Team.hit(d, sv, Team.Member(biter.num, 0, 50).also { it.item = d.items.first { i -> i.en == "Choice Band" }.id }, wall, quake, Team.Field())
+            val hover = Team.hit(d, sv, biter, Team.Member(wall.num, d.abilities.first { it.en == "Levitate" }.id, 50), quake, Team.Field())
+            val crit = Team.hit(d, sv, biter, wall, quake, Team.Field().also { it.crit = true; it.atkStage = -1 })
+            check(plain.roll.contentEquals(Team.damage(50, 100, Team.stats(d, biter)[1], Team.stats(d, wall)[2], true, 200)) && plain.mods.size == 1
+                    && plain.roll.contentEquals(intArrayOf(126, 150)) && banded.atk == 225 && banded.roll.contentEquals(intArrayOf(186, 222))
+                    && hover.roll[1] == 0 && hover.factor == 0 && crit.atk == 150 && crit.roll.contentEquals(intArrayOf(188, 224)),
+                "hit: level 50 Garchomp's Earthquake on Bronzong (Attack 150, Defense 136) 126-150 as damage(), with Choice Band 186-222, " +
+                    "0 into Levitate, a critical hit ignoring -1 Attack 188-224: ${plain.roll.toList()} ${banded.roll.toList()} ${crit.roll.toList()}")
+            val shared = Team("Shared", sv.id)
+            for (en in listOf("Alolan Raichu", "Mega Charizard X", "Ho-Oh", "Paldean Tauros (Combat Breed)", "Nidoran♀")) {
+                shared.members.add(Team.Member(named(en), d.mon(named(en)).abilities[0], 50).apply {
+                    item = d.items.first { it.en == "Life Orb" }.id
+                    nature = 3
+                    tera = 9
+                    evs[3] = 252
+                    ivs[1] = 0
+                    moves[0] = 85
+                })
+            }
+            val body = { t: Team -> t.format().substringAfter('\t') }
+            val reread = Team.read(d, shared.export(d), sv.id)
+            val linked = Team.read(d, "look: " + shared.link() + " and #team=AAAA", sv.id)
+            check(reread.teams.size == 1 && body(reread.teams[0]) == body(shared) && reread.unknown.isEmpty()
+                    && linked.teams.size == 1 && linked.teams[0].format() == shared.format() && linked.unknown == listOf("#team=AAAA"),
+                "a team's export and link read back as the same team: ${reread.teams.map { it.format() }} ${reread.unknown} ${linked.unknown}")
+            val showdown = Team.read(d, """
+                === [gen9ou] Rain ===
+                Sparky (Raichu-Alola) (M) @ Life Orb
+                Ability: Surge Surfer
+                Shiny: Yes
+                EVs: 4 HP / 252 SpA / 252 Spe
+                Timid Nature
+                IVs: 0 Atk
+                - Thunderbolt
+                - Hidden Power [Ice]
+
+                Urshifu-Rapid-Strike @ Choice Band
+
+                Necrozma-Dusk-Mane
+
+                Tauros-Paldea-Combat
+
+                Nidoran-F
+
+                Charizard-Mega-X
+
+                Meowstic-F
+
+                Indeedee-F
+
+                Fakemon @ Rare Candy
+                - Splash Hit
+            """.trimIndent(), sv.id)
+            val sparky = showdown.teams.getOrNull(0)?.members?.getOrNull(0)
+            check(showdown.teams.map { it.name } == listOf("Rain", "Rain") && showdown.teams.map { t -> t.members.map { d.mon(it.num).en } } == listOf(
+                    listOf("Alolan Raichu", "Rapid Strike Urshifu", "Dusk Necrozma", "Paldean Tauros (Combat Breed)", "Nidoran♀", "Mega Charizard X"),
+                    listOf("Meowstic", "Female Indeedee"))
+                    && sparky != null && sparky.level == 100 && d.item(sparky.item).en == "Life Orb" && d.natures[sparky.nature].en == "Timid"
+                    && sparky.evs.contentEquals(intArrayOf(4, 0, 0, 252, 0, 252)) && sparky.ivs[1] == 0
+                    && sparky.moves.map { if (it == 0) "" else d.move(it).en } == listOf("Thunderbolt", "Hidden Power", "", "")
+                    && showdown.unknown == listOf("Fakemon"),
+                "Showdown names find this app's forms, a seventh set starts a second team: ${showdown.teams.map { t -> t.members.map { d.mon(it.num).en } }} ${showdown.unknown}")
 
             val hits = d.search(d.whole, "char", 20)
             check((hits.getValue("Pokémon")[0] as Mon).name == "Charmander", "global search ranks prefix first")
             check((d.search(d.whole, "25", 5).getValue("Pokémon")[0] as Mon).name == "Pikachu", "global number search")
             check((d.search(d.whole, "sash", 5).getValue("Items")[0] as Item).name == "Focus Sash", "global item search")
             check(d.items.all { it.group in ITEM_GROUPS } && d.items.first { it.en == "Leftovers" }.group == "Held items", "item sections")
+            check(d.items.first { it.en == "Ultra Ball" }.let { !it.held && it.effect == "Catch rate 2×." && it.gen == 1 }, "Poké Balls")
             check(d.mon(4).abilities.any { d.ability(it).name == "Blaze" }, "Charmander has Blaze")
             val chart = d.natureChart()
             check(chart.flatMap { it.toList() }.toSet().let { it.size == 25 && -1 !in it }

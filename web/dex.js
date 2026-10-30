@@ -60,7 +60,7 @@ const key = (name, en) => (name === en ? fold(en) : fold(name) + '|' + fold(en))
 
 const STATS = ['HP', 'Atk', 'Def', 'SpA', 'SpD', 'Spe'];
 const METHODS = ['Level', 'TM', 'Egg', 'Tutor', 'Other', 'Fast Attack', 'Charged Attack', 'Elite TM'];
-const ITEM_GROUPS = ['Held items', 'Berries', 'Type boosters', 'Gems', 'Species items', 'Mega Stones', 'Z-Crystals', 'Training'];
+const ITEM_GROUPS = ['Poké Balls', 'Held items', 'Berries', 'Type boosters', 'Gems', 'Species items', 'Mega Stones', 'Z-Crystals', 'Training'];
 const STARTERS = [1, 152, 252, 387, 495, 650, 722, 810, 906];
 const REGIONS = ['Kanto', 'Johto', 'Hoenn', 'Sinnoh', 'Unova', 'Kalos', 'Alola', 'Galar', 'Paldea'];
 const WHOLE = 999;
@@ -160,7 +160,7 @@ class Dex {
     }
     for (const f of t.items) {
       const name = n.get('item\t' + f[0]) ?? f[1];
-      d.items.push({ id: +f[0], en: f[1], name, gen: opt(f[2]), effect: f[3].replace(/^Held: /, ''), group: f[4], key: key(name, f[1]) });
+      d.items.push({ id: +f[0], en: f[1], name, gen: opt(f[2]), effect: f[3].replace(/^Held: /, ''), group: f[4], held: f[4] !== 'Poké Balls', key: key(name, f[1]) });
     }
     for (const f of t.natures) d.natures.push({ en: f[0], name: n.get('nature\t' + f[0]) ?? f[0], up: f[1], down: f[2] });
     for (const f of t.games) d.games.push(d.game_(f));
@@ -397,6 +397,14 @@ class Dex {
     return all.get(m.num) ?? all.get(m.species) ?? null;
   }
 
+  /** Whether `m` learns move `id` in `all`, a game's learnsets(); see Dex.learns in Dex.kt. */
+  static learns(all, m, id) {
+    const c = all.get(m.num) ?? all.get(m.species);
+    if (!c) return false;
+    for (let i = 1; i < c[0].length; i += 2) if (c[0][i] === id) return true;
+    return c.some((x, k) => k > 0 && x.includes(id));
+  }
+
   /** Rows of [species, method, level], by method, level, number. */
   async learners(g, id) {
     const out = [];
@@ -555,6 +563,22 @@ class Team {
   static EV_TOTAL = 510;
   static IV_MAX = 31;
   static EVIOLITE = 581;
+  static LINK = 'https://deandark.me/dexsearch/#team=';
+  static LINK_CODE = /(?:https?:\/\/\S*)?#team=([A-Za-z0-9_-]+)/g;
+  /** Field weather values; the names are WEATHER. */
+  static SUN = 1;
+  static RAIN = 2;
+  static SAND = 3;
+  static SNOW = 4;
+  static WEATHER = [L.k("None"), L.k("Sun"), L.k("Rain"), L.k("Sandstorm"), L.k("Snow")];
+  /** Effect texts of type boosters (Charcoal, plates, incenses), gems and resist berries, for hit. */
+  static BOOST = /(\w+)-[Tt]ype (?:moves|attacks) (?:from holder do 20% more|have 1\.2×)/;
+  static GEM = /damaging (\w+)-type move, the move has/;
+  static BERRY = /struck by a (?:super-effective )?(\w+)-type attack to halve/;
+  /** Abilities that turn Normal moves (Normalize: every move) into a type. */
+  static ATE = { Aerilate: 'flying', Pixilate: 'fairy', Refrigerate: 'ice', Galvanize: 'electric', Normalize: 'normal' };
+  /** Abilities that raise the attacking stat for one type. */
+  static TYPE_ATK = { Steelworker: 'steel', 'Dragon’s Maw': 'dragon', Transistor: 'electric', 'Rocky Payload': 'rock' };
   /** Effect text of attacks a team does not run for coverage; see Team.AWKWARD. */
   static AWKWARD = /recharge|faints|charge before|charges for|next turn|later|[Oo]nly (works|inflicts|be used)|[Ff]ails if|canceled|half of its max HP|damages the user\.|no longer|Removes the user|readying|shares a type|Misty Terrain is active/;
   static LEGENDS = [[144, 146], [150, 151], [243, 245], [249, 251], [377, 386], [480, 494], [638, 649], [716, 721],
@@ -610,6 +634,154 @@ class Team {
 
   static formatAll(teams) {
     return teams.map(t => t.format()).join('\n');
+  }
+
+  /** This team as a link the web app offers to add when opened; see Team.link. */
+  link() {
+    const bytes = new TextEncoder().encode(this.format());
+    return Team.LINK + btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  /**
+   * {teams, unknown} from pasted text: links, or else Showdown sets split into teams by "=== [format] Name ===" lines
+   * and every six sets, in `game`; teams without a name line are named ''. See Team.read.
+   */
+  static read(d, text, game) {
+    const teams = [];
+    const unknown = new Set();
+    for (const m of text.matchAll(Team.LINK_CODE)) {
+      let t = null;
+      try {
+        const b64 = m[1].replace(/-/g, '+').replace(/_/g, '/');
+        t = Team.parse(new TextDecoder().decode(Uint8Array.from(atob(b64 + '='.repeat(-b64.length & 3)), c => c.charCodeAt(0))));
+      } catch (e) {
+        t = null;
+      }
+      if (t && Team.valid(d, t)) teams.push(t);
+      else unknown.add(m[0]);
+    }
+    // Text around a link is a message ("look: <link>"), not sets.
+    if (teams.length || unknown.size) return { teams, unknown: [...unknown] };
+    const names = new Map();
+    for (const m of d.mons) if (!names.has(fold(Team.gendered(m.en)))) names.set(fold(Team.gendered(m.en)), m.num);
+    const byName = list => new Map(list.map(x => [fold(x.en), x.id]));
+    const items = byName(d.items);
+    const abilities = byName(d.abilities);
+    const moves = byName(d.moves);
+    let team = null;
+    let x = null;
+    // True from a set's first line to the blank line after it, also when the Pokémon was not found.
+    let inSet = false;
+    for (const raw of text.split('\n')) {
+      const line = raw.trim();
+      const value = line.slice(line.indexOf(':') + 1).trim();
+      if (line.startsWith('===')) {
+        team = new Team(line.replace(/^[=\s]+|[=\s]+$/g, '').replace(/^\[[^\]]*\]/, '').trim(), game);
+        teams.push(team);
+        inSet = false;
+      } else if (!line) {
+        inSet = false;
+      } else if (!inSet) {
+        inSet = true;
+        const at = line.lastIndexOf(' @ ');
+        const head = (at < 0 ? line : line.slice(0, at)).replace(/\s*\((M|F)\)$/, '').trim();
+        const nick = head.match(/\(([^()]+)\)$/);
+        const num = Team.findMon(d, names, head) ?? (nick ? Team.findMon(d, names, nick[1]) : null);
+        if (num === null) {
+          unknown.add(head);
+          x = null;
+          continue;
+        }
+        const m = d.mon(num);
+        x = Team.member(num, m.abilities.length ? m.abilities[0] : m.hidden, 100);
+        if (!team || team.members.length === Team.SIZE) {
+          team = new Team(team ? team.name : '', game);
+          teams.push(team);
+        }
+        team.members.push(x);
+        if (at >= 0) {
+          const item = line.slice(at + 3).trim();
+          if (items.has(fold(item))) x.item = items.get(fold(item));
+          else unknown.add(item);
+        }
+      } else if (!x) {
+        continue;
+      } else if (line.startsWith('Ability:')) {
+        if (abilities.has(fold(value))) x.ability = abilities.get(fold(value));
+        else unknown.add(value);
+      } else if (line.startsWith('Level:')) {
+        const n = parseInt(value, 10);
+        if (!Number.isNaN(n)) x.level = Math.min(100, Math.max(1, n));
+      } else if (line.startsWith('Tera Type:')) {
+        const t = d.types.indexOf(value.toLowerCase());
+        if (t >= 0) x.tera = t;
+        else unknown.add(value);
+      } else if (line.startsWith('EVs:') || line.startsWith('IVs:')) {
+        for (const part of value.split('/')) {
+          const f = part.trim().split(' ');
+          const n = parseInt(f[0], 10);
+          const stat = STATS.indexOf(f[1]);
+          if (Number.isNaN(n) || stat < 0) continue;
+          if (line[0] === 'E') x.evs[stat] = Math.min(Math.max(0, n), Team.evRoom(x, stat));
+          else x.ivs[stat] = Math.min(Math.max(0, n), Team.IV_MAX);
+        }
+      } else if (line.endsWith(' Nature')) {
+        const n = d.natures.findIndex(nt => nt.en === line.slice(0, -7).trim());
+        if (n >= 0) x.nature = n;
+      } else if (line.startsWith('-')) {
+        // "- Hidden Power [Fire]"; "- Flamethrower / Fire Blast" offers a choice, the first is taken.
+        const name = line.slice(1).split(' / ')[0].split('[')[0].trim();
+        const slot = x.moves.indexOf(0);
+        if (!moves.has(fold(name))) unknown.add(name);
+        else if (slot >= 0) x.moves[slot] = moves.get(fold(name));
+      }
+    }
+    return { teams: teams.filter(t => t.members.length), unknown: [...unknown] };
+  }
+
+  /** Species or form number for a Showdown name, null if none; see Team.findMon. */
+  static findMon(d, names, s) {
+    const name = Team.gendered(s);
+    if (names.has(fold(name))) return names.get(fold(name));
+    for (let i = 0; i < name.length; i++) {
+      if (name[i] !== '-') continue;
+      const num = names.get(fold(name.slice(0, i)));
+      if (num === undefined || isForm(d.mon(num))) continue;
+      const parts = name.slice(i + 1).split('-').map(fold).filter(p => p);
+      let best = num;
+      let top = 0;
+      for (const f of d.mons) {
+        if (f.species !== num || !isForm(f)) continue;
+        const words = f.en.split(/[ ()]/).map(fold).filter(w => w);
+        if (words.includes('mega') && !parts.includes('mega')) continue;
+        const hits = parts.filter(p => words.some(w => w.startsWith(p))).length;
+        if (hits > 0 && hits * 10 - words.length > top) {
+          best = f.num;
+          top = hits * 10 - words.length;
+        }
+      }
+      return best;
+    }
+    return null;
+  }
+
+  static gendered(s) {
+    return s.replace('♀', '-F').replace('♂', '-M');
+  }
+
+  /** A team from a link only when every number in it is one this data has. */
+  static valid(d, t) {
+    const ids = list => new Set(list.map(x => x.id));
+    const abilities = ids(d.abilities);
+    const items = ids(d.items);
+    const moves = ids(d.moves);
+    const within = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+    return d.game(t.game).id === t.game && t.members.length <= Team.SIZE && t.members.every(x =>
+      d.monOrNull(x.num) && (x.evo === 0 || d.monOrNull(x.evo)) && within(x.level, 1, 100)
+      && (x.ability === 0 || abilities.has(x.ability)) && (x.item === 0 || items.has(x.item))
+      && x.moves.every(id => id === 0 || moves.has(id)) && within(x.nature, -1, d.natures.length - 1)
+      && within(x.tera, -1, d.types.length - 1) && x.evs.every(v => within(v, 0, Team.EV_STAT))
+      && x.evs.reduce((a, b) => a + b, 0) <= Team.EV_TOTAL && x.ivs.every(v => within(v, 0, Team.IV_MAX)));
   }
 
   /** Showdown text, in English whatever the app's language; no Ability line before Generation 3. */
@@ -864,6 +1036,137 @@ class Team {
       x = div(x * factor, 100);
       return factor > 0 ? Math.max(1, x) : 0;
     });
+  }
+
+  /** What the damage calc sets beyond the two sets: weather 0 for none or SUN to SNOW, stat stages -6 to 6. */
+  static field() {
+    return { weather: 0, crit: false, atkStage: 0, defStage: 0, burned: false };
+  }
+
+  /**
+   * damage with both sets' items and abilities and the calc's field, in the order of the Gen 5+ games: base power,
+   * attacking and defending stat, base damage, weather, critical hit, roll, same type, type, burn, then the final
+   * modifiers. Modifiers are in 4096ths and chained and rounded as the games do; the defender is at full HP (Multiscale).
+   * Returns { roll: [min, max], atk, def, power, factor, mods: [[label, 4096ths]] }.
+   * ponytail: about 60 common items and abilities; no Tera, screens, terrain, contact or punch abilities, moves whose
+   * power changes, or Gen 1-4 differences. Add one to ATE, TYPE_ATK or the checks below, and in Team.kt.
+   */
+  static hit(d, g, a, b, mv, f) {
+    const ai = a.item ? d.item(a.item) : null;
+    const bi = b.item ? d.item(b.item) : null;
+    const aa = a.ability > 0 ? d.ability(a.ability) : null;
+    const ba = b.ability > 0 ? d.ability(b.ability) : null;
+    const ae = aa?.en ?? '';
+    const be = ba?.en ?? '';
+    const special = mv.category === 'special';
+    const shown = [];
+    const of = (re, it) => it && re.exec(it.effect)?.[1].toLowerCase();
+
+    const bp = [];
+    let type = mv.type;
+    const to = Team.ATE[ae];
+    if (to && (mv.type === 'normal' || ae === 'Normalize')) {
+      type = to;
+      if (g.gen >= 7) bp.push([aa.name, 4915]);
+      else if (ae !== 'Normalize') bp.push([aa.name, 5325]);
+    }
+    const types = d.typesOf(g, d.mon(b.num));
+    let factor = d.factor(g, type, types);
+    if (ai) {
+      if (of(Team.GEM, ai) === type) bp.push([ai.name, g.gen >= 6 ? 5325 : 6144]);
+      else if (of(Team.BOOST, ai) === type) bp.push([ai.name, 4915]);
+      else if (ai.en === 'Muscle Band' && !special || ai.en === 'Wise Glasses' && special) bp.push([ai.name, 4505]);
+    }
+    if (ae === 'Technician' && mv.power <= 60) bp.push([aa.name, 6144]);
+    if (ae === 'Sheer Force' && mv.chance > 0) bp.push([aa.name, 5325]);
+    const power = Math.max(1, Team.apply(mv.power, Team.chain(bp)));
+    shown.push(...bp);
+
+    const astage = f.crit && f.atkStage < 0 ? 0 : f.atkStage;
+    if (astage) shown.push([L.t("Attack stage") + ' ' + Team.signed(astage), Team.stage(4096, astage)]);
+    const am = [];
+    const species = d.mon(a.num).species;
+    if (ai && (ai.en === 'Choice Band' && !special || ai.en === 'Choice Specs' && special)) am.push([ai.name, 6144]);
+    else if (ai && (ai.en === 'Light Ball' && species === 25 || ai.en === 'Thick Club' && !special && (species === 104 || species === 105))) am.push([ai.name, 8192]);
+    if ((ae === 'Huge Power' || ae === 'Pure Power') && !special) am.push([aa.name, 8192]);
+    else if (ae === 'Guts' && f.burned && !special || ae === 'Hustle' && !special || ae === 'Solar Power' && special && f.weather === Team.SUN) am.push([aa.name, 6144]);
+    else if (ae === 'Water Bubble' && type === 'water') am.push([aa.name, 8192]);
+    else if (Team.TYPE_ATK[ae] === type) am.push([aa.name, ae === 'Transistor' && g.gen >= 9 ? 5325 : 6144]);
+    if (be === 'Thick Fat' && (type === 'fire' || type === 'ice') || (be === 'Heatproof' || be === 'Water Bubble') && type === 'fire'
+      || be === 'Purifying Salt' && type === 'ghost') am.push([ba.name, 2048]);
+    const atk = Team.apply(Team.stage(Team.stats(d, a)[special ? 3 : 1], astage), Team.chain(am));
+    shown.push(...am);
+
+    const dstage = f.crit && f.defStage > 0 ? 0 : f.defStage;
+    if (dstage) shown.push([L.t("Defense stage") + ' ' + Team.signed(dstage), Team.stage(4096, dstage)]);
+    const dm = [];
+    if (bi && (bi.en === 'Assault Vest' && special || b.item === Team.EVIOLITE && d.evolutions(b.num).length)) dm.push([bi.name, 6144]);
+    if (be === 'Fur Coat' && !special) dm.push([ba.name, 8192]);
+    if (f.weather === Team.SAND && special && types.includes('rock') && g.gen >= 4) dm.push([L.t("Sandstorm"), 6144]);
+    if (f.weather === Team.SNOW && !special && types.includes('ice') && g.gen >= 9) dm.push([L.t("Snow"), 6144]);
+    const def = Math.max(1, Team.apply(Team.stage(Team.stats(d, b)[special ? 4 : 2], dstage), Team.chain(dm)));
+    shown.push(...dm);
+
+    const immune = {
+      Levitate: 'ground', 'Earth Eater': 'ground', 'Flash Fire': 'fire', 'Well-Baked Body': 'fire', 'Water Absorb': 'water',
+      'Storm Drain': 'water', 'Dry Skin': 'water', 'Volt Absorb': 'electric', 'Lightning Rod': 'electric', 'Motor Drive': 'electric',
+      'Sap Sipper': 'grass',
+    }[be] === type || be === 'Wonder Guard' && factor <= 100;
+    if (immune && factor > 0) {
+      factor = 0;
+      shown.push([ba.name, 0]);
+    }
+    const weather = f.weather === Team.SUN && type === 'fire' || f.weather === Team.RAIN && type === 'water' ? 6144
+      : f.weather === Team.SUN && type === 'water' || f.weather === Team.RAIN && type === 'fire' ? 2048 : 4096;
+    if (weather !== 4096) shown.push([L.t(Team.WEATHER[f.weather]), weather]);
+    const crit = g.gen >= 6 ? 6144 : 8192;
+    if (f.crit) shown.push([L.t("Critical hit"), crit]);
+    const stab = !d.typesOf(g, d.mon(a.num)).includes(type) ? 4096 : ae === 'Adaptability' ? 8192 : 6144;
+    if (stab !== 4096) shown.push([stab === 8192 ? aa.name : L.t("Same type"), stab]);
+    const burn = f.burned && !special && ae !== 'Guts';
+    if (burn) shown.push([L.t("Burned"), 2048]);
+
+    const fm = [];
+    if (ai?.en === 'Life Orb') fm.push([ai.name, 5324]);
+    else if (ai?.en === 'Expert Belt' && factor > 100) fm.push([ai.name, 4915]);
+    if (of(Team.BERRY, bi) === type && (factor > 100 || type === 'normal' && factor > 0)) fm.push([bi.name, 2048]);
+    if ((be === 'Multiscale' || be === 'Shadow Shield') && factor > 0 || be === 'Ice Scales' && special) fm.push([ba.name, 2048]);
+    else if ((be === 'Filter' || be === 'Solid Rock' || be === 'Prism Armor') && factor > 100) fm.push([ba.name, 3072]);
+    if (ae === 'Tinted Lens' && factor > 0 && factor < 100) fm.push([aa.name, 8192]);
+    if (ae === 'Sniper' && f.crit) fm.push([aa.name, 6144]);
+    shown.push(...fm);
+
+    const base = div(div((div(2 * a.level, 5) + 2) * power * atk, def), 50) + 2;
+    const roll = [85, 100].map(r => {
+      let x = Team.apply(base, weather);
+      if (f.crit) x = div(x * crit, 4096);
+      x = div(x * r, 100);
+      x = Team.apply(x, stab);
+      x = div(x * factor, 100);
+      if (burn) x = Team.apply(x, 2048);
+      x = Team.apply(x, Team.chain(fm));
+      return factor > 0 ? Math.max(1, x) : 0;
+    });
+    return { roll, atk, def, power, factor, mods: shown };
+  }
+
+  /** Modifiers in 4096ths combined as the games do, each step rounded half up. */
+  static chain(mods) {
+    return mods.reduce((c, m) => (c * m[1] + 2048) >> 12, 4096);
+  }
+
+  /** `x` times `mod` (4096ths), rounded half down as the games do. */
+  static apply(x, mod) {
+    return div(x * mod + 2047, 4096);
+  }
+
+  /** `x` at stat stage `s` (-6 to 6): +1 is 3/2, -1 is 2/3. */
+  static stage(x, s) {
+    return s >= 0 ? div(x * (2 + s), 2) : div(x * 2, 2 - s);
+  }
+
+  static signed(s) {
+    return s > 0 ? '+' + s : String(s);
   }
 
   /** Attacking types (indices) both are weak to, if they double up: two or more, or one plus a shared type. */

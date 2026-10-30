@@ -33,7 +33,7 @@
 33	Swift Swim	3	Doubles Speed during rain.	This Pokémon's Speed is doubled during rain.\n\nThis bonus does not count as a stat modifier.
 34	Chlorophyll	3	Doubles Speed during strong sunlight.	This Pokémon's Speed is doubled during strong sunlight.\n\nThis bonus does not count as a stat modifier.
 35	Illuminate	3	Doubles the wild encounter rate.	Overworld: If the lead Pokémon has this ability, the wild encounter rate is doubled.\n\nThis ability has no effect in battle.
-36	Trace	3	Copies an opponent's ability upon entering battle.	When this Pokémon enters battle, it copies a random opponent's ability.\n\nThis ability cannot copy Flower Gift, Forecast, Illusion, Imposter, Multitype, Trace, Wonder Guard, or Zen Mode.
+36	Trace	3	Copies an opponent's ability upon entering battle.	When this Pokémon enters battle, it copies a random opponent's ability.\n\nThis ability cannot copy Flower Gift, Forecast, Illusion, Imposter, Multitype, Trace, or Zen Mode.
 37	Huge Power	3	Doubles Attack in battle.	This Pokémon's Attack is doubled while in battle.\n\nThis bonus does not count as a stat modifier.\n\nThis ability functions identically to Pure Power.
 38	Poison Point	3	Has a 30% chance of poisoning attacking Pokémon on contact.	Whenever a move makes contact with this Pokémon, the move's user has a 30% chance of being poisoned.
 39	Inner Focus	3	Prevents flinching.	This Pokémon cannot flinch.

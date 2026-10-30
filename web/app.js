@@ -138,6 +138,8 @@ function lighten(c) {
 const on = c => (lum(c) > 0.2 ? '#15171A' : '#fff');
 const tier = v => (v < 50 ? '#F34444' : v < 80 ? '#FF7F0F' : v < 100 ? '#FFC107' : v < 120 ? '#A0E515' : '#23CD5E');
 const effect = f => ({ 0: '×0', 25: '×¼', 50: '×½', 100: '×1', 200: '×2', 400: '×4' })[f] ?? '×' + f / 100;
+/** A modifier in 4096ths to two decimals: 4915 is "×1.2", 2048 "×0.5", 8192 "×2". */
+const times = mod => '×' + div(mod * 100 + 2048, 4096) / 100;
 const national = n => '#' + String(n).padStart(4, '0');
 
 /** Text in `c`, dark enough by day and light enough by night. */
@@ -1026,6 +1028,10 @@ function pokedex(p, type) {
   /** 0 all, 1 caught, 2 not caught, as CAUGHT in PokedexActivity. */
   let caughtFilter = 0;
   let have = caughtSet();
+  /** Move every shown Pokémon learns, with the learnsets of its game (Dex.moveGame), and ability every one can have; null for any. */
+  let learns = null;
+  let learnSets = null;
+  let ability = null;
   const CAUGHT = [L.t("All"), L.t("Caught"), L.t("Not caught")];
   const chips = {};
   // Marks change on the Pokémon page above this one.
@@ -1045,7 +1051,7 @@ function pokedex(p, type) {
         refresh();
       });
       add('type', () => pickMany(L.t("Type (must have all)"), d.typesIn(g), types, refresh));
-      // Generation, caught and lowest total share one sheet, so the chip row fits one line.
+      // Generation, caught, lowest total, a move and an ability share one sheet, so the chip row fits one line.
       add('filters', () => {
         const s = sheet(L.t("Filters"));
         const row = (label, value, open) => s.body.append(h('button', { class: 'set', onclick: () => { if (s.close()) open(); } },
@@ -1060,10 +1066,26 @@ function pokedex(p, type) {
             minBst = BST[i];
             refresh();
           }));
-        if (gens.size || caughtFilter || minBst) s.button(L.t("Clear"), false, () => {
+        row(L.t("Learns"), learns ? learns.name : L.t("Any move"), () => pickSearch(L.t("Learns"), [], [[
+          entry(0, '', L.t("Any move"), '', [], 0), ...d.movesIn(g).sort(byKey).map(mv => moveEntry(mv, '')),
+        ]], async ref => {
+          // The list stays as it was until the game's learnsets are in.
+          learnSets = ref ? await d.learnsets((await d.moveGame(g, ref)).id) : null;
+          learns = ref || null;
+          refresh();
+        }));
+        row(L.t("Ability"), ability ? ability.name : L.t("Any ability"), () => pickSearch(L.t("Ability"), [], [[
+          entry(0, '', L.t("Any ability"), '', [], 0),
+          ...d.abilities.filter(a => (a.gen ?? 0) <= g.gen).sort(byKey).map(a => entry(0, '', a.name, a.shortEffect, [], a)),
+        ]], ref => {
+          ability = ref || null;
+          refresh();
+        }));
+        if (gens.size || caughtFilter || minBst || learns || ability) s.button(L.t("Clear"), false, () => {
           gens.clear();
           caughtFilter = 0;
           minBst = 0;
+          learns = learnSets = ability = null;
           refresh();
         });
         s.button(L.t("Done"), true).show();
@@ -1075,7 +1097,8 @@ function pokedex(p, type) {
     },
     items(q) {
       source = dexSource(g, nationalDex);
-      const keep = e => !caughtFilter || have.has(e.mon.num) === (caughtFilter === 1);
+      const keep = e => (!caughtFilter || have.has(e.mon.num) === (caughtFilter === 1))
+        && (!learns || Dex.learns(learnSets, e.mon, learns.id)) && (!ability || e.mon.abilities.includes(ability.id) || e.mon.hidden === ability.id);
       return d.pokedex(g, source, q, types, gens, minBst, sort).filter(keep)
         .map(e => dexEntry(g, e, nationalDex, have, sort.stat ? L.t(sort.label) + ' ' + sort.stat(e.mon) : ''));
     },
@@ -1085,7 +1108,7 @@ function pokedex(p, type) {
       if (chips.dex) setChip(chips.dex, nationalDex ? L.t("National") : L.t("Regional"), nationalDex);
       setChip(chips.type, types.size ? [...types].map(t => d.label(t)).join(' / ') : L.t("Type"), types.size > 0);
       const on = [gens.size ? L.f("Gen %s", [...gens].sort((a, b) => a - b).join(',')) : '', caughtFilter ? CAUGHT[caughtFilter] : '',
-        minBst ? L.f("BST %d+", minBst) : ''].filter(Boolean);
+        minBst ? L.f("BST %d+", minBst) : '', learns?.name, ability?.name].filter(Boolean);
       setChip(chips.filters, on.length ? on.join('  ·  ') : L.t("Filters"), on.length > 0);
       setChip(chips.sort, L.f("Sort: %s", L.t(sort.label)), sort !== SORTS[0]);
     },
@@ -1705,7 +1728,50 @@ function teamsScreen(p) {
           saveTeams(teams);
           open(q => teamScreen(q, teams.length - 1));
         },
-      }, L.f("New team for %s", g.name))));
+      }, L.f("New team for %s", g.name)),
+      h('button', { class: 'button alt', onclick: () => importTeams(render) }, L.t("Import team"))));
+  }
+}
+
+/** Showdown text or DexSearch links pasted into a box (Team.read); see TeamsActivity.importTeams. */
+function importTeams(done) {
+  const s = sheet(L.t("Import team"));
+  const hint = h('p', { class: 'muted', style: 'font-size:14px;padding:0 4px 10px' }, L.t("Paste a team copied from Showdown or a DexSearch team link."));
+  const box = h('textarea', { class: 'field', rows: '8', autofocus: '', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false' });
+  s.body.append(hint, box);
+  if (navigator.clipboard?.readText) {
+    s.button(L.t("Paste"), false, () => navigator.clipboard.readText().then(t => { box.value = t; }, () => {}), true);
+  }
+  s.button(L.t("Cancel")).button(L.t("Import"), true, () => {
+    const found = Team.read(d, box.value, game().id);
+    if (!found.teams.length) {
+      hint.textContent = L.t("No Pokémon found in this text.");
+      hint.style.color = 'var(--accent-text)';
+      return;
+    }
+    if (!s.close()) return;
+    added(found, done);
+  }, true).show();
+}
+
+/** Saves imported teams, unnamed ones named like new teams; one opens, else `done` refreshes the list. Unknown names are listed first. */
+function added(found, done) {
+  const teams = loadTeams();
+  for (const t of found.teams) {
+    if (!t.name.trim()) t.name = L.f("Team %d", teams.length + 1);
+    teams.push(t);
+  }
+  saveTeams(teams);
+  if (found.unknown.length) {
+    done();
+    const n = sheet(L.t("Partly imported"));
+    n.body.append(h('p', { class: 'muted', style: 'font-size:15px;padding:0 4px' },
+      L.f("%d Pokémon imported. Not recognized, so left out: %s", found.teams.reduce((a, t) => a + t.members.length, 0), found.unknown.join(L.t(", ")))));
+    n.button(L.t("Done"), true).show();
+  } else if (found.teams.length === 1) {
+    open(q => teamScreen(q, teams.length - 1));
+  } else {
+    done();
   }
 }
 
@@ -1762,7 +1828,7 @@ function teamScreen(p, ti) {
       chipRow(null,
         chip(L.t("Compare"), () => open(q => compare(q, 0, g.id))),
         chip(L.t("Damage calc"), () => open(q => calc(q, ti, -1))),
-        chip(L.t("Copy as text"), () => copy(team))),
+        chip(L.t("Share"), () => share(team))),
       // Its own row, as "Remove from team" on a member: out of reach of a tap meant for the actions above.
       chipRow(null, chip(L.t("Delete team"), del, 'danger'))));
     p.el.scrollTop = y;
@@ -1770,6 +1836,18 @@ function teamScreen(p, ti) {
 }
 
 /** Clipboard when the browser allows it; otherwise the text in a box to copy by hand. */
+/** See TeamActivity.share. The system share sheet where there is one, else the link goes to the clipboard. */
+function share(team) {
+  const s = sheet(L.t("Share"));
+  s.body.append(h('p', { class: 'muted', style: 'font-size:15px;padding:0 4px' },
+    L.t("The text pastes into Showdown. The link opens the team in DexSearch on the web, and Import team in either app reads both.")));
+  s.button(L.t("Copy as text"), false, () => copy(team)).button(L.t("Share link"), true, () => {
+    const url = team.link();
+    if (navigator.share) navigator.share({ title: team.name, url }).catch(() => {});
+    else navigator.clipboard?.writeText(url).then(() => toast(L.t("Link copied")), () => toast(url)) ?? toast(url);
+  }).show();
+}
+
 function copy(team) {
   const text = team.export(d);
   const show = () => {
@@ -2192,7 +2270,7 @@ function memberScreen(p, ti, k) {
 
   /** Held items released by this game's generation: those in this Pokémon's Smogon sets first, most used on top. */
   async function pickItem(m) {
-    const usable = d.items.filter(i => i.gen <= g.gen);
+    const usable = d.items.filter(i => i.held && i.gen <= g.gen);
     const used = new Map();
     for (const b of await builds(m)) if (b.item) used.set(b.item, (used.get(b.item) ?? 0) + 1);
     const top = usable.filter(i => used.has(i.id)).sort((a, b) => used.get(b.id) - used.get(a.id));
@@ -2434,6 +2512,7 @@ function calc(p, ti, k) {
   let move = picked[0] ? firstMove(picked[0]) : 0;
   const col = h('div', 'col');
   const out = panel(L.t("Damage"));
+  const field = Team.field();
   p.el.append(col);
   render();
   pick(picked[0] ? 1 : 0);
@@ -2469,19 +2548,66 @@ function calc(p, ti, k) {
         h('div', 'caption', i ? L.t("Defender") : L.t("Attacker")),
         m ? sprite(m.num) : null, h('div', { style: m ? null : 'height:80px' }),
         h('div', 'nm', m ? m.name : L.t("Choose")),
-        x ? h('div', 'lvl', h('span', 'muted', L.t("Level")), level) : null);
+        x ? h('div', 'lvl', h('span', 'muted', L.t("Level")), level) : null,
+        x ? line(x.item ? d.item(x.item).name : L.t("No item"), L.t("Held item"), () => pickItem(x)) : null,
+        x ? line(x.ability > 0 ? d.ability(x.ability).name : L.t("Ability"), L.t("Ability"), () => {
+          const ids = [...new Set([...m.abilities, m.hidden])].filter(id => id > 0);
+          pickOne(L.t("Ability"), ids.map(id => d.ability(id).name), ids.indexOf(x.ability), k => {
+            x.ability = ids[k];
+            render();
+          });
+        }) : null);
     });
     for (const img of heads.map(c => c.querySelector('img')).filter(i => i)) img.style.cssText = 'width:80px;height:80px';
     const mv = panel(L.t("Move"), 'flush wide mb12');
     mv.append(row(move ? moveEntry(d.move(g, move), '') : entry(0, '', L.t("Choose a move"), '', [], ''), pickMove));
+    const cond = panel(L.t("Conditions"), 'wide mt12');
+    const set = (label, value, act) => cond.append(h('button', { class: 'set', onclick: act }, h('span', null, label), h('span', 'v short', value)));
+    const stages = Array.from({ length: 13 }, (_, i) => Team.signed(i - 6));
+    set(L.t("Weather"), L.t(Team.WEATHER[field.weather]), () => pickOne(L.t("Weather"), Team.WEATHER.map(w => L.t(w)), field.weather, i => {
+      field.weather = i;
+      render();
+    }));
+    set(L.t("Attack stage"), Team.signed(field.atkStage), () => pickOne(L.t("Attack stage"), stages, field.atkStage + 6, i => {
+      field.atkStage = i - 6;
+      render();
+    }));
+    set(L.t("Defense stage"), Team.signed(field.defStage), () => pickOne(L.t("Defense stage"), stages, field.defStage + 6, i => {
+      field.defStage = i - 6;
+      render();
+    }));
+    set(L.t("Critical hit"), field.crit ? L.t("Yes") : L.t("No"), () => {
+      field.crit = !field.crit;
+      render();
+    });
+    set(L.t("Attacker burned"), field.burned ? L.t("Yes") : L.t("No"), () => {
+      field.burned = !field.burned;
+      render();
+    });
     col.replaceChildren(head(L.t("Damage calc")), h('p', 'sub', g.name), h('div', 'pair wide mb12', heads),
       chipRow(null, chip(L.t("Swap sides"), () => {
         picked.reverse();
         render();
       })),
-      mv, out,
-      h('p', 'note pad', L.t("Gen 5 and later formula. Not counted: abilities, items, weather, critical hits, stat changes and burns.")));
+      mv, out, cond,
+      h('p', 'note pad', L.t("Gen 5 and later formula, the defender at full HP. Not counted: Tera, screens, terrain, abilities that need contact or a punch, and moves whose power changes.")));
     result();
+  }
+
+  /** The item or ability on a head card; `role` is read out before it. */
+  function line(value, role, act) {
+    return h('button', { class: 'hl', 'aria-label': role + ': ' + value, onclick: e => {
+      e.stopPropagation();
+      act();
+    } }, value);
+  }
+
+  function pickItem(x) {
+    const make = i => entry(0, '', i.name, i.effect, [], i);
+    pickSearch(L.t("Held item"), [], [[entry(0, '', L.t("No item"), '', [], 0), ...itemSections(d.items.filter(i => i.held && i.gen <= g.gen), make)]], ref => {
+      x.item = ref ? ref.id : 0;
+      render();
+    });
   }
 
   function result() {
@@ -2495,14 +2621,11 @@ function calc(p, ti, k) {
     const ma = d.mon(a.num);
     const mb = d.mon(b.num);
     const special = mv.category === 'special';
-    const sa = Team.stats(d, a);
-    const sb = Team.stats(d, b);
     const atk = special ? 3 : 1;
     const guard = special ? 4 : 2;
-    const factor = d.factor(g, mv.type, d.typesOf(g, mb));
-    const stab = d.typesOf(g, ma).includes(mv.type);
-    const hit = Team.damage(a.level, mv.power, sa[atk], sb[guard], stab, factor);
-    const hp = sb[0];
+    const calc = Team.hit(d, g, a, b, mv, field);
+    const hit = calc.roll;
+    const hp = Team.stats(d, b)[0];
     const fast = hit[1] ? Math.ceil(hp / hit[1]) : 0;
     const slow = hit[0] ? Math.ceil(hp / hit[0]) : 0;
     const ko = hit[1] === 0 ? L.t("No effect") : slow === 1 ? L.t("Faints in one hit")
@@ -2514,11 +2637,11 @@ function calc(p, ti, k) {
       h('div', 'hp', h('i', { style: `width:${(top * 100) / hp}%` }, h('i', { style: `width:${top ? (Math.min(hit[0], hp) * 100) / top : 0}%` }))),
       h('div', { class: 'tnum', style: 'font-size:15px' }, L.f("%d to %d of %d HP", hit[0], hit[1], hp)),
       h('div', { class: 'bold', style: 'font-size:17px;margin:6px 0 8px' }, ko),
-      fact(L.t(STATS[atk]) + '  ·  ' + ma.name, sa[atk]),
-      fact(L.t(STATS[guard]) + '  ·  ' + mb.name, sb[guard]),
-      fact(L.t("Power"), mv.power),
-      fact(L.t("Effectiveness"), effect(factor)),
-      fact(L.t("Same type"), stab ? '×1.5' : '×1'));
+      fact(L.t(STATS[atk]) + '  ·  ' + ma.name, calc.atk),
+      fact(L.t(STATS[guard]) + '  ·  ' + mb.name, calc.def),
+      fact(L.t("Power"), calc.power),
+      fact(L.t("Effectiveness"), effect(calc.factor)),
+      ...calc.mods.map(([k, mod]) => fact(k, times(mod))));
   }
 }
 
@@ -2571,6 +2694,21 @@ async function restart() {
   mount(settings);
 }
 
+/** A team link offers to save the team; a Pokémon link (#mon=<number>) opens its page. The hash is already gone from the address. */
+function opened(hash) {
+  const mon = /^#mon=(\d+)$/.exec(hash);
+  if (mon) {
+    if (d.monByNum.has(+mon[1])) open(q => monScreen(q, +mon[1]));
+    return;
+  }
+  if (!hash.includes('#team=')) return;
+  const found = Team.read(d, hash, game().id);
+  const t = found.teams[0];
+  if (!t) return toast(L.t("This team link is damaged."));
+  confirm(L.f("Add %s?", t.name), L.f("%d Pokémon for %s: %s", t.members.length, d.game(t.game).name,
+    t.members.map(x => d.mon(x.num).name).join(L.t(", "))), L.t("Add team"), () => added(found, () => pages[0]?.resume?.()));
+}
+
 function update() {
   updating = true;
   waiting.postMessage('skip');
@@ -2586,8 +2724,10 @@ function update() {
   document.getElementById('boot').remove();
   // A fetch that no screen caught (a late Smogon set, artwork, a language table) says so instead of failing in silence.
   window.onunhandledrejection = () => toast(L.t("Could not load the data. Check the connection and reload."));
-  history.replaceState({ depth: 0 }, '');
+  const link = location.hash;
+  history.replaceState({ depth: 0 }, '', location.pathname + location.search);
   mount(home);
+  opened(link);
 
   if (!('serviceWorker' in navigator)) return;
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (updating) location.reload(); });

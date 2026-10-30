@@ -86,6 +86,9 @@ const lang = async code => {
   const fire = await d.info(frlg, charizard);
   check(fire[0].startsWith('Evolve Charmander') && fire[1].includes('\n\nLeafGreen: '), 'FireRed info');
   check((await d.learners(sv, 53)).some(r => r[0] === 6 && r[1] === 1), 'Charizard learns Flamethrower by TM');
+  const svLearn = await d.learnsets(sv.id);
+  check(Dex.learns(svLearn, charizard, 53) && Dex.learns(svLearn, charizard, svLearn.get(6)[0][1]) && !Dex.learns(svLearn, d.mon(129), 53)
+    && Dex.learns(await d.learnsets(za.id), d.mon(10034), 53), 'Learns filter');
   check((await d.learnset(za, d.mon(10034))) === (await d.learnset(za, charizard)), 'Mega Charizard X: species learnset');
 
   const chomp = Team.member(445, 24, 100);
@@ -148,8 +151,73 @@ const lang = async code => {
   const full = await lesson.teach(d, 'fire');
   check(open && open.slot === 1 && d.move(sv, open.move).type === 'fire' && d.move(sv, open.move).category === 'physical'
     && full && full.slot === 3 && full.move === open.move, 'Garchomp learns a physical Fire move, else in place of Bulldoze: ' + JSON.stringify([open, full]));
+  const ultra = d.items.find(i => i.en === 'Ultra Ball');
+  check(!ultra.held && ultra.effect === 'Catch rate 2×.' && ultra.gen === 1 && d.items.find(i => i.en === 'Leftovers').held, 'Poké Balls');
   check(Team.damage(75, 65, 123, 163, true, 400).join() === '168,196' && Team.damage(50, 40, 10, 400, false, 50)[0] === 1
     && Team.damage(50, 90, 100, 100, true, 0)[1] === 0, 'damage');
+  const named = en => d.mons.find(m => m.en === en).num;
+  const quake = d.move(sv, 89);
+  const biter = Team.member(named('Garchomp'), 0, 50);
+  const wall = Team.member(named('Bronzong'), 0, 50);
+  const plain = Team.hit(d, sv, biter, wall, quake, Team.field());
+  const banded = Team.hit(d, sv, { ...biter, item: d.items.find(i => i.en === 'Choice Band').id }, wall, quake, Team.field());
+  const hover = Team.hit(d, sv, biter, { ...wall, ability: d.abilities.find(a => a.en === 'Levitate').id }, quake, Team.field());
+  const crit = Team.hit(d, sv, biter, wall, quake, { ...Team.field(), crit: true, atkStage: -1 });
+  check(plain.roll.join() === Team.damage(50, 100, Team.stats(d, biter)[1], Team.stats(d, wall)[2], true, 200).join() && plain.mods.length === 1
+    && plain.roll.join() === '126,150' && banded.atk === 225 && banded.roll.join() === '186,222' && hover.roll[1] === 0 && hover.factor === 0
+    && crit.atk === 150 && crit.roll.join() === '188,224', 'hit: Garchomp Earthquake on Bronzong ' + [plain.roll, banded.roll, crit.roll].join(' / '));
+  const shared = new Team('Shared', sv.id);
+  for (const en of ['Alolan Raichu', 'Mega Charizard X', 'Ho-Oh', 'Paldean Tauros (Combat Breed)', 'Nidoran♀']) {
+    const x = Team.member(named(en), d.mon(named(en)).abilities[0], 50);
+    x.item = d.items.find(i => i.en === 'Life Orb').id;
+    x.nature = 3;
+    x.tera = 9;
+    x.evs[3] = 252;
+    x.ivs[1] = 0;
+    x.moves[0] = 85;
+    shared.members.push(x);
+  }
+  const body = t => t.format().split('\t').slice(1).join('\t');
+  const reread = Team.read(d, shared.export(d), sv.id);
+  const linked = Team.read(d, 'look: ' + shared.link() + ' and #team=AAAA', sv.id);
+  check(reread.teams.length === 1 && body(reread.teams[0]) === body(shared) && !reread.unknown.length
+    && linked.teams.length === 1 && linked.teams[0].format() === shared.format() && linked.unknown.join() === '#team=AAAA'
+    && shared.link() === 'https://deandark.me/dexsearch/#team=' + Buffer.from(shared.format()).toString('base64url'),
+    'a team\'s export and link read back as the same team: ' + JSON.stringify([reread, linked.unknown]));
+  const showdown = Team.read(d, `=== [gen9ou] Rain ===
+Sparky (Raichu-Alola) (M) @ Life Orb
+Ability: Surge Surfer
+Shiny: Yes
+EVs: 4 HP / 252 SpA / 252 Spe
+Timid Nature
+IVs: 0 Atk
+- Thunderbolt
+- Hidden Power [Ice]
+
+Urshifu-Rapid-Strike @ Choice Band
+
+Necrozma-Dusk-Mane
+
+Tauros-Paldea-Combat
+
+Nidoran-F
+
+Charizard-Mega-X
+
+Meowstic-F
+
+Indeedee-F
+
+Fakemon @ Rare Candy
+- Splash Hit`, sv.id);
+  const sparky = showdown.teams[0]?.members[0];
+  const got = showdown.teams.map(t => t.members.map(x => d.mon(x.num).en).join());
+  check(showdown.teams.map(t => t.name).join() === 'Rain,Rain'
+    && got.join('|') === 'Alolan Raichu,Rapid Strike Urshifu,Dusk Necrozma,Paldean Tauros (Combat Breed),Nidoran♀,Mega Charizard X|Meowstic,Female Indeedee'
+    && sparky.level === 100 && d.item(sparky.item).en === 'Life Orb' && d.natures[sparky.nature].en === 'Timid'
+    && sparky.evs.join() === '4,0,0,252,0,252' && sparky.ivs[1] === 0
+    && sparky.moves.map(id => (id ? d.move(sv, id).en : '')).join() === 'Thunderbolt,Hidden Power,,'
+    && showdown.unknown.join() === 'Fakemon', 'Showdown names find this app\'s forms: ' + JSON.stringify([got, showdown.unknown]));
 
   check(d.search(d.whole, 'char', 20).find(r => r[0] === 'Pokémon')[1][0].name === 'Charmander', 'global search prefix first');
   check(d.search(d.whole, '25', 5).find(r => r[0] === 'Pokémon')[1][0].name === 'Pikachu', 'global number search');

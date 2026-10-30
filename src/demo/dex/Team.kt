@@ -1,5 +1,7 @@
 package demo.dex
 
+import java.util.Base64
+
 /** Up to six Pokémon for one game, and the team's type coverage. Stored as one line of text; no Android deps. */
 class Team(var name: String, val game: Int) {
     val members = ArrayList<Member>()
@@ -25,6 +27,21 @@ class Team(var name: String, val game: Int) {
         /** Most EVs this stat can take: 252, less whatever the other five already use of the 510 total. */
         fun evRoom(stat: Int) = minOf(EV_STAT, EV_TOTAL - evs.sum() + evs[stat])
     }
+
+    /** What the damage calc sets beyond the two sets: [weather] 0 for none or [SUN] to [SNOW], stat stages -6 to 6. */
+    class Field {
+        var weather = 0
+        var crit = false
+        var atkStage = 0
+        var defStage = 0
+        var burned = false
+    }
+
+    /**
+     * A [hit]: lowest and highest roll, the attacking and defending stat and base power after modifiers, the type
+     * factor (x100, 0 when an ability makes it immune) and each modifier that applied as (label, 4096ths) in order.
+     */
+    class Hit(val roll: IntArray, val atk: Int, val def: Int, val power: Int, val factor: Int, val mods: List<Pair<String, Int>>)
 
     /**
      * name, game, members separated by tabs; a member is num,ability,item,nature,tera,level, 6 EVs, 6 IVs, 4 moves, and
@@ -63,6 +80,9 @@ class Team(var name: String, val game: Int) {
         }
         return b.toString().trim()
     }
+
+    /** This team as a link: the web app offers to add it when opened, and Import in either app reads it back. */
+    fun link(): String = LINK + Base64.getUrlEncoder().withoutPadding().encodeToString(format().toByteArray())
 
     /**
      * What member `x` counts as in the type checks below: the Pokémon it ends up as while each stage has one evolution
@@ -302,6 +322,25 @@ class Team(var name: String, val game: Int) {
         private const val FIELDS = 6 + 6 + 6 + MOVES
         private const val SHEDINJA = 292
         private const val EVIOLITE = 581
+        private const val LINK = "https://deandark.me/dexsearch/#team="
+        private val LINK_CODE = Regex("(?:https?://\\S*)?#team=([A-Za-z0-9_-]+)")
+        /** [Field.weather] values; the names are [WEATHER]. */
+        const val SUN = 1
+        const val RAIN = 2
+        const val SAND = 3
+        const val SNOW = 4
+        val WEATHER = listOf(L.k("None"), L.k("Sun"), L.k("Rain"), L.k("Sandstorm"), L.k("Snow"))
+        /** Effect texts of type boosters (Charcoal, plates, incenses), gems and resist berries, for [hit]. */
+        private val BOOST = Regex("(\\w+)-[Tt]ype (?:moves|attacks) (?:from holder do 20% more|have 1\\.2×)")
+        private val GEM = Regex("damaging (\\w+)-type move, the move has")
+        private val BERRY = Regex("struck by a (?:super-effective )?(\\w+)-type attack to halve")
+        /** Abilities that turn Normal moves (Normalize: every move) into a type. */
+        private val ATE = mapOf("Aerilate" to "flying", "Pixilate" to "fairy", "Refrigerate" to "ice", "Galvanize" to "electric", "Normalize" to "normal")
+        /** Abilities that raise the attacking stat for one type. */
+        private val TYPE_ATK = mapOf("Steelworker" to "steel", "Dragon’s Maw" to "dragon", "Transistor" to "electric", "Rocky Payload" to "rock")
+        private val FORMAT = Regex("^\\[[^]]*]")
+        private val GENDER = Regex("\\s*\\((M|F)\\)$")
+        private val NICKNAME = Regex("\\(([^()]+)\\)$")
         /** Effect text of attacks a team does not run for coverage: recharge or charge turns, fainting, conditions. */
         private val AWKWARD = Regex("recharge|faints|charge before|charges for|next turn|later|[Oo]nly (works|inflicts|be used)|" +
             "[Ff]ails if|canceled|half of its max HP|damages the user\\.|no longer|Removes the user|readying|shares a type|Misty Terrain is active")
@@ -346,6 +385,130 @@ class Team(var name: String, val game: Int) {
          */
         fun formatAll(teams: List<Team>): String = teams.joinToString("\n") { it.format() }
 
+        /** What [read] found: teams (named "" where the text had no "=== Name ===" line) and the names it did not know. */
+        class Import(val teams: List<Team>, val unknown: List<String>)
+
+        /**
+         * Teams in pasted text: [link]s, or else Showdown sets split into teams by "=== [format] Name ===" lines and every
+         * six sets, in `game`. Showdown's form names ("Raichu-Alola", "Urshifu-Rapid-Strike") find this app's forms by
+         * their words ("Alolan Raichu"), an unknown form its species. Nicknames, gender, Shiny and lines this app has no
+         * field for are skipped. No Level line means 100, as Showdown leaves it out there.
+         * ponytail: the game is not taken from the format; a format line could pick its generation's newest game.
+         */
+        fun read(d: Dex, text: String, game: Int): Import {
+            val teams = ArrayList<Team>()
+            val unknown = LinkedHashSet<String>()
+            for (m in LINK_CODE.findAll(text)) {
+                val t = try {
+                    parse(String(Base64.getUrlDecoder().decode(m.groupValues[1])))
+                } catch (e: RuntimeException) {
+                    null
+                }
+                if (t != null && valid(d, t)) teams.add(t) else unknown.add(m.value)
+            }
+            // Text around a link is a message ("look: <link>"), not sets.
+            if (teams.isNotEmpty() || unknown.isNotEmpty()) return Import(teams, unknown.toList())
+            val names = HashMap<String, Int>()
+            for (m in d.mons) names.putIfAbsent(Dex.fold(gendered(m.en)), m.num)
+            val items = d.items.associate { Dex.fold(it.en) to it.id }
+            val abilities = d.abilities.associate { Dex.fold(it.en) to it.id }
+            val moves = d.moves.associate { Dex.fold(it.en) to it.id }
+            var team: Team? = null
+            var x: Member? = null
+            // True from a set's first line to the blank line after it, also when the Pokémon was not found.
+            var inSet = false
+            for (raw in text.lines()) {
+                val line = raw.trim()
+                val value = line.substringAfter(':').trim()
+                when {
+                    line.startsWith("===") -> {
+                        team = Team(FORMAT.replace(line.trim('=', ' '), "").trim(), game).also { teams.add(it) }
+                        inSet = false
+                    }
+                    line.isEmpty() -> inSet = false
+                    !inSet -> {
+                        inSet = true
+                        val at = line.lastIndexOf(" @ ")
+                        val head = GENDER.replace(if (at < 0) line else line.substring(0, at), "").trim()
+                        val num = findMon(d, names, head) ?: NICKNAME.find(head)?.let { findMon(d, names, it.groupValues[1]) }
+                        if (num == null) {
+                            unknown.add(head)
+                            x = null
+                            continue
+                        }
+                        val m = d.mon(num)
+                        x = Member(num, if (m.abilities.isNotEmpty()) m.abilities[0] else m.hidden, 100)
+                        if (team == null || team.members.size == SIZE) team = Team(team?.name ?: "", game).also { teams.add(it) }
+                        team.members.add(x)
+                        if (at >= 0) {
+                            val item = line.substring(at + 3).trim()
+                            items[Dex.fold(item)]?.let { x.item = it } ?: unknown.add(item)
+                        }
+                    }
+                    x == null -> {}
+                    line.startsWith("Ability:") -> abilities[Dex.fold(value)]?.let { x.ability = it } ?: unknown.add(value)
+                    line.startsWith("Level:") -> value.toIntOrNull()?.let { x.level = it.coerceIn(1, 100) }
+                    line.startsWith("Tera Type:") -> d.types.indexOf(value.lowercase()).let { if (it >= 0) x.tera = it else unknown.add(value) }
+                    line.startsWith("EVs:") || line.startsWith("IVs:") -> for (part in value.split('/')) {
+                        val f = part.trim().split(' ')
+                        val n = f[0].toIntOrNull() ?: continue
+                        val stat = Dex.STATS.indexOf(f.getOrNull(1))
+                        if (stat < 0) continue
+                        if (line[0] == 'E') x.evs[stat] = n.coerceIn(0, x.evRoom(stat)) else x.ivs[stat] = n.coerceIn(0, IV_MAX)
+                    }
+                    line.endsWith(" Nature") -> d.natures.indexOfFirst { it.en == line.removeSuffix(" Nature").trim() }.let { if (it >= 0) x.nature = it }
+                    line.startsWith("-") -> {
+                        // "- Hidden Power [Fire]"; "- Flamethrower / Fire Blast" offers a choice, the first is taken.
+                        val name = line.drop(1).substringBefore(" / ").substringBefore('[').trim()
+                        val id = moves[Dex.fold(name)]
+                        val slot = x.moves.indexOf(0)
+                        if (id == null) unknown.add(name) else if (slot >= 0) x.moves[slot] = id
+                    }
+                }
+            }
+            return Import(teams.filter { it.members.isNotEmpty() }, unknown.toList())
+        }
+
+        /**
+         * Species or form number for a Showdown name: the whole of it ("Ho-Oh", this app's "Alolan Raichu"), else the
+         * species before a hyphen and the form whose words begin with most of the parts after it, fewest words first,
+         * else the species. A Mega needs "Mega" in the name: Meowstic-F is not Meowstic Female Mega.
+         */
+        private fun findMon(d: Dex, names: Map<String, Int>, s: String): Int? {
+            val name = gendered(s)
+            names[Dex.fold(name)]?.let { return it }
+            for ((i, c) in name.withIndex()) {
+                if (c != '-') continue
+                val base = names[Dex.fold(name.substring(0, i))]?.let { d.mon(it) }?.takeIf { !it.form() } ?: continue
+                val parts = name.substring(i + 1).split('-').map { Dex.fold(it) }.filter { it.isNotEmpty() }
+                var best = base.num
+                var top = 0
+                for (f in d.mons) {
+                    if (f.species != base.num || !f.form()) continue
+                    val words = f.en.split(' ', '(', ')').map { Dex.fold(it) }.filter { it.isNotEmpty() }
+                    if ("mega" in words && "mega" !in parts) continue
+                    val hits = parts.count { p -> words.any { it.startsWith(p) } }
+                    if (hits > 0 && hits * 10 - words.size > top) {
+                        best = f.num
+                        top = hits * 10 - words.size
+                    }
+                }
+                return best
+            }
+            return null
+        }
+
+        /** Nidoran♀ and Nidoran♂ as Showdown writes them, so the two do not fold to the same name. */
+        private fun gendered(s: String) = s.replace("♀", "-F").replace("♂", "-M")
+
+        /** A team from a link only when every number in it is one this data has. */
+        private fun valid(d: Dex, t: Team): Boolean = d.game(t.game).id == t.game && t.members.size <= SIZE && t.members.all { x ->
+            d.monOrNull(x.num) != null && (x.evo == 0 || d.monOrNull(x.evo) != null) && x.level in 1..100
+                && (x.ability == 0 || d.abilities.any { it.id == x.ability }) && (x.item == 0 || d.items.any { it.id == x.item })
+                && x.moves.all { id -> id == 0 || d.moves.any { it.id == id } } && x.nature in -1 until d.natures.size
+                && x.tera in -1 until d.types.size && x.evs.all { it in 0..EV_STAT } && x.evs.sum() <= EV_TOTAL && x.ivs.all { it in 0..IV_MAX }
+        }
+
         /**
          * Gen 3+ formula: HP = (2B + IV + EV/4) * L / 100 + L + 10, others ((2B + IV + EV/4) * L / 100 + 5) * nature.
          * ponytail: Gen 1-2 DVs and stat experience, Let's Go AVs and Legends effort levels are not modeled.
@@ -383,6 +546,148 @@ class Team(var name: String, val game: Int) {
                 if (factor > 0) maxOf(1, x) else 0
             }
         }
+
+        /**
+         * [damage] with both sets' items and abilities and the calc's [Field], in the order of the Gen 5+ games: base
+         * power, attacking and defending stat, base damage, weather, critical hit, roll, same type, type, burn, then
+         * the final modifiers. Modifiers are in 4096ths and chained and rounded as the games do; the defender is at
+         * full HP (Multiscale).
+         * ponytail: about 60 common items and abilities; no Tera, screens, terrain, contact or punch abilities,
+         * moves whose power changes, or Gen 1-4 differences. Add one to [ATE], [TYPE_ATK] or the whens below.
+         */
+        fun hit(d: Dex, g: Dex.Game, a: Member, b: Member, mv: Dex.Move, f: Field): Hit {
+            val ai = if (a.item == 0) null else d.item(a.item)
+            val bi = if (b.item == 0) null else d.item(b.item)
+            val aa = if (a.ability <= 0) null else d.ability(a.ability)
+            val ba = if (b.ability <= 0) null else d.ability(b.ability)
+            val ae = aa?.en ?: ""
+            val be = ba?.en ?: ""
+            val special = mv.category == "special"
+            val shown = ArrayList<Pair<String, Int>>()
+
+            val bp = ArrayList<Pair<String, Int>>()
+            var type = mv.type
+            ATE[ae]?.let { to ->
+                if (mv.type == "normal" || ae == "Normalize") {
+                    type = to
+                    if (g.gen >= 7) bp.add(aa!!.name to 4915) else if (ae != "Normalize") bp.add(aa!!.name to 5325)
+                }
+            }
+            val types = d.types(g, d.mon(b.num))
+            var factor = d.factor(g, type, types)
+            if (ai != null) {
+                when {
+                    GEM.find(ai.effect)?.groupValues?.get(1)?.lowercase() == type -> bp.add(ai.name to if (g.gen >= 6) 5325 else 6144)
+                    BOOST.find(ai.effect)?.groupValues?.get(1)?.lowercase() == type -> bp.add(ai.name to 4915)
+                    ai.en == "Muscle Band" && !special || ai.en == "Wise Glasses" && special -> bp.add(ai.name to 4505)
+                }
+            }
+            if (ae == "Technician" && mv.power <= 60) bp.add(aa!!.name to 6144)
+            if (ae == "Sheer Force" && mv.chance > 0) bp.add(aa!!.name to 5325)
+            val power = maxOf(1, apply(mv.power, chain(bp)))
+            shown += bp
+
+            val astage = if (f.crit && f.atkStage < 0) 0 else f.atkStage
+            if (astage != 0) shown.add(L.t("Attack stage") + " " + signed(astage) to stage(4096, astage))
+            val am = ArrayList<Pair<String, Int>>()
+            val species = d.mon(a.num).species
+            when {
+                ai == null -> {}
+                ai.en == "Choice Band" && !special || ai.en == "Choice Specs" && special -> am.add(ai.name to 6144)
+                ai.en == "Light Ball" && species == 25 || ai.en == "Thick Club" && !special && (species == 104 || species == 105) -> am.add(ai.name to 8192)
+            }
+            when {
+                (ae == "Huge Power" || ae == "Pure Power") && !special -> am.add(aa!!.name to 8192)
+                ae == "Guts" && f.burned && !special || ae == "Hustle" && !special || ae == "Solar Power" && special && f.weather == SUN ->
+                    am.add(aa!!.name to 6144)
+                ae == "Water Bubble" && type == "water" -> am.add(aa!!.name to 8192)
+                TYPE_ATK[ae] == type -> am.add(aa!!.name to if (ae == "Transistor" && g.gen >= 9) 5325 else 6144)
+            }
+            if (be == "Thick Fat" && (type == "fire" || type == "ice") || (be == "Heatproof" || be == "Water Bubble") && type == "fire"
+                    || be == "Purifying Salt" && type == "ghost") am.add(ba!!.name to 2048)
+            val atk = apply(stage(stats(d, a)[if (special) 3 else 1], astage), chain(am))
+            shown += am
+
+            val dstage = if (f.crit && f.defStage > 0) 0 else f.defStage
+            if (dstage != 0) shown.add(L.t("Defense stage") + " " + signed(dstage) to stage(4096, dstage))
+            val dm = ArrayList<Pair<String, Int>>()
+            if (bi?.en == "Assault Vest" && special || b.item == EVIOLITE && d.evolutions(b.num).isNotEmpty()) dm.add(bi!!.name to 6144)
+            if (be == "Fur Coat" && !special) dm.add(ba!!.name to 8192)
+            if (f.weather == SAND && special && "rock" in types && g.gen >= 4) dm.add(L.t("Sandstorm") to 6144)
+            if (f.weather == SNOW && !special && "ice" in types && g.gen >= 9) dm.add(L.t("Snow") to 6144)
+            val def = maxOf(1, apply(stage(stats(d, b)[if (special) 4 else 2], dstage), chain(dm)))
+            shown += dm
+
+            val immune = when (be) {
+                "Levitate", "Earth Eater" -> type == "ground"
+                "Flash Fire", "Well-Baked Body" -> type == "fire"
+                "Water Absorb", "Storm Drain", "Dry Skin" -> type == "water"
+                "Volt Absorb", "Lightning Rod", "Motor Drive" -> type == "electric"
+                "Sap Sipper" -> type == "grass"
+                "Wonder Guard" -> factor <= 100
+                else -> false
+            }
+            if (immune && factor > 0) {
+                factor = 0
+                shown.add(ba!!.name to 0)
+            }
+            val weather = when {
+                f.weather == SUN && type == "fire" || f.weather == RAIN && type == "water" -> 6144
+                f.weather == SUN && type == "water" || f.weather == RAIN && type == "fire" -> 2048
+                else -> 4096
+            }
+            if (weather != 4096) shown.add(L.t(WEATHER[f.weather]) to weather)
+            val crit = if (g.gen >= 6) 6144 else 8192
+            if (f.crit) shown.add(L.t("Critical hit") to crit)
+            val stab = when {
+                type !in d.types(g, d.mon(a.num)) -> 4096
+                ae == "Adaptability" -> 8192
+                else -> 6144
+            }
+            if (stab != 4096) shown.add((if (stab == 8192) aa!!.name else L.t("Same type")) to stab)
+            val burn = f.burned && !special && ae != "Guts"
+            if (burn) shown.add(L.t("Burned") to 2048)
+
+            val fm = ArrayList<Pair<String, Int>>()
+            when {
+                ai == null -> {}
+                ai.en == "Life Orb" -> fm.add(ai.name to 5324)
+                ai.en == "Expert Belt" && factor > 100 -> fm.add(ai.name to 4915)
+            }
+            val berry = bi?.let { BERRY.find(it.effect) }?.groupValues?.get(1)?.lowercase()
+            if (berry == type && (factor > 100 || type == "normal" && factor > 0)) fm.add(bi!!.name to 2048)
+            when {
+                (be == "Multiscale" || be == "Shadow Shield") && factor > 0 || be == "Ice Scales" && special -> fm.add(ba!!.name to 2048)
+                (be == "Filter" || be == "Solid Rock" || be == "Prism Armor") && factor > 100 -> fm.add(ba!!.name to 3072)
+            }
+            if (ae == "Tinted Lens" && factor in 1..99) fm.add(aa!!.name to 8192)
+            if (ae == "Sniper" && f.crit) fm.add(aa!!.name to 6144)
+            shown += fm
+
+            val base = ((2 * a.level / 5 + 2).toLong() * power * atk / def / 50 + 2).toInt()
+            val roll = IntArray(2) { i ->
+                var x = apply(base, weather)
+                if (f.crit) x = x * crit / 4096
+                x = x * (if (i == 0) 85 else 100) / 100
+                x = apply(x, stab)
+                x = x * factor / 100
+                if (burn) x = apply(x, 2048)
+                x = apply(x, chain(fm))
+                if (factor > 0) maxOf(1, x) else 0
+            }
+            return Hit(roll, atk, def, power, factor, shown)
+        }
+
+        /** Modifiers in 4096ths combined as the games do, each step rounded half up. */
+        private fun chain(mods: List<Pair<String, Int>>): Int = mods.fold(4096) { c, m -> (c * m.second + 2048) shr 12 }
+
+        /** `x` times `mod` (4096ths), rounded half down as the games do. */
+        private fun apply(x: Int, mod: Int): Int = ((x.toLong() * mod + 2047) / 4096).toInt()
+
+        /** `x` at stat stage `s` (-6 to 6): +1 is 3/2, -1 is 2/3. */
+        private fun stage(x: Int, s: Int): Int = if (s >= 0) x * (2 + s) / 2 else x * 2 / (2 - s)
+
+        fun signed(s: Int): String = if (s > 0) "+$s" else s.toString()
 
         /** Attacking types both type lists are weak to, if they double up (see [overlaps]), else null. */
         private fun overlap(d: Dex, g: Dex.Game, a: List<String>, b: List<String>): List<Int>? {

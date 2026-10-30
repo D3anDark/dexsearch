@@ -20,6 +20,9 @@ class PokedexActivity : ListScreen() {
     private var caughtFilter = 0
     /** Lowest base stat total shown, 0 for any. */
     private var minBst = 0
+    /** Move every shown Pokémon learns in the game ([Dex.learnGame]) and ability every one can have, or null. */
+    private var learns: Dex.Move? = null
+    private var ability: Dex.Ability? = null
     private var sort = Dex.Sort.NUMBER
     private var national = false
     /** 0, or the generation whose Pokédex is the selected game. */
@@ -63,7 +66,13 @@ class PokedexActivity : ListScreen() {
         val all = if (gen > 0) game.dex else if (national) dex.national else game.dex
         source = if (Ui.prefs(this).getInt("forms", 0) == 1) all else all.filter { !it.mon.form() }
         caught = Ui.caught(this)
-        val keep = { m: Dex.Mon -> m.bst >= minBst && (caughtFilter == 0 || (m.num.toString() in caught) == (caughtFilter == 1)) }
+        val mv = learns
+        val lg = mv?.let { dex.learnGame(game, it) }
+        val ab = ability?.id
+        val keep = { m: Dex.Mon ->
+            m.bst >= minBst && (caughtFilter == 0 || (m.num.toString() in caught) == (caughtFilter == 1))
+                    && (lg == null || dex.learns(lg, m, mv!!.id)) && (ab == null || ab in m.abilities || m.hidden == ab)
+        }
         return dex.pokedex(game, source, query, types, gens, keep, sort).map { e ->
             val m = e.mon
             val number = if (national) Ui.national(e.number) else "#%03d".format(Locale.ROOT, e.number)
@@ -88,7 +97,9 @@ class PokedexActivity : ListScreen() {
         val on = listOfNotNull(
             if (gens.isEmpty()) null else L.f("Gen %s", gens.joinToString(",")),
             if (caughtFilter == 0) null else L.t(CAUGHT[caughtFilter]),
-            if (minBst == 0) null else L.f("BST %d+", minBst))
+            if (minBst == 0) null else L.f("BST %d+", minBst),
+            learns?.name,
+            ability?.name)
         filterChip.text = if (on.isEmpty()) L.t("Filters") else on.joinToString("  ·  ")
         Ui.chipActive(filterChip, on.isNotEmpty())
         sortChip.text = L.f("Sort: %s", L.t(sort.label))
@@ -96,7 +107,8 @@ class PokedexActivity : ListScreen() {
     }
 
     /**
-     * Generation (when the list spans several), caught and lowest total in one sheet, so the chip row fits one line.
+     * Generation (when the list spans several), caught, lowest total, a move and an ability in one sheet, so the chip
+     * row fits one line.
      * A row closes it and opens that filter's own picker.
      */
     private fun filters(allGens: List<Int>) {
@@ -117,10 +129,27 @@ class PokedexActivity : ListScreen() {
                 refresh()
             }
         }
-        if (gens.isNotEmpty() || caughtFilter != 0 || minBst != 0) s.button(L.t("Clear")) {
+        add(L.t("Learns"), learns?.name ?: L.t("Any move")) {
+            val any = Ui.Item(0, "", L.t("Any move"), "", emptyList(), 0)
+            Ui.pickSearch(this, L.t("Learns"), listOf(any) + dex.moves(game).sortedBy { it.key }.map { Ui.Item.move(it, "") }) { ref ->
+                learns = ref as? Dex.Move
+                refresh()
+            }
+        }
+        add(L.t("Ability"), ability?.name ?: L.t("Any ability")) {
+            val any = Ui.Item(0, "", L.t("Any ability"), "", emptyList(), 0)
+            val list = dex.abilities.filter { (it.gen ?: 0) <= game.gen }.sortedBy { it.key }
+            Ui.pickSearch(this, L.t("Ability"), listOf(any) + list.map { Ui.Item(0, "", it.name, it.shortEffect, emptyList(), it) }) { ref ->
+                ability = ref as? Dex.Ability
+                refresh()
+            }
+        }
+        if (gens.isNotEmpty() || caughtFilter != 0 || minBst != 0 || learns != null || ability != null) s.button(L.t("Clear")) {
             gens.clear()
             caughtFilter = 0
             minBst = 0
+            learns = null
+            ability = null
             refresh()
         }
         s.button(L.t("Done"), main = true)

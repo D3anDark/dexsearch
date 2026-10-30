@@ -96,7 +96,7 @@ class TeamActivity : Activity() {
         val actions = LinearLayout(this)
         Ui.addChip(actions, Ui.chip(this, L.t("Compare")) { CompareActivity.open(this, 0, game.id) })
         Ui.addChip(actions, Ui.chip(this, L.t("Damage calc")) { CalcActivity.open(this, index, -1) })
-        Ui.addChip(actions, Ui.chip(this, L.t("Copy as text")) { copy() })
+        Ui.addChip(actions, Ui.chip(this, L.t("Share")) { share() })
         root.addView(Ui.chipBar(this, actions))
         // Its own row, as "Remove from team" on a member: out of reach of a tap meant for the actions above.
         val deleteChip = Ui.chip(this, L.t("Delete team")) { delete() }
@@ -319,6 +319,18 @@ class TeamActivity : Activity() {
             TeamsActivity.save(this, teams)
             onResume()
         }
+    }
+
+    /** A sheet, so the chip row keeps one short label: Showdown text to the clipboard, or a link through any app. */
+    private fun share() {
+        val s = Ui.Sheet(this, L.t("Share"))
+        s.body.addView(Ui.muted(this, L.t("The text pastes into Showdown. The link opens the team in DexSearch on the web, and Import team in either app reads both."), 15))
+        s.button(L.t("Copy as text")) { copy() }
+        s.button(L.t("Share link"), main = true) {
+            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_SUBJECT, team.name).putExtra(Intent.EXTRA_TEXT, team.link())
+            startActivity(Intent.createChooser(send, team.name))
+        }
+        s.show()
     }
 
     private fun copy() {

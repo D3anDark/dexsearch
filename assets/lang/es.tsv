@@ -247,6 +247,7 @@ Pow %s  ·  Acc %s  ·  PP %d	Pot. %s  ·  Prec. %s  ·  PP %d
 Done	Hecho
 Search	Buscar
 , 	, 
+Poké Balls	Poké Balls
 Held items	Objetos para equipar
 Berries	Bayas
 Type boosters	Potenciadores de tipo
@@ -292,7 +293,6 @@ Evolve into %s	Evolucionar a %s
 Faints in %d hits	Se debilita en %d golpes
 Faints in %d to %d hits	Se debilita en %d a %d golpes
 Faints in one hit	Se debilita de un golpe
-Gen 5 and later formula. Not counted: abilities, items, weather, critical hits, stat changes and burns.	Fórmula de la 5.ª generación en adelante. No se cuentan: habilidades, objetos, clima, golpes críticos, cambios de características ni quemaduras.
 Hold a Pokémon to swap it for another.	Mantén pulsado un Pokémon para cambiarlo por otro.
 Its moves	Sus movimientos
 Lowest base stat total	Total mínimo de características base
@@ -363,3 +363,34 @@ Each workspace is a separate playthrough with its own caught marks, teams and ga
 Its caught marks, teams and selected game are removed from this device. This cannot be undone.	Se borrarán de este dispositivo sus marcas de capturado, sus equipos y el juego elegido. No se puede deshacer.
 Its moves, item and stats are removed from %s.	Sus movimientos, objeto y características se quitan de %s.
 %s leaves the team. Its moves, item and stats are not kept.	%s deja el equipo. Sus movimientos, objeto y características no se conservan.
+Import team	Importar equipo
+Paste	Pegar
+Import	Importar
+Paste a team copied from Showdown or a DexSearch team link.	Pega un equipo copiado de Showdown o un enlace de equipo de DexSearch.
+No Pokémon found in this text.	No se encontró ningún Pokémon en este texto.
+Partly imported	Importado en parte
+%d Pokémon imported. Not recognized, so left out: %s	%d Pokémon importados. Omitidos por no reconocerse: %s
+Share	Compartir
+The text pastes into Showdown. The link opens the team in DexSearch on the web, and Import team in either app reads both.	El texto se pega en Showdown. El enlace abre el equipo en DexSearch en la web, e Importar equipo en ambas apps lee los dos.
+Share link	Compartir enlace
+Link copied	Enlace copiado
+This team link is damaged.	Este enlace de equipo está dañado.
+Add %s?	¿Añadir %s?
+%d Pokémon for %s: %s	%d Pokémon para %s: %s
+Add team	Añadir equipo
+Any move	Cualquier movimiento
+Any ability	Cualquier habilidad
+Conditions	Condiciones
+Weather	Clima
+Sun	Sol
+Rain	Lluvia
+Sandstorm	Tormenta de arena
+Snow	Nieve
+Attack stage	Nivel de ataque
+Defense stage	Nivel de defensa
+Critical hit	Golpe crítico
+Attacker burned	Atacante quemado
+Burned	Quemadura
+Yes	Sí
+No	No
+Gen 5 and later formula, the defender at full HP. Not counted: Tera, screens, terrain, abilities that need contact or a punch, and moves whose power changes.	Fórmula de la 5.ª generación en adelante, el defensor con los PS al máximo. No se cuentan: Tera, pantallas, campos, habilidades que requieren contacto o puñetazo ni movimientos de potencia variable.

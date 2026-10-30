@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 
 node web/check.js assets
 mkdir -p "$out/assets"
-cp web/index.html web/style.css web/dex.js web/app.js web/manifest.webmanifest web/icon.png web/icon-192.png web/icon-512.png "$out/"
+cp web/index.html web/style.css web/dex.js web/app.js web/manifest.webmanifest web/icon.png web/icon-192.png web/icon-512.png web/og.png "$out/"
 cp -r assets/sprites assets/art assets/pixel assets/shiny assets/shiny-art assets/shiny-pixel assets/looks assets/looks-art assets/looks-pixel \
   assets/looks-shiny assets/looks-shiny-art assets/looks-shiny-pixel assets/items assets/learn assets/info assets/names assets/lang \
   assets/sets assets/types "$out/assets/"

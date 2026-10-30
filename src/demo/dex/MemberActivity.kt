@@ -274,7 +274,7 @@ class MemberActivity : Activity() {
         val items = ArrayList<Ui.Item>()
         items.add(Ui.Item(0, "", L.t("No item"), "", emptyList(), 0))
         val row = { it: Dex.Item -> Ui.Item(0, "", it.name, it.effect, emptyList(), it) }
-        val usable = dex.items.filter { it.gen <= game.gen }
+        val usable = dex.items.filter { it.held && it.gen <= game.gen }
         val used = builds(dex.mon(x.num)).filter { it.item != 0 }.groupingBy { it.item }.eachCount()
         val top = usable.filter { it.id in used }.sortedByDescending { used[it.id] }
         if (top.isNotEmpty()) {

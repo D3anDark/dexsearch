@@ -2315,6 +2315,7 @@ item	176	Baya Baribá
 item	707	Banettita
 item	2255	Barbaraclita
 item	2275	Baxcaliburita
+item	887	Ente Ball
 item	811	Beedrillita
 item	160	Baya Andano
 item	273	Raíz Grande
@@ -2341,6 +2342,7 @@ item	699	Charizardita X
 item	717	Charizardita Y
 item	172	Baya Alcho
 item	126	Baya Zreza
+item	16	Gloria Ball
 item	2249	Chesnaughtita
 item	127	Baya Atania
 item	177	Baya Chilan
@@ -2370,6 +2372,7 @@ item	203	Diente Marino
 item	2250	Delphoxita
 item	257	Lazo Destino
 item	805	Diancita
+item	7	Buceo Ball
 item	563	HidroROM
 item	288	Tabla Draco
 item	2256	Dragalgita
@@ -2380,7 +2383,9 @@ item	2236	Dragonitita
 item	831	Dracostal Z
 item	2259	Drampanita
 item	289	Tabla Oscura
+item	617	Ensueño Ball
 item	159	Baya Rudion
+item	13	Ocaso Ball
 item	282	Tabla Terrax
 item	2247	Eelektrossita
 item	846	Eeveestal Z
@@ -2400,6 +2405,7 @@ item	2105	Pluma Feérica
 item	731	Gema Hada
 item	918	Disco Hada
 item	2261	Falinksita
+item	453	Rapid Ball
 item	2238	Feraligatrita
 item	596	Gema Lucha
 item	902	Disco Lucha
@@ -2418,6 +2424,7 @@ item	903	Disco Volador
 item	826	Aerostal Z
 item	207	Cinta Aguante
 item	252	Banda Aguante
+item	454	Amigo Ball
 item	2240	Froslassita
 item	293	Incienso Lento
 item	797	Galladita
@@ -2440,6 +2447,7 @@ item	594	Gema Planta
 item	912	Disco Planta
 item	821	Fitostal Z
 item	901	Semilla Hierba
+item	3	Super Ball
 item	2251	Greninjanita
 item	150	Baya Uvav
 item	263	Garra Garfio
@@ -2451,9 +2459,11 @@ item	715	Gyaradosita
 item	174	Baya Anjiro
 item	215	Piedra Dura
 item	2257	Hawluchanita
+item	14	Sana Ball
 item	2107	Máscara Horno
 item	261	Roca Calor
 item	2241	Heatranita
+item	452	Peso Ball
 item	1178	Botas Gruesas
 item	719	Heracrossita
 item	149	Baya Meluce
@@ -2484,18 +2494,22 @@ item	236	Puerro
 item	211	Restos
 item	1664	Tabla Legendaria
 item	131	Baya Zanama
+item	450	Nivel Ball
 item	178	Baya Lichi
 item	247	Vidasfera
 item	213	Bola Luminosa
 item	246	Refleluz
 item	1702	Dado Trucado
 item	809	Lopunnita
+item	455	Amor Ball
 item	712	Lucarita
 item	2268	Lucarita Z
 item	233	Puño Suerte
 item	134	Baya Ziuela
 item	688	Musgo Brillante
+item	449	Cebo Ball
 item	113	Lustresfera
+item	11	Lujo Ball
 item	192	Brazal Firme
 item	2273	Magearnita
 item	219	Imán
@@ -2523,9 +2537,12 @@ item	284	Tabla Mental
 item	216	Semilla Milagro
 item	1699	Hierba Copia
 item	900	Semilla Bruma
+item	451	Luna Ball
 item	243	Cinta Fuerte
 item	220	Agua Mística
 item	143	Baya Latano
+item	8	Nido Ball
+item	6	Malla Ball
 item	223	Hielo Perpetuo
 item	155	Baya Monli
 item	669	Gema Normal
@@ -2534,6 +2551,7 @@ item	161	Baya Caoca
 item	291	Incienso Raro
 item	132	Baya Aranja
 item	157	Baya Plama
+item	456	Parque Ball
 item	616	Regalosfera
 item	162	Baya Pasio
 item	170	Baya Payapa
@@ -2559,6 +2577,7 @@ item	266	Brazal Recio
 item	248	Hierba Única
 item	268	Lente Recia
 item	271	Pesa Recia
+item	12	Honor Ball
 item	841	Primastal Z
 item	897	Paracontacto
 item	600	Gema Psíquica
@@ -2569,6 +2588,7 @@ item	1700	Guante de Boxeo
 item	892	Néctar Violeta
 item	2252	Pyroarita
 item	148	Baya Ispero
+item	15	Veloz Ball
 item	194	Garra Rápida
 item	251	Polvo Veloz
 item	154	Baya Rautan
@@ -2580,6 +2600,7 @@ item	304	Colmillo Agudo
 item	141	Baya Frambu
 item	585	Tarjeta Roja
 item	889	Néctar Rojo
+item	9	Acopio Ball
 item	164	Baya Tamar
 item	586	Blanco
 item	602	Gema Roca
@@ -2629,6 +2650,7 @@ item	224	Hechizo
 item	156	Baya Wikano
 item	276	Tabla Linfa
 item	287	Tabla Terror
+item	457	Competi Ball
 item	2266	Staraptorita
 item	184	Baya Arabol
 item	2235	Starmita
@@ -2646,6 +2668,7 @@ item	2276	Tatsugirita
 item	896	Cubresuelos
 item	235	Hueso Grueso
 item	1176	Espray Bucal
+item	10	Turno Ball
 item	249	Toxisfera
 item	281	Tabla Tóxica
 item	225	Cuchara Torcida

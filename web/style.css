@@ -198,6 +198,7 @@ img.pixel { image-rendering: pixelated; }
 .set:not(.wide) { margin-inline: -8px; width: calc(100% + 16px); }
 .set > span:first-child { flex: 1; font-size: 15px; }
 .set .v { flex: 2; font-size: 15px; font-weight: 700; color: var(--accent-text); text-align: end; }
+.set .v.short { flex: none; }
 input.num {
   width: 60px; font: inherit; font-size: 16px; text-align: center; color: var(--text); background: var(--fill); border: 0;
   border-radius: 10px; padding: 6px; -moz-appearance: textfield; appearance: textfield;
@@ -277,6 +278,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .slot { flex: 1; height: 46px; border-radius: 50%; background: var(--fill); display: grid; place-items: center; overflow: hidden; }
 .slot img { height: 46px; width: 46px; object-fit: contain; }
 .button { display: block; width: calc(100% - 32px); margin: 6px 16px 0; padding: 14px 16px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; text-align: center; }
+.button.alt { margin-top: 8px; background: var(--fill); color: var(--text); }
 .tip + .tip { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--fill); }
 .tip summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; font-size: 15px; cursor: pointer; list-style: none; }
 .tip summary::-webkit-details-marker { display: none; }
@@ -324,6 +326,7 @@ dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
 .verdict .h { font-size: 17px; font-weight: 700; text-wrap: balance; }
 .verdict .muted { font-size: 13px; }
 .lvl { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.headcard .hl { max-width: 100%; margin-top: 4px; padding: 6px; border-radius: 10px; color: var(--accent-text); font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sides { display: flex; align-items: center; padding: 5px 0; }
 .sides.bars { padding: 4px 0; }
 .sides .v { width: 40px; font-size: 15px; }

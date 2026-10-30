@@ -21,6 +21,7 @@
 707	Banettite	6	Held: Allows Banette to Mega Evolve into Mega Banette.	Mega Stones
 2255	Barbaracite	9	If held by a Barbaracle, this item allows it to Mega Evolve in battle.	Mega Stones
 2275	Baxcalibrite	9	If held by a Baxcalibur, this item allows it to Mega Evolve in battle.	Mega Stones
+887	Beast Ball	7	Catch rate 5× on Ultra Beasts, 0.1× on all other Pokémon. Other balls but the Master Ball have 0.1× on Ultra Beasts.	Poké Balls
 811	Beedrillite	6	Held: Allows Beedrill to Mega Evolve into Mega Beedrill.	Mega Stones
 160	Belue Berry	3	Used for creating PokéBlocks and Poffins.	Berries
 273	Big Root	4	Held: Increases HP recovered from draining moves, Ingrain, and Aqua Ring by 3/10 (30%).	Held items
@@ -28,7 +29,7 @@
 218	Black Belt	2	Held: Fighting-Type moves from holder do 20% more damage.	Type boosters
 217	Black Glasses	2	Held: Dark-Type moves from holder do 20% more damage.	Type boosters
 258	Black Sludge	4	Held: Poison-type holder recovers 1/16 (6.25%) max HP each turn. Non-Poison-Types take 1/8 (12.5%) max HP damage.	Held items
-1662	Blank Plate	8		Type boosters
+1662	Blank Plate	8	Changes Arceus to the Normal type when used in Legends: Arceus.	Type boosters
 700	Blastoisinite	6	Held: Allows Blastoise to Mega Evolve into Mega Blastoise.	Mega Stones
 703	Blazikenite	6	Held: Allows Blaziken to Mega Evolve into Mega Blaziken.	Mega Stones
 142	Bluk Berry	3	Used for creating PokéBlocks and Poffins.	Berries
@@ -47,6 +48,7 @@
 717	Charizardite Y	6	Held: Allows Charizard to Mega Evolve into Mega Charizard Y.	Mega Stones
 172	Charti Berry	4	Held: Consumed when struck by a super-effective Rock-type attack to halve the damage.	Berries
 126	Cheri Berry	2	Held: Consumed when paralyzed to cure paralysis.	Berries
+16	Cherish Ball	4	Catch rate 1×. Only for event Pokémon.	Poké Balls
 2249	Chesnaughtite	9	If held by a Chesnaught, this item allows it to Mega Evolve in battle.	Mega Stones
 127	Chesto Berry	2	Held: Consumed when asleep to cure sleep.	Berries
 177	Chilan Berry	4	Held: Consumed when struck by a Normal-type attack to halve the damage.	Berries
@@ -76,6 +78,7 @@
 2250	Delphoxite	9	If held by a Delphox, this item allows it to Mega Evolve in battle.	Mega Stones
 257	Destiny Knot	4	Held: Infatuates opposing Pokémon when holder is inflicted with infatuation.	Held items
 805	Diancite	6	Held: Allows Diancie to Mega Evolve into Mega Diancie.	Mega Stones
+7	Dive Ball	3	Catch rate 3.5× while surfing, fishing or underwater.	Poké Balls
 563	Douse Drive	5	Grants Genesect a blue, Water-type Techno Blast.	Species items
 288	Draco Plate	4	Held: Dragon-Type moves from holder do 20% more damage. Changes Arceus’s and Judgment’s type to Dragon.	Type boosters
 2256	Dragalgite	9	If held by a Dragalge, this item allows it to Mega Evolve in battle.	Mega Stones
@@ -86,7 +89,9 @@
 831	Dragonium Z	7	Held: Allows a Pokémon to use the Z-move equivalents of its Dragon moves.	Z-Crystals
 2259	Drampanite	9	If held by a Drampa, this item allows it to Mega Evolve in battle.	Mega Stones
 289	Dread Plate	4	Held: Dark-Type moves from holder do 20% more damage. Changes Arceus’s and Judgment’s type to Dark.	Type boosters
+617	Dream Ball	5	Catch rate 4× on sleeping or drowsy Pokémon.	Poké Balls
 159	Durin Berry	3	Used for creating PokéBlocks and Poffins.	Berries
+13	Dusk Ball	4	Catch rate 3× at night and in caves.	Poké Balls
 282	Earth Plate	4	Held: Ground-Type moves from holder do 20% more damage. Changes Arceus’s and Judgment’s type to Ground.	Type boosters
 2247	Eelektrossite	9	If held by an Eelektross, this item allows it to Mega Evolve in battle.	Mega Stones
 846	Eevium Z	7	Held: Allows Eevee to upgrade Last Resort into Extreme Evoboost.	Z-Crystals
@@ -106,6 +111,7 @@
 731	Fairy Gem	6	Held: When the holder uses a damaging Fairy move, the move has 1.5× power and this item is consumed.	Gems
 918	Fairy Memory	7	Held: Changes Silvally to its Fairy form. Changes Multi-Attack’s type to Fairy.	Species items
 2261	Falinksite	9	If held by a Falinks, this item allows it to Mega Evolve in battle.	Mega Stones
+453	Fast Ball	2	Catch rate 4× on Pokémon with base Speed 100 or more.	Poké Balls
 2238	Feraligite	9	If held by a Feraligatr, this item allows it to Mega Evolve in battle.	Mega Stones
 596	Fighting Gem	5	Held: When the holder uses a damaging Fighting-type move, the move has 1.5× power and this item is consumed.	Gems
 902	Fighting Memory	7	Held: Changes Silvally to its Fighting form. Changes Multi-Attack’s type to Fighting.	Species items
@@ -124,6 +130,7 @@
 826	Flyinium Z	7	Held: Allows a Pokémon to use the Z-move equivalents of its Flying moves.	Z-Crystals
 207	Focus Band	2	Held: Holder has 10% chance to survive attacks or self-inflicted damage at 1 HP.	Held items
 252	Focus Sash	4	Held: Holder survives any single-hit attack at 1 HP if at max HP, then the item is consumed.	Held items
+454	Friend Ball	2	Catch rate 1×. The Pokémon caught starts with 150 friendship (200 before Generation 8).	Poké Balls
 2240	Froslassite	9	If held by a Froslass, this item allows it to Mega Evolve in battle.	Mega Stones
 293	Full Incense	4	Held: Holder moves last in its priority bracket. Breeding: Snorlax begets a Munchlax Egg.	Held items
 797	Galladite	6	Held: Allows Gallade to Mega Evolve into Mega Gallade.	Mega Stones
@@ -146,6 +153,7 @@
 912	Grass Memory	7	Held: Changes Silvally to its Grass form. Changes Multi-Attack’s type to Grass.	Species items
 821	Grassium Z	7	Held: Allows a Pokémon to use the Z-move equivalents of its Grass moves.	Z-Crystals
 901	Grassy Seed	7	Held: Consumed on Grassy Terrain and raises the holder’s Defense by one stage.	Held items
+3	Great Ball	1	Catch rate 1.5×.	Poké Balls
 2251	Greninjite	9	If held by a Greninja, this item allows it to Mega Evolve in battle.	Mega Stones
 150	Grepa Berry	3	Drops Special Defense Effort Values by 10 and raises happiness.	Berries
 263	Grip Claw	4	Held: Holder’s multi-turn trapping moves last 5 turns.	Held items
@@ -157,9 +165,11 @@
 174	Haban Berry	4	Held: Consumed when struck by a super-effective Dragon-type attack to halve the damage.	Berries
 215	Hard Stone	2	Held: Rock-Type moves from holder do 20% more damage.	Type boosters
 2257	Hawluchanite	9	If held by a Hawlucha, this item allows it to Mega Evolve in battle.	Mega Stones
+14	Heal Ball	4	Catch rate 1×. Fully restores the Pokémon caught: HP, PP and status.	Poké Balls
 2107	Hearthflame Mask	9	Ogerpon-Hearthflame: 1.2× power attacks; Terastallize to gain Embody Aspect.	Held items
 261	Heat Rock	4	Held: Sunny Day by the holder lasts 8 rounds instead of 5.	Held items
 2241	Heatranite	9	If held by a Heatran, this item allows it to Mega Evolve in battle.	Mega Stones
+452	Heavy Ball	2	Catch rate -20 under 100 kg, +20 from 200 kg, +30 from 300 kg.	Poké Balls
 1178	Heavy-Duty Boots	8	When switching in, the holder is unaffected by hazards on its side of the field.	Held items
 719	Heracronite	6	Held: Allows Heracross to Mega Evolve into Mega Heracross.	Mega Stones
 149	Hondew Berry	3	Drops Special Attack Effort Values by 10 and raises happiness.	Berries
@@ -188,20 +198,24 @@
 232	Lax Incense	3	Held: Holder’s evasion is increased by 5%. Breeding: Wobbuffet begets a Wynaut Egg.	Held items
 236	Leek	2	Raises Farfetch’d’s critical hit ratio by two stages.	Species items
 211	Leftovers	2	Held: Restores 1/16 (6.25%) holder’s max HP at the end of each turn.	Held items
-1664	Legend Plate	8		Type boosters
+1664	Legend Plate	8	In Legends: Arceus, Arceus's Judgment changes type to be supereffective.	Type boosters
 131	Leppa Berry	2	Held: Consumed when a move runs out of PP to restore its PP by 10.	Berries
+450	Level Ball	2	Catch rate 2× when your Pokémon's level is higher than the wild one's, 4× when more than double, 8× at four times.	Poké Balls
 178	Liechi Berry	3	Held: Consumed at 1/4 max HP to boost Attack.	Berries
 247	Life Orb	4	Held: Holder’s moves inflict 30% extra damage, but cost 10% max HP.	Held items
 213	Light Ball	2	Doubles Pikachu’s Attack and Special Attack. Breed on Pikachu or Raichu: Pichu Egg will have Volt Tackle.	Species items
 246	Light Clay	4	Held: Light Screen and Reflect used by the holder last 8 rounds instead of 5.	Held items
 1702	Loaded Dice	9	Holder's moves that hit 2-5 times hit 4-5 times; Population Bomb hits 4-10 times.	Held items
 809	Lopunnite	6	Held: Allows Lopunny to Mega Evolve into Mega Lopunny.	Mega Stones
+455	Love Ball	2	Catch rate 8× on the same species as your Pokémon, of the opposite gender.	Poké Balls
 712	Lucarionite	6	Held: Allows Lucario to Mega Evolve into Mega Lucario.	Mega Stones
 2268	Lucarionite Z	9	If held by a Lucario, this item allows it to Mega Evolve into Mega Lucario Z in battle.	Mega Stones
 233	Lucky Punch	2	Raises Chansey’s critical hit ratio by two stages.	Species items
 134	Lum Berry	2	Held: Consumed to cure any status condition or confusion.	Berries
 688	Luminous Moss	6	Held: If the holder is hit by a damaging Water move, raises its Special Defense by one stage.	Held items
+449	Lure Ball	2	Catch rate 4× on Pokémon hooked by fishing; in Generation 9, on Pokémon on or in water.	Poké Balls
 113	Lustrous Orb	4	Boosts the damage from Palkia’s Dragon-type and Water-type moves by 20%.	Species items
+11	Luxury Ball	3	Catch rate 1×. The Pokémon caught gains friendship twice as fast.	Poké Balls
 192	Macho Brace	3	Held: Holder gains double effort values from battles, but has halved Speed in battle.	Training
 2273	Magearnite	9	If held by a Magearna, this item allows it to Mega Evolve in battle.	Mega Stones
 219	Magnet	2	Held: Electric-Type moves from holder do 20% more damage.	Type boosters
@@ -211,6 +225,7 @@
 721	Manectite	6	Held: Allows Manectric to Mega Evolve into Mega Manectric.	Mega Stones
 725	Maranga Berry	6	Held: When the holder is hit by a special move, increases its Special Defense by one stage.	Berries
 843	Marshadium Z	7	Held: Allows Marshadow to upgrade Spectral Thief into Soul-Stealing 7 Star Strike.	Z-Crystals
+1	Master Ball	1	Catches any wild Pokémon, every time.	Poké Balls
 720	Mawilite	6	Held: Allows Mawile to Mega Evolve into Mega Mawile.	Mega Stones
 278	Meadow Plate	4	Held: Grass-Type moves from holder do 20% more damage. Changes Arceus’s and Judgment’s type to Grass.	Type boosters
 704	Medichamite	6	Held: Allows Medicham to Mega Evolve into Mega Medicham.	Mega Stones
@@ -229,9 +244,12 @@
 216	Miracle Seed	2	Held: Grass-Type moves from holder do 20% more damage.	Type boosters
 1699	Mirror Herb	9	When an opposing Pokémon raises a stat stage, the holder copies it. Single use.	Held items
 900	Misty Seed	7	Held: Consumed on Misty Terrain and raises the holder’s Special Defense by one stage.	Held items
+451	Moon Ball	2	Catch rate 4× on Pokémon that evolve with a Moon Stone.	Poké Balls
 243	Muscle Band	4	Held: Boosts the damage of physical moves used by the holder by 10%.	Held items
 220	Mystic Water	2	Held: Water-Type moves from holder do 20% more damage.	Type boosters
 143	Nanab Berry	3	Used for creating PokéBlocks and Poffins.	Berries
+8	Nest Ball	3	Catch rate (41 - level) ÷ 10× below level 30: 4× at level 1, 2× at level 21.	Poké Balls
+6	Net Ball	3	Catch rate 3.5× on Water and Bug Pokémon.	Poké Balls
 223	Never-Melt Ice	2	Held: Ice-Type moves from holder do 20% more damage.	Type boosters
 155	Nomel Berry	3	Used for creating PokéBlocks and Poffins.	Berries
 669	Normal Gem	5	Held: When the holder uses a damaging Normal-type move, the move has 1.5× power and this item is consumed.	Gems
@@ -240,6 +258,7 @@
 291	Odd Incense	4	Held: Psychic-Type moves from holder do 20% more damage. Breeding: Mr. Mime begets a Mime Jr. Egg.	Type boosters
 132	Oran Berry	2	Held: Consumed at 1/2 max HP to recover 10 HP.	Berries
 157	Pamtre Berry	3	Used for creating PokéBlocks and Poffins.	Berries
+456	Park Ball	2	Catches every Pokémon in Pal Park; elsewhere it works as a Poké Ball.	Poké Balls
 616	Pass Orb	5	Activates Pass Powers.	Held items
 162	Passho Berry	4	Held: Consumed when struck by a super-effective Water-type attack to halve the damage.	Berries
 170	Payapa Berry	4	Held: Consumed when struck by a super-effective Psychic-type attack to halve the damage.	Berries
@@ -257,6 +276,7 @@
 597	Poison Gem	5	Held: When the holder uses a damaging Poison-type move, the move has 1.5× power and this item is consumed.	Gems
 904	Poison Memory	7	Held: Changes Silvally to its Poison form. Changes Multi-Attack’s type to Poison.	Species items
 824	Poisonium Z	7	Held: Allows a Pokémon to use the Z-move equivalents of its Poison moves.	Z-Crystals
+4	Poké Ball	1	Catch rate 1×.	Poké Balls
 146	Pomeg Berry	3	Drops HP Effort Values by 10 and raises happiness.	Berries
 270	Power Anklet	4	Held: Holder gains 4 Speed effort values, but has halved Speed in battle.	Training
 269	Power Band	4	Held: Holder gains 4 Special Defense effort values, but has halved Speed in battle.	Training
@@ -265,6 +285,7 @@
 248	Power Herb	4	Held: Both turns of a two-turn charge move happen at once. Consumed upon use.	Held items
 268	Power Lens	4	Held: Holder gains 4 Special Attack effort values, but has halved Speed in battle.	Training
 271	Power Weight	4	Held: Holder gains 4 HP effort values, but has halved Speed in battle.	Training
+12	Premier Ball	3	Catch rate 1×.	Poké Balls
 841	Primarium Z	7	Held: Allows Primarina to upgrade Sparkling Aria into Oceanic Operetta.	Z-Crystals
 897	Protective Pads	7	Held: Prevents side effects of contact moves used on the holder.	Held items
 600	Psychic Gem	5	Held: When the holder uses a damaging Psychic-type move, the move has 1.5× power and this item is consumed.	Gems
@@ -275,6 +296,7 @@
 892	Purple Nectar	7	Changes Oricorio to Sensu Style.	Species items
 2252	Pyroarite	9	If held by a Pyroar, this item allows it to Mega Evolve in battle.	Mega Stones
 148	Qualot Berry	3	Drops Defense Effort Values by 10 and raises happiness.	Berries
+15	Quick Ball	4	Catch rate 5× on the first turn of a battle.	Poké Balls
 194	Quick Claw	2	Held: Holder has a 3/16 (18.75%) chance to move first.	Held items
 251	Quick Powder	4	Doubles Ditto’s Speed when held. The boost is lost after transforming.	Species items
 154	Rabuta Berry	3	Used for creating PokéBlocks and Poffins.	Berries
@@ -286,6 +308,7 @@
 141	Razz Berry	3	Used for creating PokéBlocks and Poffins.	Berries
 585	Red Card	5	Held: When the holder takes damage from a move, the opponent switches out for another random party Pokémon. Consumed after use.	Held items
 889	Red Nectar	7	Changes Oricorio to Baile Style.	Species items
+9	Repeat Ball	3	Catch rate 3.5× on Pokémon already caught in the Pokédex.	Poké Balls
 164	Rindo Berry	4	Held: Consumed when struck by a super-effective Grass-type attack to halve the damage.	Berries
 586	Ring Target	5	Held: Negates the holder’s type immunities. Ability immunities are not removed.	Held items
 602	Rock Gem	5	Held: When the holder uses a damaging Rock-type move, the move has 1.5× power and this item is consumed.	Gems
@@ -300,6 +323,7 @@
 1162	Rusted Shield	8	If held by a Zamazenta, this item changes its forme to Crowned Shield.	Species items
 1161	Rusted Sword	8	If held by a Zacian, this item changes its forme to Crowned Sword.	Species items
 795	Sablenite	6	Held: Allows Sableye to Mega Evolve into Mega Sableye.	Mega Stones
+5	Safari Ball	1	Catch rate 1× (1.5× before Generation 9).	Poké Balls
 690	Safety Goggles	6	Held: Prevents damage from powder moves and the damage from Hail and Sandstorm.	Held items
 180	Salac Berry	3	Held: Consumed at 1/4 max HP to boost Speed.	Berries
 810	Salamencite	6	Held: Allows Salamence to Mega Evolve into Mega Salamence.	Mega Stones
@@ -335,6 +359,7 @@
 156	Spelon Berry	3	Used for creating PokéBlocks and Poffins.	Berries
 276	Splash Plate	4	Held: Water-Type moves from holder do 20% more damage. Changes Arceus’s and Judgment’s type to Water.	Type boosters
 287	Spooky Plate	4	Held: Ghost-Type moves from holder do 20% more damage. Changes Arceus’s and Judgment’s type to Ghost.	Type boosters
+457	Sport Ball	4	Catch rate 1× (1.5× before Generation 8).	Poké Balls
 2266	Staraptite	9	If held by a Staraptor, this item allows it to Mega Evolve in battle.	Mega Stones
 184	Starf Berry	3	Held: Consumed at 1/4 max HP to boost a random stat by two stages.	Berries
 2235	Starminite	9	If held by a Starmie, this item allows it to Mega Evolve in battle.	Mega Stones
@@ -352,10 +377,12 @@
 896	Terrain Extender	7	Held: Extends the holder’s Terrain effects to 8 turns.	Held items
 235	Thick Club	2	Doubles Cubone or Marowak’s Attack.	Species items
 1176	Throat Spray	8	Raises holder's Special Attack by 1 stage after it uses a sound move. Single use.	Held items
+10	Timer Ball	3	Catch rate rises about 0.3× each turn, from 1× to 4× after 10 turns.	Poké Balls
 249	Toxic Orb	4	Held: Inflicts Toxic on the holder at the end of the turn. Activates after Poison damage would occur.	Held items
 281	Toxic Plate	4	Held: Poison-Type moves from holder do 20% more damage. Changes Arceus’s and Judgment’s type to Poison.	Type boosters
 225	Twisted Spoon	2	Held: Psychic-Type moves from holder do 20% more damage.	Type boosters
 708	Tyranitarite	6	Held: Allows Tyranitar to Mega Evolve into Mega Tyranitar.	Mega Stones
+2	Ultra Ball	1	Catch rate 2×.	Poké Balls
 1181	Utility Umbrella	8	The holder ignores rain- and sun-based effects.	Held items
 698	Venusaurite	6	Held: Allows Venusaur to Mega Evolve into Mega Venusaur.	Mega Stones
 2234	Victreebelite	9	If held by a Victreebel, this item allows it to Mega Evolve in battle.	Mega Stones

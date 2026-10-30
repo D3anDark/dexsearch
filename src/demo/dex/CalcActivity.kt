@@ -3,6 +3,7 @@ package demo.dex
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -11,15 +12,18 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 
 /**
- * Damage of one move from an attacker to a defender, each a team member or a new one at level 50 with neutral stats.
- * Levels can be changed here; nothing is saved back to the team.
+ * Damage of one move from an attacker to a defender, each a team member or a new one at level 50 with neutral stats,
+ * with items, abilities and the battle's conditions ([Team.hit]). Levels, items and abilities can be changed here;
+ * nothing is saved back to the team.
  */
 class CalcActivity : Activity() {
     private lateinit var dex: Dex
     private lateinit var game: Dex.Game
     private lateinit var heads: LinearLayout
     private lateinit var moveRow: View
+    private lateinit var conditions: LinearLayout
     private lateinit var out: LinearLayout
+    private val field = Team.Field()
     /** Attacker and defender, null until picked. */
     private val sides = arrayOfNulls<Team.Member>(2)
     private var move = 0
@@ -54,8 +58,10 @@ class CalcActivity : Activity() {
         moves.addView(moveRow)
         root.addView(moves, Ui.wide(this, 0, 12))
         out = Ui.panel(this, L.t("Damage"))
-        root.addView(out, Ui.wide(this, 0, 8))
-        val note = Ui.muted(this, L.t("Gen 5 and later formula. Not counted: abilities, items, weather, critical hits, stat changes and burns."), 13)
+        root.addView(out, Ui.wide(this, 0, 12))
+        conditions = Ui.panel(this, L.t("Conditions"))
+        root.addView(conditions, Ui.wide(this, 0, 8))
+        val note = Ui.muted(this, L.t("Gen 5 and later formula, the defender at full HP. Not counted: Tera, screens, terrain, abilities that need contact or a punch, and moves whose power changes."), 13)
         note.setPadding(Ui.dp(this, 16), 0, Ui.dp(this, 16), 0)
         root.addView(note)
         val scroll = ScrollView(this)
@@ -93,6 +99,40 @@ class CalcActivity : Activity() {
         heads.removeAllViews()
         heads.addView(CompareActivity.pair(this, head(0), head(1), 12))
         Ui.bind(moveRow, if (move == 0) Ui.Item(0, "", L.t("Choose a move"), "", emptyList(), "") else Ui.Item.move(dex.move(game, move), ""))
+        while (conditions.childCount > 1) conditions.removeViewAt(1)
+        val stages = (-6..6).map { Team.signed(it) }
+        val add = { label: String, value: String, act: () -> Unit ->
+            val row = Ui.setting(this, label, value) { act() } as LinearLayout
+            // Values here are short, so the label gets the width instead of a third of it and stays on one line.
+            row.getChildAt(1).layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            conditions.addView(row)
+        }
+        add(L.t("Weather"), L.t(Team.WEATHER[field.weather])) {
+            Ui.pickOne(this, L.t("Weather"), Team.WEATHER.map { L.t(it) }, field.weather) { i ->
+                field.weather = i
+                render()
+            }
+        }
+        add(L.t("Attack stage"), Team.signed(field.atkStage)) {
+            Ui.pickOne(this, L.t("Attack stage"), stages, field.atkStage + 6) { i ->
+                field.atkStage = i - 6
+                render()
+            }
+        }
+        add(L.t("Defense stage"), Team.signed(field.defStage)) {
+            Ui.pickOne(this, L.t("Defense stage"), stages, field.defStage + 6) { i ->
+                field.defStage = i - 6
+                render()
+            }
+        }
+        add(L.t("Critical hit"), if (field.crit) L.t("Yes") else L.t("No")) {
+            field.crit = !field.crit
+            render()
+        }
+        add(L.t("Attacker burned"), if (field.burned) L.t("Yes") else L.t("No")) {
+            field.burned = !field.burned
+            render()
+        }
         result()
     }
 
@@ -120,9 +160,42 @@ class CalcActivity : Activity() {
                 v
             }, Ui.margins(Ui.dp(this, 56), ViewGroup.LayoutParams.WRAP_CONTENT, this, 8, 0, 0, 0))
             h.addView(level, Ui.margins(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 8, 0, 0))
+            val m = dex.mon(x.num)
+            h.addView(line(if (x.item == 0) L.t("No item") else Ui.itemName(this, dex.item(x.item)), L.t("Held item")) { pickItem(x) },
+                Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 6, 0, 0))
+            val ids = (m.abilities.toList() + m.hidden).filter { it > 0 }.distinct()
+            h.addView(line(if (x.ability > 0) dex.ability(x.ability).name else L.t("Ability"), L.t("Ability")) {
+                Ui.pickOne(this, L.t("Ability"), ids.map { dex.ability(it).name }, ids.indexOf(x.ability)) { i ->
+                    x.ability = ids[i]
+                    render()
+                }
+            }, Ui.margins(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, this, 0, 2, 0, 0))
         }
         h.setOnClickListener { pick(i) }
         return h
+    }
+
+    /** The item or ability on a head card, tinted like a setting's value; `role` is read out before it. */
+    private fun line(value: CharSequence, role: String, act: () -> Unit): View {
+        val t = Ui.text(this, value, 14, true)
+        t.setTextColor(Ui.ACCENT_TEXT)
+        t.gravity = Gravity.CENTER
+        t.setSingleLine()
+        t.ellipsize = TextUtils.TruncateAt.END
+        t.background = Ui.pressable(this, null, 10)
+        t.setPadding(Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 6), Ui.dp(this, 6))
+        t.contentDescription = "$role: $value"
+        t.setOnClickListener { act() }
+        return t
+    }
+
+    private fun pickItem(x: Team.Member) {
+        val items = arrayListOf(Ui.Item(0, "", L.t("No item"), "", emptyList(), 0))
+        items.addAll(Ui.itemSections(dex.items.filter { it.held && it.gen <= game.gen }) { Ui.Item(0, "", it.name, it.effect, emptyList(), it) })
+        Ui.pickSearch(this, L.t("Held item"), items) { ref ->
+            x.item = (ref as? Dex.Item)?.id ?: 0
+            render()
+        }
     }
 
     /** Min to max damage as a share of the defender's HP, on a bar and in HP, hits to faint it and what went into it. */
@@ -140,13 +213,9 @@ class CalcActivity : Activity() {
             return
         }
         val special = mv.category == "special"
-        val atk = Team.stats(dex, a)[if (special) 3 else 1]
-        val def = Team.stats(dex, d)
-        val guard = def[if (special) 4 else 2]
-        val factor = dex.factor(game, mv.type, dex.types(game, dex.mon(d.num)))
-        val stab = mv.type in dex.types(game, dex.mon(a.num))
-        val hit = Team.damage(a.level, mv.power, atk, guard, stab, factor)
-        val hp = def[0]
+        val calc = Team.hit(dex, game, a, d, mv, field)
+        val hit = calc.roll
+        val hp = Team.stats(dex, d)[0]
         val wrap = ViewGroup.LayoutParams.WRAP_CONTENT
         out.addView(Ui.text(this, L.f("%d%% to %d%%", hit[0] * 100 / hp, hit[1] * 100 / hp), 30, true))
         out.addView(hpBar(minOf(hit[0], hp), minOf(hit[1], hp), hp),
@@ -162,11 +231,11 @@ class CalcActivity : Activity() {
             else -> L.f("Faints in %d to %d hits", fast, slow)
         }
         out.addView(Ui.text(this, ko, 17, true), Ui.margins(wrap, wrap, this, 0, 4, 0, 10))
-        fact(L.t(Dex.STATS[if (special) 3 else 1]) + "  ·  " + dex.mon(a.num).name, atk.toString())
-        fact(L.t(Dex.STATS[if (special) 4 else 2]) + "  ·  " + dex.mon(d.num).name, guard.toString())
-        fact(L.t("Power"), mv.power.toString())
-        fact(L.t("Effectiveness"), effect(factor))
-        fact(L.t("Same type"), if (stab) "×1.5" else "×1")
+        fact(L.t(Dex.STATS[if (special) 3 else 1]) + "  ·  " + dex.mon(a.num).name, calc.atk.toString())
+        fact(L.t(Dex.STATS[if (special) 4 else 2]) + "  ·  " + dex.mon(d.num).name, calc.def.toString())
+        fact(L.t("Power"), calc.power.toString())
+        fact(L.t("Effectiveness"), effect(calc.factor))
+        for ((label, mod) in calc.mods) fact(label, times(mod))
     }
 
     private fun fact(label: String, value: String) {
@@ -198,6 +267,12 @@ class CalcActivity : Activity() {
 
         /** A type multiplier in hundredths as shown: "×½", "×2". */
         fun effect(factor: Int): String = EFFECT[factor] ?: "×${factor / 100.0}"
+
+        /** A modifier in 4096ths to two decimals: 4915 is "×1.2", 2048 "×0.5", 8192 "×2". */
+        fun times(mod: Int): String {
+            val h = (mod * 100 + 2048) / 4096
+            return "×" + if (h % 100 == 0) "${h / 100}" else "${h / 100.0}"
+        }
 
         /** `team` -1 for none; `member` of that team (-1 for none) attacks. */
         fun open(a: Activity, team: Int, member: Int) {
