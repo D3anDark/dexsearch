@@ -47,6 +47,7 @@ import android.view.WindowManager
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.animation.DecelerateInterpolator
 import android.view.inputmethod.EditorInfo
 import android.widget.AbsListView
 import android.widget.BaseAdapter
@@ -457,9 +458,10 @@ object Ui {
 
     /**
      * The page under [show]: a drag to the right from anywhere on it slides it away and goes back, as the system's
-     * swipe does from the screen edge only. Past a third of the width or flung it leaves, else it springs back. Not on
-     * the first screen, not where the touched content can scroll left, and not once a child claims the touch (a
-     * vertical scroll, a [Swipes] pager). One VelocityTracker per drag, recycled at its end.
+     * swipe does from the screen edge only. Past a third of the width or flung it leaves, else it springs back, and a
+     * touch catches it while it slides. Not on the first screen, not where the touched content can scroll left, and
+     * not once a child claims the touch (a vertical scroll, a [Swipes] pager). One VelocityTracker per drag, recycled
+     * at its end.
      */
     private class SwipeBack(private val a: Activity) : FrameLayout(a) {
         private val slop = ViewConfiguration.get(a).scaledTouchSlop
@@ -490,10 +492,13 @@ object Ui {
         private fun track(e: MotionEvent) {
             if (e.actionMasked == MotionEvent.ACTION_DOWN) {
                 stop()
-                x0 = e.rawX
                 y0 = e.rawY
-                if (first || translationX != 0f || (a as? Swipes)?.swiping == true || scrollsLeft(this, e.x, e.y)) return
-                state = 0
+                // A page still sliding from the last release is caught where it is; cancel drops its finish().
+                val caught = translationX != 0f
+                if ((a as? Swipes)?.swiping == true || !caught && (first || scrollsLeft(this, e.x, e.y))) return
+                animate().cancel()
+                x0 = e.rawX - translationX
+                state = if (caught) 1 else 0
                 velocity = VelocityTracker.obtain()
             }
             val v = velocity ?: return
@@ -507,14 +512,24 @@ object Ui {
             when (e.actionMasked) {
                 MotionEvent.ACTION_MOVE -> {
                     if (state == 0 && dy > slop) return stop()
-                    if (state == 0 && dx > slop && dx > 2 * dy) state = 1
-                    if (state == 1) translationX = maxOf(0f, dx)
+                    // The page starts from where it is once the slop is crossed, not with a jump of the slop's width.
+                    if (state == 0 && dx > slop && dx > 2 * dy) {
+                        state = 1
+                        x0 = e.rawX - translationX
+                    }
+                    if (state == 1) translationX = maxOf(0f, e.rawX - x0)
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     if (state == 1) {
                         v.computeCurrentVelocity(1000)
-                        val leave = e.actionMasked == MotionEvent.ACTION_UP && (v.xVelocity > fling || dx > width / 3f && v.xVelocity > -fling)
-                        animate().translationX(if (leave) width.toFloat() else 0f).setDuration(150).withEndAction { if (leave) close() }
+                        val leave = e.actionMasked == MotionEvent.ACTION_UP && (v.xVelocity > fling || translationX > width / 3f && v.xVelocity > -fling)
+                        // Leaves the finger at the speed it moved: a quadratic ease-out starts at twice its average speed.
+                        val far = if (leave) width - translationX else translationX
+                        val speed = if (leave) v.xVelocity else -v.xVelocity
+                        animate().translationX(if (leave) width.toFloat() else 0f)
+                            .setDuration((2000 * far / maxOf(speed, 1f)).coerceIn(80f, 250f).toLong())
+                            .setInterpolator(DecelerateInterpolator())
+                            .withEndAction { if (leave) close() }
                     }
                     stop()
                 }

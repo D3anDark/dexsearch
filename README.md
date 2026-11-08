@@ -45,7 +45,9 @@ into GitHub Pages by the same workflow on every release.
    on where iOS shows it, then "Add".
 3. Open DexSearch from the new icon. The first launch downloads about 25 MB; after that it works offline.
 
-Opened in Safari but not installed, the home screen shows "Install DexSearch on this iPhone" with these steps.
+Opened in Safari but not installed, the home screen shows "Install as app" with these steps. In a browser on Android
+the same card offers the APK (`dexsearch.apk` from Pages) or the web app: Chrome's own install dialog when it has
+offered one (`beforeinstallprompt`), else the steps from the browser's menu.
 
 Settings > Pokémon artwork picks 3D, official or pixel art; the picked style downloads in the background (18 or 1 MB),
 shiny pictures as they are shown.

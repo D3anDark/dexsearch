@@ -313,7 +313,14 @@ Update failed: %s	Aktualizacja nieudana: %s
 Back	Wstecz
 Could not load the data. Check the connection and reload.	Nie udało się wczytać danych. Sprawdź połączenie i odśwież stronę.
 Could not save on this device.	Nie udało się zapisać na tym urządzeniu.
-Install DexSearch on this iPhone	Zainstaluj DexSearch na tym iPhonie
+Install as app	Zainstaluj jako aplikację
+Android app	Aplikacja na Androida
+The full Android app. Open the file once downloaded and allow this browser to install apps.	Pełna aplikacja na Androida. Po pobraniu otwórz plik i pozwól tej przeglądarce instalować aplikacje.
+Web app	Aplikacja webowa
+An icon on the home screen, no permissions needed. Works offline after the first launch.	Ikona na ekranie głównym, bez żadnych uprawnień. Po pierwszym uruchomieniu działa offline.
+Open the browser menu: ⋮ or ≡.	Otwórz menu przeglądarki: ⋮ albo ≡.
+Tap “Install app” or “Add to Home screen”, then Install.	Stuknij „Zainstaluj aplikację” albo „Dodaj do ekranu głównego”, a potem Zainstaluj.
+Open DexSearch from its new icon. It works offline from then on.	Otwórz DexSearch z nowej ikony. Od tej chwili działa offline.
 Install DexSearch	Instalacja DexSearch
 Tap Share: the square with an arrow, in Safari’s bottom bar or under ⋯.	Stuknij Udostępnij: kwadrat ze strzałką na dolnym pasku Safari albo pod ⋯.
 Tap “Add to Home Screen”. Not in the list? Scroll down or tap More.	Stuknij „Do ekranu początkowego”. Nie ma na liście? Przewiń w dół albo stuknij Więcej.

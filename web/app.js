@@ -530,21 +530,35 @@ addEventListener('popstate', e => {
 });
 
 // A drag to the right from anywhere on a page slides it away and goes back, the page underneath showing, as in the
-// Android app: an installed copy on iPhone has no back swipe of its own. Past a third of the width or flung it leaves.
-// Not from the screen edge where the browser has its own swipe, not on content scrolled sideways, not under a sheet.
+// Android app: an installed copy on iPhone has no back swipe of its own. Past a third of the width or flung it leaves,
+// and a touch catches it while it slides. Not from the screen edge where the browser has its own swipe, not on content
+// scrolled sideways, not under a sheet.
 {
-  let x0 = 0, y0 = 0, x = 0, lx = 0, lt = 0, vx = 0, state = -1, top = null, under = null;
+  let x0 = 0, y0 = 0, x = 0, lx = 0, lt = 0, vx = 0, state = -1, top = null, under = null, timer = 0;
   const scrolled = el => { for (; el; el = el.parentElement) if (el.scrollLeft > 0) return true; return false; };
+  // Takes the page from wherever its entrance or last release has it, so it moves on from there without a jump.
+  const grab = cx => {
+    x = new DOMMatrix(getComputedStyle(top.el).transform).m41;
+    clearTimeout(timer);
+    timer = 0;
+    top.el.classList.remove('in');
+    top.el.style.transition = '';
+    top.el.style.transform = `translateX(${x}px)`;
+    under.el.style.visibility = 'visible';
+    x0 = cx - x;
+    state = 1;
+  };
   addEventListener('touchstart', e => {
     const t = e.touches[0];
     top = pages.at(-1);
     under = pages.at(-2);
-    state = !under || e.touches.length > 1 || top.el.style.transform || (!navigator.standalone && t.clientX < 24)
-      || document.querySelector('dialog[open]') || scrolled(e.target) ? -1 : 0;
     x0 = lx = t.clientX;
     y0 = t.clientY;
     lt = e.timeStamp;
     x = vx = 0;
+    if (timer && under && e.touches.length === 1) return grab(t.clientX);
+    state = !under || e.touches.length > 1 || top.el.style.transform || (!navigator.standalone && t.clientX < 24)
+      || document.querySelector('dialog[open]') || scrolled(e.target) ? -1 : 0;
   }, { passive: true });
   addEventListener('touchmove', e => {
     if (state < 0) return;
@@ -554,14 +568,12 @@ addEventListener('popstate', e => {
     if (!state) {
       if (dy > 10) return void (state = -1);
       if (dx < 10 || dx < 2 * dy) return;
-      state = 1;
-      top.el.classList.remove('in');
-      under.el.style.visibility = 'visible';
+      grab(t.clientX);
     }
     if (e.timeStamp > lt) vx = (t.clientX - lx) / (e.timeStamp - lt);
     lx = t.clientX;
     lt = e.timeStamp;
-    x = Math.max(0, dx);
+    x = Math.max(0, t.clientX - x0);
     top.el.style.transform = `translateX(${x}px)`;
   }, { passive: true });
   const end = e => {
@@ -572,15 +584,18 @@ addEventListener('popstate', e => {
     // A finger that rested before lifting has no speed left.
     if (e.timeStamp - lt > 100) vx = 0;
     const leave = e.type === 'touchend' && (vx > 0.5 || (x > innerWidth / 3 && vx > -0.5));
-    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    page.style.transition = still ? '' : 'transform .15s ease-out';
+    // Leaves the finger at the speed it moved: this curve, a quadratic ease-out, starts at twice its average speed.
+    const ms = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0
+      : Math.min(250, Math.max(80, 2 * (leave ? innerWidth - x : x) / Math.max(leave ? vx : -vx, 0.001)));
+    page.style.transition = ms ? `transform ${ms}ms cubic-bezier(.33, .67, .67, 1)` : '';
     page.style.transform = leave ? 'translateX(100%)' : 'translateX(0)';
     // Leaving, popstate removes the page; staying, it drops its styles once back in place.
-    setTimeout(() => {
+    timer = setTimeout(() => {
+      timer = 0;
       if (leave) return close();
       page.style.transition = page.style.transform = '';
       back.style.visibility = '';
-    }, still ? 0 : 150);
+    }, ms);
   };
   addEventListener('touchend', end, { passive: true });
   addEventListener('touchcancel', end, { passive: true });
@@ -800,7 +815,7 @@ function home(p) {
     if (installable()) {
       const w = color('water');
       box.append(tonal(h('button', { class: 'update', onclick: () => install(render) },
-        ink(h('span', null, L.t("Install DexSearch on this iPhone")), w), ink(icon(NEXT, 16), w)), w));
+        ink(h('span', null, L.t("Install as app")), w), ink(icon(NEXT, 16), w)), w));
     }
     const species = g.dex.filter(e => !isForm(e.mon));
     const have = caughtSet();
@@ -890,24 +905,68 @@ function home(p) {
   }
 }
 
-/**
- * Safari on an iPhone or iPad, not opened from the home screen icon. iPadOS reports a Mac, told apart by its touch
- * screen.
- */
-const installable = () => !navigator.standalone && !store.get('hideInstall', false)
-  && (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const ANDROID = /Android/.test(navigator.userAgent);
+/** Chrome's own install dialog from its beforeinstallprompt, usable once; held back so the card's choice comes first. */
+let prompted = null;
+addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  prompted = e;
+});
+// Installed from the card or from the browser's menu: the card stays away in the browser too.
+addEventListener('appinstalled', () => {
+  store.set('hideInstall', true);
+  pages[0]?.resume?.();
+});
 
-/** Safari's steps to put the web app on the home screen; "Do not show again" hides the card and runs `hidden`. */
+/**
+ * Safari on an iPhone or iPad, or a browser on Android, not opened from the home screen icon. iPadOS reports a Mac,
+ * told apart by its touch screen.
+ */
+const installable = () => !navigator.standalone && !matchMedia('(display-mode: standalone)').matches
+  && !store.get('hideInstall', false) && (IOS || ANDROID);
+
+/**
+ * Android picks the APK or the web app, an iPhone gets Safari's steps. "Do not show again" hides the card and runs
+ * `hidden`.
+ */
 function install(hidden) {
   const s = sheet(L.t("Install DexSearch"));
-  s.body.append(h('ol', 'steps',
-    h('li', null, L.t("Tap Share: the square with an arrow, in Safari’s bottom bar or under ⋯.")),
-    h('li', null, L.t("Tap “Add to Home Screen”. Not in the list? Scroll down or tap More.")),
-    h('li', null, L.t("Tap Add, then open DexSearch from its new icon. It works offline from then on."))));
+  const choice = (title, note, act) => h('button', { class: 'opt', onclick: () => { if (s.close()) act(); } },
+    h('b', null, title), h('div', 'note', note));
+  if (ANDROID) {
+    s.body.append(
+      // On Pages beside the web app (pages.yml), not cached by sw.js.
+      choice(L.t("Android app"), L.t("The full Android app. Open the file once downloaded and allow this browser to install apps."),
+        () => { location.href = 'dexsearch.apk'; }),
+      choice(L.t("Web app"), L.t("An icon on the home screen, no permissions needed. Works offline after the first launch."), webApp));
+  } else {
+    s.body.append(h('ol', 'steps',
+      h('li', null, L.t("Tap Share: the square with an arrow, in Safari’s bottom bar or under ⋯.")),
+      h('li', null, L.t("Tap “Add to Home Screen”. Not in the list? Scroll down or tap More.")),
+      h('li', null, L.t("Tap Add, then open DexSearch from its new icon. It works offline from then on."))));
+  }
   s.button(L.t("Do not show again"), false, () => {
     store.set('hideInstall', true);
     hidden();
   });
+  if (ANDROID) s.button(L.t("Cancel"));
+  else s.button(L.t("Done"), true);
+  s.show();
+}
+
+/** Chrome's install dialog when it offered one; else (Firefox, or Chrome not yet offering) the browser menu's steps. */
+function webApp() {
+  if (prompted) {
+    prompted.prompt();
+    prompted = null;
+    return;
+  }
+  const s = sheet(L.t("Install DexSearch"));
+  s.body.append(h('ol', 'steps',
+    h('li', null, L.t("Open the browser menu: ⋮ or ≡.")),
+    h('li', null, L.t("Tap “Install app” or “Add to Home screen”, then Install.")),
+    h('li', null, L.t("Open DexSearch from its new icon. It works offline from then on."))));
   s.button(L.t("Done"), true).show();
 }
 
